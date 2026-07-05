@@ -1,0 +1,47 @@
+# === Generated output (created at runtime) ===
+metadata/
+cheats/
+cheatsdownload/
+coversdownload/
+browser_debug/
+# Persistent logged-in browser profile (Playwright) — contains auth cookies!
+browser_profile/
+profile/
+profile2/
+
+# === Databases (incl. SQLite WAL sidecar files) ===
+*.db
+*.db-wal
+*.db-shm
+
+# === Downloaded caches (large, re-fetched automatically) ===
+titledb_*.json
+games.md
+nx_gfx_readme.md
+switchbrew_games.txt
+
+# === Private: login session, credentials ===
+session.json
+storage_state.json
+# GUI settings (API token / email / password) — keep private
+settings.json
+
+# === Build artifacts (PyInstaller / Inno Setup) ===
+build/
+dist/
+build_test/
+dist_test/
+Output/
+*.exe
+
+# === Temporary / build artifacts ===
+*.html
+*.log
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+Thumbs.db
+
+README.de.md

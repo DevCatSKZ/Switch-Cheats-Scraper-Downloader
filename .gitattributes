@@ -1,0 +1,12 @@
+# Normalize line endings: text files use LF in the repo.
+* text=auto eol=lf
+
+# Windows-specific scripts keep CRLF.
+*.ps1 text eol=crlf
+*.iss text eol=crlf
+
+# Treat these as binary (no diff / no eol conversion).
+*.png binary
+*.ico binary
+*.zip binary
+*.exe binary

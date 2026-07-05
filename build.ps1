@@ -1,0 +1,46 @@
+# Build Switch Cheats Scraper into an .exe (+ optional installer).
+#
+#   powershell -ExecutionPolicy Bypass -File build.ps1
+#
+# Requires: Python 3.11-3.13 recommended (PyInstaller wheels), pip.
+# Optional: Inno Setup 6 (iscc) on PATH for the installer step.
+
+$ErrorActionPreference = "Stop"
+Set-Location $PSScriptRoot
+
+Write-Host "== 1/4  Installing build + runtime dependencies ==" -ForegroundColor Cyan
+py -m pip install --upgrade pip
+py -m pip install -r requirements.txt
+py -m pip install pyinstaller
+
+Write-Host "== 2/4  Downloading Playwright browsers (bundled) ==" -ForegroundColor Cyan
+# Store browsers inside the dist so the app is self-contained.
+$env:PLAYWRIGHT_BROWSERS_PATH = "0"
+py -m playwright install chromium firefox
+
+Write-Host "== 3/4  Building the .exe with PyInstaller ==" -ForegroundColor Cyan
+py -m PyInstaller --noconfirm SwitchCheatsScraper.spec
+
+$exe = "dist\SwitchCheatsScraper\SwitchCheatsScraper.exe"
+if (Test-Path $exe) {
+    Write-Host "Built: $exe" -ForegroundColor Green
+} else {
+    throw "Build failed: $exe not found"
+}
+
+Write-Host "== 4/4  Building the installer (if Inno Setup is available) ==" -ForegroundColor Cyan
+$iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+if (-not $iscc) {
+    foreach ($p in @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+                     "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+                     "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe")) {
+        if (Test-Path $p) { $iscc = $p; break }
+    }
+}
+if ($iscc) {
+    & $iscc installer.iss
+    Write-Host "Installer: Output\SwitchCheatsScraper-Setup.exe" -ForegroundColor Green
+} else {
+    Write-Host "Inno Setup (iscc) not found - skipped installer." -ForegroundColor Yellow
+    Write-Host "Install it from https://jrsoftware.org/isdl.php, then run: iscc installer.iss"
+}
