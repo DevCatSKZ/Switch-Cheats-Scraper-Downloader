@@ -10,7 +10,7 @@
 
 <p align="center"><b>by DevCatSKZ</b></p>
 
-**Scrape, download and manage Nintendo Switch cheat codes** from CheatSlips.com, GBATempArchive, HamletDuFromage, Sthetix, Breeze, Chansey, MyNXCheats, ibnux and titledb — all in one Windows app with a searchable database (dark & light mode) and one-click export to your Switch SD card (Atmosphère / Breeze / EdiZon) or a ZIP.
+**Scrape, download and manage Nintendo Switch cheat codes** from CheatSlips.com, GBATempArchive and more .All in one Windows app with a searchable database and one-click export to your Switch SD card (Atmosphère / Breeze / EdiZon) or a ZIP.
 
 ---
 
