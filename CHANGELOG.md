@@ -5,6 +5,30 @@
 
 All notable changes to this project are documented here.
 
+## v1.1 — 2026-07-05
+
+### Added
+- **Self-update ("Check Updates")** in the DevCatSKZ card: checks GitHub for a
+  newer program version *and* newer cheats/database packages. It detects a new
+  version (e.g. 1.1) **and** a re-upload of the current release/data asset (a fix
+  without a version bump, via the upload date). Program updates install
+  themselves (restart); data updates are downloaded and imported. Optional
+  automatic check at startup.
+
+### Fixed
+- DevCatSKZ downloads crashed in the packaged (windowed) build with
+  `'NoneType' object has no attribute 'write'` — fixed (logging now tolerates a
+  `None` stdout).
+
+### Changed
+- Covers are now fetched via the **"Download Covers"** checkbox (off by default)
+  instead of a yes/no prompt after each download.
+- The **"External Cheat Sources"** area is more compact (no wasted width); the
+  DevCatSKZ card description moved into a tooltip.
+- **Installer** now defaults to `C:\Program Files (x86)\Switch Cheats Scraper &
+  Downloader` (needs admin); the destination folder is freely selectable /
+  creatable in the wizard.
+
 ## v1.0 — 2026-07-05
 
 Scrape & download Nintendo Switch cheats from CheatSlips.com, GBATemp/HamletDuFromage,
@@ -66,6 +90,30 @@ to your Switch SD card (Atmosphère / Breeze / EdiZon) or a ZIP.
 # Änderungsverlauf
 
 Alle nennenswerten Änderungen an diesem Projekt sind hier dokumentiert.
+
+## v1.1 — 05.07.2026
+
+### Neu
+- **Selbst-Update („Check Updates")** in der DevCatSKZ-Karte: prüft GitHub auf
+  eine neuere Programmversion *und* neuere Cheats-/Datenbank-Pakete. Erkennt eine
+  neue Version (z. B. 1.1) **und** ein erneutes Hochladen des aktuellen
+  Release-/Daten-Assets (Fix ohne Versionssprung, über das Upload-Datum).
+  Programm-Updates installieren sich selbst (Neustart), Daten-Updates werden
+  geladen und importiert. Optional automatisch beim Start.
+
+### Behoben
+- DevCatSKZ-Downloads brachen im installierten (Fenster-)Build mit
+  `'NoneType' object has no attribute 'write'` ab — behoben (Logging verträgt
+  jetzt `None`-stdout).
+
+### Geändert
+- Cover werden jetzt über die Checkbox **„Download Covers"** (standardmäßig aus)
+  geladen — statt Nachfrage-Dialog nach jedem Download.
+- Der **„External Cheat Sources"**-Bereich ist kompakter (kein verschwendeter
+  Platz); die DevCatSKZ-Karten-Beschreibung liegt jetzt im Tooltip.
+- Der **Installer** schlägt jetzt `C:\Program Files (x86)\Switch Cheats Scraper &
+  Downloader` vor (Adminrechte); der Zielordner ist im Assistenten frei wählbar /
+  neu anlegbar.
 
 ## v1.0 — 05.07.2026
 
