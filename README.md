@@ -16,7 +16,7 @@
 
 ## ⬇️ Download
 
-Grab the latest build from **[Releases »](../../releases/latest)** — no Python needed, the `.exe` is self-contained:
+Grab the latest build from **[Releases »](../../releases/latest)**
 
 | | |
 |---|---|
