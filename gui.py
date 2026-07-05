@@ -38,8 +38,14 @@ from scraper import (
     APP_AUTHOR,
     DEVCAT_CHEATS_ASSET,
     DEVCAT_DB_ASSET,
+    DEVCAT_DATA_TAG,
+    PROGRAM_SETUP_ASSET,
+    PROGRAM_PORTABLE_ASSET,
     devcat_asset_url,
     download_file,
+    fetch_github_release,
+    find_release_asset,
+    version_is_newer,
     CheatslipsAPI,
     CheatslipsMetadataScraper,
     GameDatabase,
@@ -151,6 +157,10 @@ DEFAULT_OUTPUT = str(DATA_DIR / "cheatsdownload")
 COVERS_DIR = str(DATA_DIR / "coversdownload")
 LOG_FILE = str(DATA_DIR / "scraper.log")
 SETTINGS_FILE = str(DATA_DIR / "settings.json")
+# Bookkeeping for the self-updater: the first-run baseline plus the last
+# accepted upload times, so a re-uploaded release/data asset (a fix without a
+# version bump) is detected. Lives in the data dir, so it survives app updates.
+UPDATE_STATE_FILE = str(DATA_DIR / "update_state.json")
 
 # Locally cached titledb region files used to look up game descriptions offline
 # (English regions — descriptions there are in English). Filled by "Fill Names".
@@ -740,6 +750,123 @@ class ImportDBDialog:
         self.top.destroy()
 
 
+def _fmt_size(n) -> str:
+    """Human-readable byte size, e.g. 12.3 MB."""
+    try:
+        n = float(n)
+    except Exception:
+        return ""
+    for unit in ("B", "KB", "MB", "GB"):
+        if n < 1024 or unit == "GB":
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1024
+    return f"{n:.1f} GB"
+
+
+class UpdateDialog:
+    """Modal dialog summarising the available program / data updates.
+
+    It only reports and dispatches: the actual work runs in the app's worker
+    threads (program self-install, or data download+import).
+    """
+
+    def __init__(self, parent, app, info: dict):
+        self.app = app
+        self.info = info
+        t = theme()
+        self.top = tk.Toplevel(parent)
+        self.top.title("Updates")
+        self.top.transient(parent)
+        self.top.grab_set()
+        self.top.resizable(False, False)
+        self.top.configure(bg=t["bg"])
+        frm = ttk.Frame(self.top, padding=14)
+        frm.pack(fill="both", expand=True)
+
+        prog = info.get("program")
+        cheats = info.get("cheats")
+        db = info.get("db")
+
+        ttk.Label(frm, text="Updates available" if (prog or cheats or db)
+                  else "You are up to date",
+                  font=("Segoe UI", 12, "bold")).pack(anchor="w")
+        ttk.Label(frm, text=f"Installed version: v{APP_VERSION}",
+                  foreground=t["fg_muted"], font=("Segoe UI", 8)).pack(
+                      anchor="w", pady=(0, 10))
+
+        # --- Program update block ---
+        if prog:
+            box = ttk.LabelFrame(frm, text="Program", padding=(10, 8))
+            box.pack(fill="x", pady=(0, 8))
+            if prog["newer_version"]:
+                head = f"New version v{prog['version']} is available."
+            else:
+                head = ("The current release was re-uploaded (a fix without a "
+                        "version bump).")
+            ttk.Label(box, text=head, font=("Segoe UI", 9, "bold"),
+                      wraplength=440, justify="left").pack(anchor="w")
+            setup = prog.get("setup") or {}
+            if setup.get("size"):
+                ttk.Label(box, text=f"Installer: {_fmt_size(setup['size'])}",
+                          foreground=t["fg_muted"], font=("Segoe UI", 8)).pack(
+                              anchor="w", pady=(2, 0))
+            notes = (prog.get("notes") or "").strip()
+            if notes:
+                ttk.Label(box, text="What's new:", font=("Segoe UI", 8, "bold")).pack(
+                    anchor="w", pady=(6, 0))
+                txt = tk.Text(box, height=5, width=58, wrap="word",
+                              font=("Segoe UI", 8), relief="flat",
+                              bg=t["field"], fg=t["fg"],
+                              highlightthickness=1, highlightbackground=t["border"])
+                txt.insert("1.0", notes)
+                txt.config(state="disabled")
+                txt.pack(fill="x", pady=(2, 0))
+            frozen = getattr(sys, "frozen", False)
+            btn_text = "Update & Restart" if frozen else "Open download page"
+            ttk.Button(box, text=btn_text,
+                       command=self._on_program).pack(anchor="e", pady=(8, 0))
+
+        # --- Data update block ---
+        if cheats or db:
+            box = ttk.LabelFrame(frm, text="Data (from DevCatSKZ)", padding=(10, 8))
+            box.pack(fill="x", pady=(0, 8))
+            if db:
+                ttk.Label(box, text=f"• Newer database  ({_fmt_size(db.get('size'))})",
+                          wraplength=440, justify="left").pack(anchor="w")
+            if cheats:
+                ttk.Label(box, text=f"• Newer cheats archive  ({_fmt_size(cheats.get('size'))})",
+                          wraplength=440, justify="left").pack(anchor="w")
+            ttk.Label(box, text="Downloaded and merged into your database "
+                                "(nothing is removed).",
+                      foreground=t["fg_muted"], font=("Segoe UI", 8)).pack(
+                          anchor="w", pady=(2, 0))
+            ttk.Button(box, text="Download data update",
+                       command=self._on_data).pack(anchor="e", pady=(8, 0))
+
+        if not (prog or cheats or db):
+            ttk.Label(frm, text="Program, cheats and database are all current.",
+                      foreground=t["fg_muted"]).pack(anchor="w")
+
+        # --- Footer ---
+        foot = ttk.Frame(frm)
+        foot.pack(fill="x", pady=(6, 0))
+        rel = info.get("release") or {}
+        if rel.get("html_url"):
+            ttk.Button(foot, text="Open GitHub release",
+                       command=lambda: webbrowser.open(rel["html_url"])).pack(side="left")
+        ttk.Button(foot, text="Close", command=self.top.destroy).pack(side="right")
+        self.top.bind("<Escape>", lambda _e: self.top.destroy())
+        _center_dialog(self.top, parent)
+
+    def _on_program(self):
+        self.top.destroy()
+        self.app.start_program_update(self.info)
+
+    def _on_data(self):
+        self.top.destroy()
+        self.app.start_data_update(self.info)
+
+
 class _QueueWriter:
     """File-like object that forwards written lines to a queue (for the log).
 
@@ -804,6 +931,11 @@ class ScraperGUI:
         self.update_pages = tk.IntVar(value=5)
         # Check whether cheatslips.com is reachable on every program start.
         self.online_check_startup = tk.BooleanVar(value=True)
+        # When ON, a DevCatSKZ download also fetches the cover images afterwards.
+        # Off by default — covers are not part of the archive and cost extra time.
+        self.devcat_covers = tk.BooleanVar(value=False)
+        # Check GitHub for a newer program build / data package at every start.
+        self.update_check_startup = tk.BooleanVar(value=True)
         # SD-card export (remembered between runs).
         self.sd_export_root = tk.StringVar(value="")
         self.sd_export_mode = tk.StringVar(value="atmosphere")
@@ -849,6 +981,9 @@ class ScraperGUI:
 
         self._loaded_geometry = False
         self._load_settings()
+        # Seed the updater's first-run baseline as early as possible, so the
+        # "install date" anchor reflects the true first program start.
+        self._update_state = self._load_update_state()
 
         _ACTIVE["name"] = self.theme_name
         self._style = ttk.Style(self.root)
@@ -921,6 +1056,10 @@ class ScraperGUI:
         # toggle 'check at startup'); runs in a background thread.
         if self.online_check_startup.get():
             self.root.after(800, self.on_check_online)
+        # Check GitHub for a newer program/data version at startup (optional).
+        # Runs quietly in the background; pops the dialog only if something's new.
+        if self.update_check_startup.get():
+            self.root.after(1500, lambda: self.on_check_updates(startup=True))
 
     def _set_window_icon(self):
         """Set the window / taskbar icon from app.ico when it can be found."""
@@ -1073,6 +1212,8 @@ class ScraperGUI:
         self.scrape_skip_zero.set(bool(data.get(
             "scrape_skip_zero", legacy if legacy is not None else False)))
         self.online_check_startup.set(bool(data.get("online_check_startup", True)))
+        self.devcat_covers.set(bool(data.get("devcat_covers", False)))
+        self.update_check_startup.set(bool(data.get("update_check_startup", True)))
         self.sd_export_root.set(data.get("sd_export_root", ""))
         self.sd_export_mode.set(data.get("sd_export_mode", "atmosphere"))
         self.export_zip_path.set(data.get("export_zip_path", ""))
@@ -1106,6 +1247,8 @@ class ScraperGUI:
             "scrape_full_catalog": self.scrape_full_catalog.get(),
             "scrape_skip_zero": self.scrape_skip_zero.get(),
             "online_check_startup": self.online_check_startup.get(),
+            "devcat_covers": self.devcat_covers.get(),
+            "update_check_startup": self.update_check_startup.get(),
             "sd_export_root": self.sd_export_root.get(),
             "sd_export_mode": self.sd_export_mode.get(),
             "export_zip_path": self.export_zip_path.get(),
@@ -1119,6 +1262,43 @@ class ScraperGUI:
         try:
             with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
+        except Exception:
+            pass
+
+    # ---------------------------------------------------------- update state
+    def _load_update_state(self) -> dict:
+        """Read the updater bookkeeping file, seeding first-run baselines.
+
+        On the very first run the file does not exist yet: every baseline is set
+        to *now*, so only releases/data uploaded AFTER this moment count as an
+        update (matching "newer than when the program was first started").
+        """
+        try:
+            with open(UPDATE_STATE_FILE, "r", encoding="utf-8") as f:
+                state = json.load(f)
+            if not isinstance(state, dict):
+                raise ValueError
+        except Exception:
+            state = {}
+        if not state.get("install_epoch"):
+            now = time.time()
+            state = {
+                "install_epoch": now,
+                "program_baseline": now,
+                "data_cheats_baseline": now,
+                "data_db_baseline": now,
+            }
+            self._save_update_state(state)
+        # Fill any missing key from install_epoch (forward-compatible).
+        base = state.get("install_epoch", time.time())
+        for key in ("program_baseline", "data_cheats_baseline", "data_db_baseline"):
+            state.setdefault(key, base)
+        return state
+
+    def _save_update_state(self, state: dict):
+        try:
+            with open(UPDATE_STATE_FILE, "w", encoding="utf-8") as f:
+                json.dump(state, f, indent=2)
         except Exception:
             pass
 
@@ -1227,6 +1407,10 @@ class ScraperGUI:
         st.configure("FeaturedTitle.TLabel", background=panel, foreground=ACCENT,
                      font=("Segoe UI", 10, "bold"))
         st.configure("Featured.TLabel", background=panel, foreground=t["fg_muted"])
+        st.configure("Featured.TCheckbutton", background=panel, foreground=t["fg_muted"],
+                     focuscolor=panel)
+        st.map("Featured.TCheckbutton", background=[("active", panel)],
+               foreground=[("disabled", MUT)])
         st.configure("Accent.TButton", background=ACCENT, foreground="#ffffff",
                      bordercolor=ACCENT, focuscolor=panel, font=("Segoe UI", 9, "bold"),
                      padding=(12, 6))
@@ -1286,24 +1470,33 @@ class ScraperGUI:
         # as the fastest way to get all data without dominating the toolbar.
         # Styles (Featured.*/Accent.TButton) adapt to light/dark in _apply_theme.
         # ---- Section 1: External cheat sources (+ featured DevCat card) --
+        # The group wraps TIGHTLY around its content (no fill="x"), so the box is
+        # only as wide as the sources grid + DevCat card — it doesn't stretch
+        # edge-to-edge and waste the rest of the row.
         get_group = ttk.LabelFrame(toolbar, text="External Cheat Sources", padding=(8, 4))
-        get_group.pack(fill="x", pady=(0, 6))
+        get_group.pack(anchor="w", pady=(0, 6))
         gcontent = ttk.Frame(get_group)
-        gcontent.pack(fill="x")
+        gcontent.pack()
+        combo = ttk.Frame(gcontent)
+        combo.pack()
 
         # Featured "Get everything from DevCatSKZ" card — the fastest, best
         # source, highlighted on the RIGHT of the other external sources so it
         # sits naturally among them without dominating the whole toolbar.
-        border = ttk.Frame(gcontent, style="FeaturedBorder.TFrame")
+        border = ttk.Frame(combo, style="FeaturedBorder.TFrame")
         border.pack(side="right", anchor="n", padx=(12, 0))
         feat = ttk.Frame(border, style="Featured.TFrame", padding=(14, 10))
         feat.pack(padx=1, pady=1)   # 1px accent border shows around the card
-        ttk.Label(feat, text="★  Get Everything from DevCatSKZ Github Repo",
-                  style="FeaturedTitle.TLabel").pack(anchor="w")
-        ttk.Label(feat, text="Skip scraping — grab all cheats and the complete "
-                             "database. Covers offered afterwards.",
-                  style="Featured.TLabel", font=("Segoe UI", 8),
-                  wraplength=300, justify="left").pack(anchor="w", pady=(2, 9))
+        devcat_title = ttk.Label(feat, text="★  Get Everything from DevCatSKZ Github Repo",
+                                 style="FeaturedTitle.TLabel")
+        devcat_title.pack(anchor="w", pady=(0, 8))
+        # The former sub-text now lives in a tooltip to keep the card compact.
+        _Tooltip(devcat_title,
+                 "Skip scraping — grab all cheats and the complete database "
+                 "straight from the maintainer's GitHub. 'Download Cheats' = the "
+                 "ready-made cheat archive, 'Download Database' = the full GUI "
+                 "database (merged in), '★ Download Complete' = both. Tick "
+                 "'Download Covers' to also fetch the cover images.")
         brow = ttk.Frame(feat, style="Featured.TFrame")
         brow.pack(anchor="w")
         self.devcat_cheats_btn = ttk.Button(
@@ -1320,6 +1513,46 @@ class ScraperGUI:
         self.devcat_all_btn.pack(side="left")
         self._action_buttons += [self.devcat_cheats_btn, self.devcat_db_btn,
                                   self.devcat_all_btn]
+        # Both toggles share one row to keep the card compact and its height
+        # close to the sources grid beside it.
+        cbrow = ttk.Frame(feat, style="Featured.TFrame")
+        cbrow.pack(anchor="w", fill="x", pady=(8, 0))
+        devcat_cov_cb = ttk.Checkbutton(
+            cbrow, text="Download Covers", variable=self.devcat_covers,
+            style="Featured.TCheckbutton", command=self._save_settings)
+        devcat_cov_cb.pack(side="left")
+        update_cb = ttk.Checkbutton(
+            cbrow, text="Check updates at startup",
+            variable=self.update_check_startup, style="Featured.TCheckbutton",
+            command=self._save_settings)
+        update_cb.pack(side="left", padx=(16, 0))
+        _Tooltip(devcat_cov_cb,
+                 "When ON, each DevCatSKZ download also fetches the cover images "
+                 "afterwards. Off by default — covers are not part of the archive "
+                 "(the database stores only cover URLs) and downloading them takes "
+                 "extra time. Already-saved covers are skipped.")
+        # ---- Updates: same repo, checked on demand (and optionally at start) --
+        urow = ttk.Frame(feat, style="Featured.TFrame")
+        urow.pack(anchor="w", fill="x", pady=(8, 0))
+        self.check_updates_btn = ttk.Button(
+            urow, text="Check Updates", style="FeaturedSec.TButton",
+            command=self.on_check_updates)
+        self.check_updates_btn.pack(side="left")
+        self.update_status_lbl = ttk.Label(
+            urow, text=f"v{APP_VERSION}", style="Featured.TLabel",
+            font=("Segoe UI", 8))
+        self.update_status_lbl.pack(side="left", padx=(8, 0))
+        self._action_buttons += [self.check_updates_btn]
+        _Tooltip(self.check_updates_btn,
+                 "Check GitHub for a newer program build AND newer cheats/database "
+                 "packages. Detects both a new version (e.g. 1.1) and a re-upload "
+                 "of the current release/data (a fix without a version bump, via "
+                 "the upload date). Found program updates install themselves "
+                 "(the app restarts); data updates are downloaded and imported.")
+        _Tooltip(update_cb,
+                 "ON: quietly check GitHub for updates at every program start and "
+                 "notify you if something is newer.\nOFF: only check when you click "
+                 "'Check Updates'.")
         _Tooltip(self.devcat_cheats_btn,
                  "Download the maintainer's ready-made cheats archive and import "
                  "it — all cheat files without scraping cheatslips yourself.")
@@ -1328,17 +1561,18 @@ class ScraperGUI:
                  "versions, descriptions, cover URLs) and merge it into yours.")
         _Tooltip(self.devcat_all_btn,
                  "Download BOTH the cheats archive and the full database in one go "
-                 "— the fastest way to get everything. Covers are offered afterwards.")
+                 "— the fastest way to get everything. Tick 'Download Covers' "
+                 "below to fetch the cover images as well.")
 
-        # 2-row grid of the other sources on the LEFT: buttons in the same column
-        # share the column's width and both rows line up, so the group looks
-        # uniform without forcing every button to the longest label's width.
-        src_grid = ttk.Frame(gcontent)
-        src_grid.pack(side="left", fill="x", expand=True, anchor="n")
+        # Grid of the other sources on the LEFT. A 3-column x 4-row layout keeps
+        # the block a sensible width (not edge-to-edge) and about as tall as the
+        # DevCat card beside it, so the two read as one balanced unit.
+        src_grid = ttk.Frame(combo)
+        src_grid.pack(side="left", anchor="n")
         self.gba_btn = ttk.Button(src_grid, text="Download GBATemp Archive", command=self.on_gbatemp)
-        self.hamlet_btn = ttk.Button(src_grid, text="Download HamletDuFromage TitleDB",
+        self.hamlet_btn = ttk.Button(src_grid, text="Download Hamlet TitleDB",
                                      command=self.on_hamlet_titledb)
-        self.hamlet_60fps_btn = ttk.Button(src_grid, text="Download HamletDuFromage TitleDB 60FPS/Res/GFX",
+        self.hamlet_60fps_btn = ttk.Button(src_grid, text="Download Hamlet 60FPS/Res/GFX",
                                            command=self.on_hamlet_60fps)
         self.tdb_btn = ttk.Button(src_grid, text="Download TitleDB", command=self.on_titledb_cheats)
         self.ibnux_btn = ttk.Button(src_grid, text="Download Ibnux", command=self.on_ibnux)
@@ -1354,19 +1588,20 @@ class ScraperGUI:
         self.import_zip_btn = ttk.Button(src_grid, text="Import ZIP", command=self.on_import_zip)
         self.everything_btn = ttk.Button(src_grid, text="★ Scrape & Download Everything",
                                          command=self.on_scrape_download_everything)
-        # A tidy 4-column x 3-row grid: every column lines up across rows (grid
-        # sizes each column to its widest button) and the three rows fill the
-        # height next to the DevCat card, so there is no ragged/empty look.
-        _srcs = [self.gba_btn, self.hamlet_btn, self.hamlet_60fps_btn, self.tdb_btn,
-                 self.ibnux_btn, self.sthetix_btn, self.breeze_btn, self.chansey_btn,
-                 self.mynx_btn, self.import_disk_btn, self.import_zip_btn,
-                 self.everything_btn]
-        _COLS = 4
+        # A tidy 3-column x 4-row grid. 'uniform' makes every column the same
+        # width (sized to the widest button) so the block is a clean rectangle
+        # and the buttons line up perfectly, without stretching to fill the whole
+        # window. Order flows left-to-right, top-to-bottom.
+        _srcs = [self.gba_btn, self.hamlet_btn, self.hamlet_60fps_btn,
+                 self.tdb_btn, self.ibnux_btn, self.sthetix_btn,
+                 self.breeze_btn, self.chansey_btn, self.mynx_btn,
+                 self.import_disk_btn, self.import_zip_btn, self.everything_btn]
+        _COLS = 3
         for i, btn in enumerate(_srcs):
             r, c = divmod(i, _COLS)
             btn.grid(row=r, column=c, sticky="ew", padx=(0, 4), pady=(0, 4))
         for c in range(_COLS):
-            src_grid.columnconfigure(c, weight=1)
+            src_grid.columnconfigure(c, weight=1, uniform="srccol")
 
         self._action_buttons += [self.gba_btn, self.hamlet_btn, self.hamlet_60fps_btn,
                                  self.tdb_btn, self.ibnux_btn,
@@ -2840,6 +3075,9 @@ class ScraperGUI:
         self._set_busy(False)
         self._update_downloaded_cache_incremental()
         self.refresh_table(force_scan=True)
+        # Getting the data via the DevCat buttons counts as "up to date": move the
+        # baselines forward so the updater only reports genuinely newer re-uploads.
+        self._advance_data_baseline(cheats=bool(cheats_summary), db=bool(db_summary))
         parts = []
         if db_summary:
             parts.append(f"Database: {db_summary['added']} added, "
@@ -2848,21 +3086,247 @@ class ScraperGUI:
             parts.append(f"Cheats: {cheats_summary[0]} file(s) for "
                          f"{cheats_summary[1]} game(s)")
         self.status_var.set("DevCatSKZ download done — " + " · ".join(parts))
-        self.root.after(10, lambda: self._prompt_devcat_covers(parts))
+        # Covers are fetched only when the user opted in via the card checkbox
+        # (off by default). No prompt — the checkbox is the choice.
+        if self.devcat_covers.get():
+            self.root.after(10, lambda: self._download_covers(None))
 
-    def _prompt_devcat_covers(self, parts):
+    def _advance_data_baseline(self, cheats=False, db=False, when=None):
+        """Mark the cheats/database packages as current as of *when* (now)."""
+        when = when if when is not None else time.time()
+        if cheats:
+            self._update_state["data_cheats_baseline"] = when
+        if db:
+            self._update_state["data_db_baseline"] = when
+        if cheats or db:
+            self._save_update_state(self._update_state)
+
+    # ============================================================= UPDATES
+    def on_check_updates(self, startup: bool = False):
+        """Check GitHub for a newer program build and/or data packages.
+
+        Runs in a background thread (never busy-managed, so it can run any time).
+        When *startup* is True the result only pops a dialog if something is new;
+        a manual click always reports the outcome (including "up to date").
+        """
+        # A manual click while the checker is already running is a no-op.
+        if getattr(self, "_update_checking", False):
+            return
+        self._update_checking = True
+        if not startup:
+            self.update_status_lbl.config(text="checking…",
+                                          foreground=theme()["checking"])
+        threading.Thread(target=self._check_updates_worker,
+                         args=(startup,), daemon=True).start()
+
+    def _check_updates_worker(self, startup: bool):
         try:
-            self.root.lift(); self.root.focus_force()
+            info = self._compute_updates()
+            self._log_queue.put(("update_result", info, startup))
+        except Exception as exc:
+            self._log_queue.put(("update_error", str(exc), startup))
+
+    def _compute_updates(self) -> dict:
+        """Query the repo and decide what (if anything) is newer than baseline."""
+        st = self._update_state
+        info = {"error": None, "program": None, "cheats": None, "db": None,
+                "release": None}
+
+        # --- Program build (the /releases/latest release) ---
+        rel = fetch_github_release(tag=None)
+        info["release"] = rel
+        newer_version = version_is_newer(rel["version"], APP_VERSION)
+        rebuilt = rel["newest_epoch"] > float(st.get("program_baseline", 0)) + 1
+        if newer_version or rebuilt:
+            setup = find_release_asset(rel, PROGRAM_SETUP_ASSET)
+            portable = find_release_asset(rel, PROGRAM_PORTABLE_ASSET)
+            info["program"] = {
+                "version": rel["version"],
+                "newer_version": newer_version,
+                "rebuilt": rebuilt,
+                "newest_epoch": rel["newest_epoch"],
+                "setup": setup,
+                "portable": portable,
+                "html_url": rel["html_url"],
+                "notes": rel["body"],
+            }
+
+        # --- Data packages (the 'data' release: cheats zip + database.db) ---
+        try:
+            data_rel = fetch_github_release(tag=DEVCAT_DATA_TAG)
+            cheats_a = find_release_asset(data_rel, DEVCAT_CHEATS_ASSET)
+            db_a = find_release_asset(data_rel, DEVCAT_DB_ASSET)
+            if cheats_a and cheats_a["epoch"] > float(st.get("data_cheats_baseline", 0)) + 1:
+                info["cheats"] = cheats_a
+            if db_a and db_a["epoch"] > float(st.get("data_db_baseline", 0)) + 1:
+                info["db"] = db_a
+        except Exception:
+            # A missing/absent data release must not fail the program check.
+            pass
+        return info
+
+    def _handle_update_result(self, info: dict, startup: bool):
+        self._update_checking = False
+        prog = info.get("program")
+        has_data = bool(info.get("cheats") or info.get("db"))
+        t = theme()
+        if prog and info["cheats"] and info["db"]:
+            label, colour = "update + data available", t["warn"]
+        elif prog:
+            label, colour = f"update available ({prog['version']})", t["warn"]
+        elif has_data:
+            label, colour = "new data available", t["warn"]
+        else:
+            label, colour = f"v{APP_VERSION} — up to date", t["ok"]
+        self.update_status_lbl.config(text=label, foreground=colour)
+        # Startup checks stay quiet unless something is actually new.
+        if startup and not (prog or has_data):
+            return
+        self._show_update_dialog(info)
+
+    def _handle_update_error(self, msg: str, startup: bool):
+        self._update_checking = False
+        self.update_status_lbl.config(text="check failed",
+                                      foreground=theme()["fg_muted"])
+        self._append_log(f"Update check failed: {msg}")
+        if not startup:
+            messagebox.showwarning(
+                "Check Updates",
+                "Could not check for updates:\n\n" + msg +
+                "\n\nCheck your internet connection and try again.")
+
+    def _show_update_dialog(self, info: dict):
+        prog = info.get("program")
+        cheats = info.get("cheats")
+        db = info.get("db")
+        if not (prog or cheats or db):
+            messagebox.showinfo(
+                "Check Updates",
+                f"You are up to date.\n\nInstalled version: v{APP_VERSION}\n"
+                "Program, cheats and database are all current.")
+            return
+        UpdateDialog(self.root, self, info)
+
+    # ---- program self-update -------------------------------------------
+    def start_program_update(self, info: dict):
+        """Kick off downloading + installing a newer program build."""
+        if self._busy:
+            messagebox.showinfo("Update", "Please wait for the current task to "
+                                          "finish, then try again.")
+            return
+        prog = info.get("program") or {}
+        if not getattr(sys, "frozen", False):
+            # From source there is nothing to self-install — point at the page.
+            if prog.get("html_url"):
+                webbrowser.open(prog["html_url"])
+            messagebox.showinfo(
+                "Update",
+                "You are running from source. Pull the latest code from GitHub "
+                "(git pull) — the release page has been opened in your browser.")
+            return
+        setup = prog.get("setup")
+        if not setup or not setup.get("url"):
+            if prog.get("html_url"):
+                webbrowser.open(prog["html_url"])
+            messagebox.showinfo(
+                "Update",
+                "No installer asset was found in the latest release. The release "
+                "page has been opened so you can update manually.")
+            return
+        self._stop_event.clear()
+        self._set_busy(True)
+        self.status_var.set("Downloading update…")
+        threading.Thread(target=self._program_update_worker,
+                         args=(prog,), daemon=True).start()
+
+    def _program_update_worker(self, prog: dict):
+        import tempfile
+        setup = prog["setup"]
+        dest = Path(tempfile.gettempdir()) / PROGRAM_SETUP_ASSET
+
+        def cb(done, total):
+            kb = done // 1024
+            pct = f" ({int(done * 100 / total)}%)" if total else ""
+            self._log_queue.put(("progress", done, max(total, 1),
+                                 f"Downloading update: {kb:,} KB{pct}"))
+        try:
+            self._log_queue.put(("status", "Downloading the update installer…"))
+            download_file(setup["url"], dest, progress_cb=cb,
+                          should_stop=self._stop_event.is_set)
+            self._log_queue.put(("program_update_ready", str(dest), prog))
+        except Exception as exc:
+            self._log_queue.put(("error", f"Downloading the update failed:\n{exc}"))
+            self._log_queue.put(("download_done",))
+
+    def _launch_installer_and_quit(self, setup_path: str, prog: dict):
+        """Run the downloaded installer (elevated, in place) and exit the app.
+
+        The installer updates the files this .exe is running from, so we must
+        exit right after launching it to release the file locks. Runtime data
+        lives in the data dir and is never touched by the installer.
+        """
+        app_dir = str(Path(sys.executable).resolve().parent)
+        # Silent, in-place update into the current folder. /CLOSEAPPLICATIONS lets
+        # Setup free any file still locked by a lingering process; the installer's
+        # postinstall [Run] entry relaunches the app once (de-elevated).
+        args = (f'/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS '
+                f'/DIR="{app_dir}"')
+        launched = False
+        try:
+            import ctypes
+            # ShellExecute respects the installer's admin manifest and shows the
+            # UAC prompt (subprocess/CreateProcess would fail with error 740).
+            rc = ctypes.windll.shell32.ShellExecuteW(
+                None, "runas", setup_path, args, None, 1)
+            launched = int(rc) > 32
+        except Exception as exc:
+            self._append_log(f"Could not launch the installer: {exc}")
+            launched = False
+        if not launched:
+            self._set_busy(False)
+            messagebox.showwarning(
+                "Update",
+                "The update could not be started (installer launch was declined "
+                "or blocked). Nothing has changed — you can try again or update "
+                "manually from the GitHub release page.")
+            return
+        # The installer is now running. Advance the baseline so a same-version
+        # re-upload is not reported again after the update completes, then quit
+        # so the files this .exe runs from are unlocked for replacement.
+        self._update_state["program_baseline"] = max(
+            time.time(), float(prog.get("newest_epoch", 0)))
+        self._save_update_state(self._update_state)
+        self._save_settings()
+        try:
+            if self._log_writer and hasattr(self._log_writer, "close"):
+                self._log_writer.close()
         except Exception:
             pass
-        summary = "\n".join("  • " + p for p in parts) if parts else ""
-        if messagebox.askyesno(
-            "Download covers",
-            "Download finished:\n" + summary + "\n\n"
-            "Download the cover images now too?\n"
-            "(Covers are not part of the download; already-saved covers are skipped.)",
-            parent=self.root):
-            self._download_covers(None)
+        os._exit(0)
+
+    # ---- data (cheats + database) update -------------------------------
+    def start_data_update(self, info: dict):
+        """Download + import whichever data packages are newer than baseline."""
+        if self._busy:
+            return
+        parts = []
+        if info.get("db"):
+            parts.append("db")
+        if info.get("cheats"):
+            parts.append("cheats")
+        if not parts:
+            return
+        self._stop_event.clear()
+        self._save_settings()
+        self._set_busy(True)
+        self.status_var.set("Downloading data update from DevCatSKZ…")
+        cfg = {"db_path": self.db_path.get(), "output": self.dl_output.get()}
+        # Reuse the proven DevCat import worker; _finish_devcat advances the
+        # data baselines for whichever parts came down.
+        threading.Thread(target=self._devcat_worker,
+                         args=(tuple(parts), cfg), daemon=True).start()
+
+    # -------------------------------------------------------- online check
 
     # -------------------------------------------------------- online check
     def on_check_online(self):
@@ -5828,6 +6292,12 @@ Columns included:
             self._finish_import_db(msg[1])
         elif kind == "devcat_done":
             self._finish_devcat(msg[1], msg[2])
+        elif kind == "update_result":
+            self._handle_update_result(msg[1], msg[2])
+        elif kind == "update_error":
+            self._handle_update_error(msg[1], msg[2])
+        elif kind == "program_update_ready":
+            self._launch_installer_and_quit(msg[1], msg[2])
         elif kind == "online_status":
             ok = bool(msg[1])
             if ok:

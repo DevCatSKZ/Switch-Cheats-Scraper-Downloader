@@ -42,7 +42,7 @@ from bs4 import BeautifulSoup
 
 # --- Application identity --------------------------------------------------
 APP_NAME = "Switch Cheats Scraper & Downloader"
-APP_VERSION = "1.0"
+APP_VERSION = "1.1"
 APP_AUTHOR = "DevCatSKZ"
 
 BASE_URL = "https://www.cheatslips.com"
@@ -56,11 +56,111 @@ DEVCAT_DATA_TAG = "data"
 DEVCAT_CHEATS_ASSET = "switch-cheats.zip"
 DEVCAT_DB_ASSET = "database.db"
 
+# --- Self-update (program build hosted on the same repo's latest release) -----
+# The "latest" GitHub release carries the installer (and optional portable zip).
+# The updater compares versions AND asset upload times, so a re-upload of the
+# same version (a fix without a version bump) is detected too.
+GITHUB_API = "https://api.github.com"
+PROGRAM_SETUP_ASSET = "SwitchCheatsScraper-Setup.exe"
+PROGRAM_PORTABLE_ASSET = "SwitchCheatsScraper-portable.zip"
+
 
 def devcat_asset_url(asset: str) -> str:
     """Public download URL of a maintainer-hosted data asset."""
     return (f"https://github.com/{DEVCAT_REPO}/releases/download/"
             f"{DEVCAT_DATA_TAG}/{asset}")
+
+
+def parse_version(v) -> tuple:
+    """Turn a version string like 'v1.2.3' into a comparable tuple (1, 2, 3)."""
+    nums = re.findall(r"\d+", str(v or ""))
+    return tuple(int(n) for n in nums) if nums else (0,)
+
+
+def version_is_newer(candidate, current) -> bool:
+    """True when *candidate* is a strictly higher version than *current*."""
+    return parse_version(candidate) > parse_version(current)
+
+
+def github_iso_to_epoch(s) -> float:
+    """Parse a GitHub ISO-8601 timestamp ('2026-07-05T12:34:56Z') to epoch secs.
+
+    Returns 0.0 on anything unparseable, so callers can compare safely.
+    """
+    if not s:
+        return 0.0
+    try:
+        txt = str(s).strip().replace("Z", "+00:00")
+        return datetime.datetime.fromisoformat(txt).timestamp()
+    except Exception:
+        try:
+            return datetime.datetime.strptime(
+                str(s)[:19], "%Y-%m-%dT%H:%M:%S").replace(
+                tzinfo=datetime.timezone.utc).timestamp()
+        except Exception:
+            return 0.0
+
+
+def fetch_github_release(tag: Optional[str] = None, repo: str = DEVCAT_REPO,
+                         timeout: int = 15) -> dict:
+    """Fetch and normalise a GitHub release.
+
+    ``tag=None`` fetches ``/releases/latest`` (the program build); a tag string
+    fetches ``/releases/tags/<tag>`` (e.g. the ``data`` release). Raises on
+    network/HTTP error. The returned dict is normalised to::
+
+        {
+          "tag": str, "version": str, "name": str, "html_url": str,
+          "body": str, "published_at": str,
+          "published_epoch": float,      # release publish time
+          "newest_epoch": float,         # newest asset upload time (or publish)
+          "assets": [ {name, updated_at, epoch, size, url}, ... ],
+        }
+    """
+    import requests
+
+    url = f"{GITHUB_API}/repos/{repo}/releases/"
+    url += f"tags/{tag}" if tag else "latest"
+    headers = {"Accept": "application/vnd.github+json",
+               "User-Agent": f"{APP_NAME}/{APP_VERSION}",
+               "X-GitHub-Api-Version": "2022-11-28"}
+    r = requests.get(url, headers=headers, timeout=timeout)
+    r.raise_for_status()
+    data = r.json()
+
+    assets = []
+    for a in data.get("assets") or []:
+        when = a.get("updated_at") or a.get("created_at")
+        assets.append({
+            "name": a.get("name", ""),
+            "updated_at": when,
+            "epoch": github_iso_to_epoch(when),
+            "size": a.get("size", 0),
+            "url": a.get("browser_download_url"),
+        })
+    published = data.get("published_at") or data.get("created_at")
+    pub_epoch = github_iso_to_epoch(published)
+    newest = max([a["epoch"] for a in assets] + [pub_epoch]) if assets else pub_epoch
+    tag_name = data.get("tag_name") or ""
+    return {
+        "tag": tag_name,
+        "version": tag_name.lstrip("vV") or APP_VERSION,
+        "name": data.get("name") or tag_name,
+        "html_url": data.get("html_url"),
+        "body": data.get("body") or "",
+        "published_at": published,
+        "published_epoch": pub_epoch,
+        "newest_epoch": newest,
+        "assets": assets,
+    }
+
+
+def find_release_asset(release: dict, name: str) -> Optional[dict]:
+    """Return the asset dict whose file name matches *name* (case-insensitive)."""
+    for a in release.get("assets", []):
+        if (a.get("name") or "").lower() == name.lower():
+            return a
+    return None
 
 
 def download_file(url: str, dest, progress_cb=None, should_stop=None,
@@ -352,19 +452,32 @@ def scan_downloaded_build_ids(output_dir, modified_since: Optional[float] = None
 
 
 class _Tee:
-    """Duplicate writes to several streams (used to mirror stdout into a log)."""
+    """Duplicate writes to several streams (used to mirror stdout into a log).
+
+    None streams are dropped and any per-stream write/flush error is swallowed,
+    so logging never crashes the app. This matters in a PyInstaller *windowed*
+    build (console=False), where ``sys.stdout``/``sys.__stdout__`` are ``None`` —
+    without this guard the first ``print()`` would raise
+    ``'NoneType' object has no attribute 'write'``.
+    """
 
     def __init__(self, *streams):
-        self.streams = streams
+        self.streams = [s for s in streams if s is not None]
 
     def write(self, s):
         for st in self.streams:
-            st.write(s)
-            st.flush()
+            try:
+                st.write(s)
+                st.flush()
+            except Exception:
+                pass
 
     def flush(self):
         for st in self.streams:
-            st.flush()
+            try:
+                st.flush()
+            except Exception:
+                pass
 
 
 LOG_MAX_BYTES = 5 * 1024 * 1024   # rotate once the log grows past 5 MB
