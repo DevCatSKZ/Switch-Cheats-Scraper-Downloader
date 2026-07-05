@@ -25,7 +25,7 @@ Grab the latest build from **[Releases »](../../releases/latest)**
 
 ## ⭐ Get everything in one click
 
-New here? Skip the scraping entirely. The **“Get Everything from DevCatSKZ Github Repo”** panel downloads a ready-made **cheats archive** and the **complete database** straight from this repo and imports them for you. Covers are offered right after. *(The database stores cover **URLs** only — never images — so nothing copyrighted is redistributed.)*
+Skip the scraping entirely. The **“Get Everything from DevCatSKZ Github Repo”** panel downloads a ready-made **cheats archive** and the **complete database** straight from this repo and imports them for you.
 
 ## ✨ What it does
 
