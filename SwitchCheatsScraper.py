@@ -55,11 +55,14 @@ def main() -> None:
     # compute their own paths).
     os.environ.setdefault("SCS_DATA_DIR", str(data_dir))
     if getattr(sys, "frozen", False):
-        # Playwright browsers bundled next to the executable (installer ships
-        # them); avoids any runtime download.
-        os.environ.setdefault(
-            "PLAYWRIGHT_BROWSERS_PATH",
-            str(Path(sys.executable).resolve().parent / "ms-playwright"))
+        # Playwright browsers are bundled INSIDE the app (PyInstaller collects
+        # them via the spec's collect_all, into _internal/playwright/.../
+        # .local-browsers). "0" tells Playwright to use those in-package
+        # browsers, so the app is fully offline and needs no writable folder —
+        # essential for a read-only Program Files install (a path like
+        # <exe_dir>/ms-playwright there is not writable, so an on-demand
+        # download would fail).
+        os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "0")
 
     from gui import run_gui
     run_gui()

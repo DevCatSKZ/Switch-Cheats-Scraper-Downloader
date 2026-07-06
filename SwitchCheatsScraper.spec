@@ -4,9 +4,11 @@
 Build with:  pyinstaller SwitchCheatsScraper.spec
 Produces a one-folder app in  dist/SwitchCheatsScraper/  (SwitchCheatsScraper.exe).
 
-Playwright's node driver is bundled (collect_all). The actual browser binaries
-are downloaded on first use into the per-user data folder / ms-playwright, so
-the installer stays small; ship them alongside the exe to make it fully offline.
+Playwright's node driver AND browser binaries are bundled (collect_all grabs the
+package's .local-browsers, populated by `playwright install` with
+PLAYWRIGHT_BROWSERS_PATH=0). At runtime the launcher sets that same
+PLAYWRIGHT_BROWSERS_PATH=0 so Playwright uses the in-package browsers — fully
+offline, no download, works even from a read-only Program Files install.
 """
 from PyInstaller.utils.hooks import collect_all
 
