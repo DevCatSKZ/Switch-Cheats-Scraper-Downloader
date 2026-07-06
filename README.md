@@ -11,7 +11,7 @@
 
 <p align="center"><b>by DevCatSKZ</b></p>
 
-A tool to **scrape and download** Nintendo Switch cheat codes from **[CheatSlips.com](https://www.cheatslips.com), GBATempArchive, HamletDuFromage, Sthetix, Breeze (NXCheatCode), ChanseyIsTheBest (60FPS/Res/GFX), MyNXCheats, ibnux and titledb**, manage them in a **searchable SQLite database** (names, covers, regions, versions, descriptions) and export them straight into the right layout on your **Switch SD card** (Atmosphère / Breeze / EdiZon) — or as a ZIP.
+A tool to **scrape and download** Nintendo Switch cheat codes from **[CheatSlips.com](https://www.cheatslips.com), [GBATempArchive](https://gbatemp.net), [HamletDuFromage](https://github.com/HamletDuFromage/switch-cheats-db), [Sthetix](https://github.com/sthetix/nx-cheats-db), [Breeze (NXCheatCode)](https://github.com/tomvita/NXCheatCode), [ChanseyIsTheBest (60FPS/Res/GFX)](https://github.com/ChanseyIsTheBest/NX-60FPS-RES-GFX-Cheats), [MyNXCheats](https://github.com/Arch9SK7/MyNXCheats), [ibnux](https://github.com/ibnux/switch-cheat) and [titledb](https://github.com/blawar/titledb)**, manage them in a **searchable SQLite database** (names, covers, regions, versions, descriptions) and export them straight into the right layout on your **Switch SD card** (Atmosphère / Breeze / EdiZon) — or as a ZIP.
 
 > Only use the tool with your **own** CheatSlips account. All cheat codes belong to their original authors/uploaders.
 
