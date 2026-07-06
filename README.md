@@ -154,7 +154,7 @@ That's the single, obvious start command. (The old `python gui.py` / `python scr
 
 **As a ready Windows EXE with installer:** the program can be built into a self-contained `SwitchCheatsScraper.exe` (+ setup installer) — see **[BUILD.md](BUILD.md)** (`build.ps1` does everything automatically). When run as an EXE, it stores all data (database, downloads, settings, login profile) **in the same folder as the EXE** (portable) — so the app stays copyable/movable together with its data. Only if that folder is read-only (e.g. installed under Program Files with admin rights) it automatically falls back to `%LOCALAPPDATA%\SwitchCheatsScraper`. The bundled installer defaults to `C:\Program Files (x86)\Switch Cheats Scraper & Downloader` — in the wizard you can pick any other folder via **"Browse…"** or **create a new folder**. For a Program Files install the runtime data automatically lands in `%LOCALAPPDATA%\SwitchCheatsScraper` (that folder is writable); the **Portable** variant stays entirely next to the EXE.
 
-The window opens **centered** at a Full-HD-friendly size and is freely resizable. Between the table and the **log window** there is a **drag handle** — you can enlarge/shrink the log as you like (with its own scrollbar). **Shortcuts:** **F11** full-screen on/off, **Esc** leave full-screen, **Ctrl+M** maximize/restore; in all text fields **Ctrl+A** (select all), **Ctrl+C/X/V** (copy/cut/paste).
+On the **first launch** the window opens **maximized** (full screen); the window state is remembered afterwards, so it reopens the way you left it. It is freely resizable and, on a fresh start, sized for Full HD. Between the table and the **log window** there is a **drag handle** — you can enlarge/shrink the log as you like (with its own scrollbar). **Shortcuts:** **F11** full-screen on/off, **Esc** leave full-screen, **Ctrl+M** maximize/restore; in all text fields **Ctrl+A** (select all), **Ctrl+C/X/V** (copy/cut/paste).
 
 The toolbar is grouped into workflow areas:
 
@@ -225,7 +225,7 @@ The toolbar is grouped into workflow areas:
 - Builds **without codes** on cheatslips (no cheat present or codeless upload) are marked *unavailable*, logged in `unavailable_builds.txt` and skipped in future. Reset via **Repair ▾ → "Retry 'unavailable' builds"**.
 
 **Database** (bar below the table)
-- **"Refresh"**: first reconciles each build's cheat count with the actual `.txt` file on disk (in the background) and then refreshes the table — so the shown count always matches the file content.
+- **"Refresh"**: first reconciles each build's cheat count with the actual `.txt` file on disk (in the background) and then refreshes the table — so the shown count always matches the file content. This also runs **automatically after a single download** (*Download this / via API / via browser*), so a just-downloaded build flips to "downloaded" and shows its real count without pressing it.
 - **"Add Entry"** (manual build: Title ID, Build ID, cheat content, name, version).
 - **"Export CSV"**: database as CSV with all columns (Excel-compatible, UTF-8).
 - **"Export DB"**: backs up the whole `cheats.db` as a consistent copy (SQLite backup) to a location you choose (default file name `database.db`, matching the data-release asset).
