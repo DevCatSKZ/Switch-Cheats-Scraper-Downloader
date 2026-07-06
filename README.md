@@ -19,6 +19,8 @@ A tool to **scrape and download** Nintendo Switch cheat codes from **[CheatSlips
 
 Ready-made builds are on the **[Releases](../../releases/latest)** page:
 
+> **📦 Ready-made cheats & database** (no scraping needed): download [`switch-cheats.zip`](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip) (all cheat files) + [`database.db`](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/database.db) (full database) from the continuously-updated **[`data` release »](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data)** — refreshed whenever new cheats are added.
+
 | Variant | Description |
 |---|---|
 | **Installer** (`SwitchCheatsScraper-Setup.exe`) | Classic install (default path `C:\Program Files (x86)\Switch Cheats Scraper & Downloader`, freely choosable/creatable in the wizard; needs admin rights; adds Start-menu/Desktop shortcuts). Lets you pick the program language. |
