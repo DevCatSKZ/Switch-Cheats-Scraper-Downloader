@@ -3208,8 +3208,29 @@ class ScraperGUI:
         UpdateDialog(self.root, self, info)
 
     # ---- program self-update -------------------------------------------
+    def _is_installed_build(self) -> bool:
+        """True when this frozen build was set up by the Inno Setup installer
+        (its uninstaller sits next to the .exe); False for a portable unzip."""
+        try:
+            return (Path(sys.executable).resolve().parent / "unins000.exe").exists()
+        except Exception:
+            return False
+
+    def _app_dir_writable(self) -> bool:
+        """Can we write into the folder the .exe runs from? (portable updates
+        replace files there; a Program Files install is read-only for the user)."""
+        try:
+            d = Path(sys.executable).resolve().parent
+            probe = d / ".scs_update_probe"
+            probe.write_text("ok", encoding="utf-8"); probe.unlink()
+            return True
+        except Exception:
+            return False
+
     def start_program_update(self, info: dict):
-        """Kick off downloading + installing a newer program build."""
+        """Download + apply a newer build — via the INSTALLER for an installed
+        build, or by replacing files IN PLACE for a portable build. Each path is
+        chosen to match how this copy was set up (with a sensible fallback)."""
         if self._busy:
             messagebox.showinfo("Update", "Please wait for the current task to "
                                           "finish, then try again.")
@@ -3224,25 +3245,42 @@ class ScraperGUI:
                 "You are running from source. Pull the latest code from GitHub "
                 "(git pull) — the release page has been opened in your browser.")
             return
-        setup = prog.get("setup")
-        if not setup or not setup.get("url"):
+        setup = prog.get("setup") or {}
+        portable = prog.get("portable") or {}
+        installed = self._is_installed_build()
+        # Choose the method that matches this build; fall back if its asset or a
+        # writable app folder is missing.
+        method = None
+        if installed:
+            if setup.get("url"):
+                method = "installer"
+            elif portable.get("url") and self._app_dir_writable():
+                method = "portable"
+        else:  # portable build
+            if portable.get("url") and self._app_dir_writable():
+                method = "portable"
+            elif setup.get("url"):
+                method = "installer"
+        if method is None:
             if prog.get("html_url"):
                 webbrowser.open(prog["html_url"])
             messagebox.showinfo(
                 "Update",
-                "No installer asset was found in the latest release. The release "
-                "page has been opened so you can update manually.")
+                "Couldn't update automatically (no matching download, or the app "
+                "folder is read-only). The release page has been opened so you can "
+                "update manually.")
             return
         self._stop_event.clear()
         self._set_busy(True)
         self.status_var.set("Downloading update…")
         threading.Thread(target=self._program_update_worker,
-                         args=(prog,), daemon=True).start()
+                         args=(method, prog), daemon=True).start()
 
-    def _program_update_worker(self, prog: dict):
+    def _program_update_worker(self, method: str, prog: dict):
         import tempfile
-        setup = prog["setup"]
-        dest = Path(tempfile.gettempdir()) / PROGRAM_SETUP_ASSET
+        asset = prog.get("setup") if method == "installer" else prog.get("portable")
+        name = PROGRAM_SETUP_ASSET if method == "installer" else PROGRAM_PORTABLE_ASSET
+        dest = Path(tempfile.gettempdir()) / name
 
         def cb(done, total):
             kb = done // 1024
@@ -3250,25 +3288,49 @@ class ScraperGUI:
             self._log_queue.put(("progress", done, max(total, 1),
                                  f"Downloading update: {kb:,} KB{pct}"))
         try:
-            self._log_queue.put(("status", "Downloading the update installer…"))
-            download_file(setup["url"], dest, progress_cb=cb,
+            self._log_queue.put(("status", f"Downloading the {method} update…"))
+            download_file(asset["url"], dest, progress_cb=cb,
                           should_stop=self._stop_event.is_set)
-            self._log_queue.put(("program_update_ready", str(dest), prog))
+            # Guard against a silently-truncated download (dropped connection):
+            # never apply a partial update.
+            want = int(asset.get("size") or 0)
+            got = dest.stat().st_size
+            if want and got != want:
+                raise RuntimeError(
+                    f"download incomplete: got {got:,} of {want:,} bytes")
+            self._log_queue.put(("program_update_ready", method, str(dest), prog))
         except Exception as exc:
             self._log_queue.put(("error", f"Downloading the update failed:\n{exc}"))
             self._log_queue.put(("download_done",))
 
-    def _launch_installer_and_quit(self, setup_path: str, prog: dict):
-        """Run the downloaded installer (elevated, in place) and exit the app.
+    def _apply_program_update(self, method: str, path: str, prog: dict):
+        if method == "installer":
+            self._apply_installer_update(path, prog)
+        else:
+            self._apply_portable_update(path, prog)
 
-        The installer updates the files this .exe is running from, so we must
-        exit right after launching it to release the file locks. Runtime data
-        lives in the data dir and is never touched by the installer.
-        """
+    def _advance_program_baseline(self, prog: dict):
+        """Record this build as current so the same version isn't offered again."""
+        self._update_state["program_baseline"] = max(
+            time.time(), float(prog.get("newest_epoch", 0)))
+        self._save_update_state(self._update_state)
+        self._save_settings()
+
+    def _quit_for_update(self):
+        try:
+            if self._log_writer and hasattr(self._log_writer, "close"):
+                self._log_writer.close()
+        except Exception:
+            pass
+        os._exit(0)
+
+    def _apply_installer_update(self, setup_path: str, prog: dict):
+        """Run the downloaded installer silently, in place (elevated via UAC),
+        then quit so the running files are unlocked. The installer's postinstall
+        [Run] entry relaunches the app afterwards, de-elevated."""
         app_dir = str(Path(sys.executable).resolve().parent)
-        # Silent, in-place update into the current folder. /CLOSEAPPLICATIONS lets
-        # Setup free any file still locked by a lingering process; the installer's
-        # postinstall [Run] entry relaunches the app once (de-elevated).
+        # /CLOSEAPPLICATIONS frees any file still locked by a lingering process;
+        # the relaunch is done once by the installer's postinstall [Run] entry.
         args = (f'/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS '
                 f'/DIR="{app_dir}"')
         launched = False
@@ -3276,33 +3338,81 @@ class ScraperGUI:
             import ctypes
             # ShellExecute respects the installer's admin manifest and shows the
             # UAC prompt (subprocess/CreateProcess would fail with error 740).
-            rc = ctypes.windll.shell32.ShellExecuteW(
-                None, "runas", setup_path, args, None, 1)
+            rc = ctypes.windll.shell32.ShellExecuteW(None, "runas", setup_path, args, None, 1)
             launched = int(rc) > 32
         except Exception as exc:
             self._append_log(f"Could not launch the installer: {exc}")
-            launched = False
         if not launched:
             self._set_busy(False)
             messagebox.showwarning(
                 "Update",
-                "The update could not be started (installer launch was declined "
-                "or blocked). Nothing has changed — you can try again or update "
-                "manually from the GitHub release page.")
+                "The update could not be started (the elevation prompt was declined "
+                "or blocked). Nothing has changed — try again, or update manually "
+                "from the GitHub release page.")
             return
-        # The installer is now running. Advance the baseline so a same-version
-        # re-upload is not reported again after the update completes, then quit
-        # so the files this .exe runs from are unlocked for replacement.
-        self._update_state["program_baseline"] = max(
-            time.time(), float(prog.get("newest_epoch", 0)))
-        self._save_update_state(self._update_state)
-        self._save_settings()
+        self._advance_program_baseline(prog)
+        self.status_var.set("Update installing — the app will close and reopen…")
+        self._quit_for_update()
+
+    def _apply_portable_update(self, zip_path: str, prog: dict):
+        """Replace the portable app files in place: a detached helper waits for
+        this process to exit, copies the new files over the app folder (user data
+        next to the .exe is preserved — no mirror/delete), and relaunches the app.
+        No admin rights required."""
+        import tempfile
+        import zipfile
+        import subprocess
+        exe = Path(sys.executable).resolve()
+        app_dir = exe.parent
+        work = Path(tempfile.gettempdir()) / "scs_update"
         try:
-            if self._log_writer and hasattr(self._log_writer, "close"):
-                self._log_writer.close()
-        except Exception:
-            pass
-        os._exit(0)
+            shutil.rmtree(work, ignore_errors=True)
+            work.mkdir(parents=True, exist_ok=True)
+            extract = work / "extract"
+            with zipfile.ZipFile(zip_path) as z:
+                z.extractall(extract)
+            # Locate the folder inside the archive that holds the .exe.
+            src = extract / "SwitchCheatsScraper"
+            if not (src / exe.name).exists():
+                found = next(extract.rglob(exe.name), None)
+                if not found:
+                    raise RuntimeError("the update archive did not contain the app")
+                src = found.parent
+        except Exception as exc:
+            self._set_busy(False)
+            messagebox.showerror("Update", f"Preparing the update failed:\n{exc}")
+            return
+        bat = work / "apply_update.cmd"
+        # The app quits (os._exit) the instant this helper is launched, so a short
+        # grace delay is enough for it to release its file locks; robocopy's own
+        # retry (/R /W) is a safety net for any file still briefly locked. This
+        # uses only ping/robocopy/start — all work in a windowless detached
+        # process (tasklist does not). User data next to the .exe is NOT in the
+        # archive, so /E (copy, never mirror/delete) preserves it.
+        script = (
+            "@echo off\r\n"
+            "ping -n 4 127.0.0.1 >nul\r\n"
+            f'robocopy "{src}" "{app_dir}" /E /R:25 /W:1 /NFL /NDL /NJH /NJS /NP >nul\r\n'
+            f'start "" "{exe}"\r\n'
+            "ping -n 2 127.0.0.1 >nul\r\n"
+            f'rmdir /S /Q "{extract}" >nul 2>&1\r\n'
+            f'del /Q "{zip_path}" >nul 2>&1\r\n'
+            '(goto) 2>nul & del "%~f0"\r\n'
+        )
+        bat.write_text(script, encoding="utf-8")
+        DETACHED, NOWINDOW = 0x00000008, 0x08000000
+        try:
+            subprocess.Popen(["cmd", "/c", str(bat)],
+                             creationflags=DETACHED | NOWINDOW, cwd=str(work),
+                             close_fds=True, stdin=subprocess.DEVNULL,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as exc:
+            self._set_busy(False)
+            messagebox.showerror("Update", f"Could not start the updater:\n{exc}")
+            return
+        self._advance_program_baseline(prog)
+        self.status_var.set("Updating — the app will close and reopen…")
+        self._quit_for_update()
 
     # ---- data (cheats + database) update -------------------------------
     def start_data_update(self, info: dict):
@@ -6297,7 +6407,7 @@ Columns included:
         elif kind == "update_error":
             self._handle_update_error(msg[1], msg[2])
         elif kind == "program_update_ready":
-            self._launch_installer_and_quit(msg[1], msg[2])
+            self._apply_program_update(msg[1], msg[2], msg[3])
         elif kind == "online_status":
             ok = bool(msg[1])
             if ok:
