@@ -14,11 +14,25 @@ All notable changes to this project are documented here.
 - **Installer language linked to the program language.** Setup has a "Program
   language" page (pre-selected from the wizard language), so choosing e.g. German
   setup makes the program start in German.
+- **Opens maximized (full screen) on first launch.** The window state is
+  remembered afterwards, so it reopens the way you left it.
 
 ### Changed
 - **Smaller downloads.** Only the built-in Chromium is bundled now; Firefox is
   fetched on demand into the app's data folder when selected, and Chrome uses your
   installed Google Chrome. Setup ~338 → ~254 MB, portable ~479 → ~360 MB.
+- **Auto-refresh after a single download.** After *Download this / via API / via
+  browser*, the table now updates automatically (recount from disk + rescan), just
+  like pressing **Refresh** — so the build flips to "downloaded" and shows its real
+  cheat count immediately.
+- **New first-run defaults.** *Show Covers* is off by default; the **Export to
+  ZIP** and **Export DB** default file names are `switch-cheats.zip` and
+  `database.db` (matching the data-release assets).
+
+### Fixed
+- **Language change now reliably restarts the app** in a packaged (windowed) build
+  (the relaunch is fully detached with its own std handles, instead of failing
+  silently and leaving the program in English).
 
 ## v1.1 — 2026-07-05
 
