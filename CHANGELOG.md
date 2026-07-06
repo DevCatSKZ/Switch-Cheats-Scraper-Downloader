@@ -1,33 +1,57 @@
-<!-- Language: English (below) · Deutsch (further down) -->
-**🇬🇧 English** · [🇩🇪 Deutsch](#changelog-deutsch)
-
 # Changelog
 
 All notable changes to this project are documented here.
 
+## v1.2 — 2026-07-06
+
+### Added
+- **Multi-language interface (6 languages).** The whole program is available in
+  **English** (default), **Deutsch, Español, Français, Italiano and 日本語
+  (Japanese)**. Switch it via the language selector next to the dark/light toggle
+  (bottom-right of the Search bar); the app restarts to apply it and the choice is
+  saved in `settings.json`. Translations are natural rather than literal and keep
+  common tech terms in English (Download, Scrape, API, Token, ZIP, …).
+- **Installer language linked to the program language.** Setup has a "Program
+  language" page (pre-selected from the wizard language), so choosing e.g. German
+  setup makes the program start in German.
+
+### Changed
+- **Smaller downloads.** Only the built-in Chromium is bundled now; Firefox is
+  fetched on demand into the app's data folder when selected, and Chrome uses your
+  installed Google Chrome. Setup ~338 → ~254 MB, portable ~479 → ~360 MB.
+
 ## v1.1 — 2026-07-05
 
 ### Added
-- **Self-update ("Check Updates")** in the DevCatSKZ card: checks GitHub for a
-  newer program version *and* newer cheats/database packages. It detects a new
-  version (e.g. 1.1) **and** a re-upload of the current release/data asset (a fix
-  without a version bump, via the upload date). Program updates install
-  themselves (restart); data updates are downloaded and imported. Optional
-  automatic check at startup.
+- **Self-update via a "Check Updates" button** (in the DevCatSKZ card). It queries
+  the GitHub `releases/latest` for a newer program build and the `data` release
+  for newer cheats/database packages. Two detection rules apply to everything:
+  a **higher version** (e.g. 1.1), **or** an **asset re-uploaded** more recently
+  than the stored baseline (first-run time) — so a fix without a version bump is
+  detected too. A found **program update installs itself** (downloads the
+  installer, runs it silently in place, and the app restarts); **data updates**
+  are downloaded and merged into the database. Optional automatic check at
+  startup (on by default). The baseline is stored in `update_state.json` in the
+  data dir, so it survives updates.
 
 ### Fixed
-- DevCatSKZ downloads crashed in the packaged (windowed) build with
-  `'NoneType' object has no attribute 'write'` — fixed (logging now tolerates a
-  `None` stdout).
+- **DevCatSKZ downloads no longer fail with `'NoneType' object has no attribute
+  'write'`.** In the packaged windowed build `sys.stdout`/`sys.__stdout__` are
+  `None`, so the log tee crashed on the first `print()`. The tee now drops `None`
+  streams and swallows per-stream errors, so logging can never crash the app.
 
 ### Changed
-- Covers are now fetched via the **"Download Covers"** checkbox (off by default)
-  instead of a yes/no prompt after each download.
-- The **"External Cheat Sources"** area is more compact (no wasted width); the
-  DevCatSKZ card description moved into a tooltip.
-- **Installer** now defaults to `C:\Program Files (x86)\Switch Cheats Scraper &
-  Downloader` (needs admin); the destination folder is freely selectable /
-  creatable in the wizard.
+- **DevCatSKZ covers are now controlled by a "Download Covers" checkbox**
+  (off by default) in the card, instead of a yes/no prompt after every download.
+  The choice is remembered between runs.
+- **Reworked the "External Cheat Sources" layout** so it no longer stretches
+  edge-to-edge: the source buttons form a tidy 3×4 uniform grid and, together
+  with the DevCatSKZ card, sit as one centered, symmetric block.
+- **Installer defaults to `C:\Program Files (x86)\Switch Cheats Scraper &
+  Downloader`** (needs admin). The "Select Destination Location" page is always
+  shown, so any folder can be browsed to or created. Runtime data lives in the
+  `%LOCALAPPDATA%` fallback when installed under Program Files. The uninstaller's
+  "remove all data" option now also clears that fallback folder.
 
 ## v1.0 — 2026-07-05
 
@@ -40,7 +64,8 @@ to your Switch SD card (Atmosphère / Breeze / EdiZon) or a ZIP.
 - A prominent one-click section to **download the maintainer's prebuilt data**
   from GitHub instead of scraping: **Download Cheats** (ready-made archive),
   **Download Database** (the full GUI database, merged in), or **Download
-  Complete** (both). After each, the app offers to fetch covers too.
+  Complete** (both). A **"Download Covers"** checkbox (off by default) in the
+  card controls whether covers are fetched afterwards.
 - The database ships cover **URLs** only, never cover images — no copyrighted
   artwork is redistributed; covers are fetched by each user from the source.
 
@@ -81,93 +106,3 @@ to your Switch SD card (Atmosphère / Breeze / EdiZon) or a ZIP.
 - Online status indicator, size-capped log, per-file scan cache.
 - Portable data storage next to the `.exe` (falls back to `%LOCALAPPDATA%`
   if read-only). Windows installer included.
-
----
-
-<a id="changelog-deutsch"></a>
-[🇬🇧 English](#changelog) · **🇩🇪 Deutsch**
-
-# Änderungsverlauf
-
-Alle nennenswerten Änderungen an diesem Projekt sind hier dokumentiert.
-
-## v1.1 — 05.07.2026
-
-### Neu
-- **Selbst-Update („Check Updates")** in der DevCatSKZ-Karte: prüft GitHub auf
-  eine neuere Programmversion *und* neuere Cheats-/Datenbank-Pakete. Erkennt eine
-  neue Version (z. B. 1.1) **und** ein erneutes Hochladen des aktuellen
-  Release-/Daten-Assets (Fix ohne Versionssprung, über das Upload-Datum).
-  Programm-Updates installieren sich selbst (Neustart), Daten-Updates werden
-  geladen und importiert. Optional automatisch beim Start.
-
-### Behoben
-- DevCatSKZ-Downloads brachen im installierten (Fenster-)Build mit
-  `'NoneType' object has no attribute 'write'` ab — behoben (Logging verträgt
-  jetzt `None`-stdout).
-
-### Geändert
-- Cover werden jetzt über die Checkbox **„Download Covers"** (standardmäßig aus)
-  geladen — statt Nachfrage-Dialog nach jedem Download.
-- Der **„External Cheat Sources"**-Bereich ist kompakter (kein verschwendeter
-  Platz); die DevCatSKZ-Karten-Beschreibung liegt jetzt im Tooltip.
-- Der **Installer** schlägt jetzt `C:\Program Files (x86)\Switch Cheats Scraper &
-  Downloader` vor (Adminrechte); der Zielordner ist im Assistenten frei wählbar /
-  neu anlegbar.
-
-## v1.0 — 05.07.2026
-
-Nintendo-Switch-Cheats von CheatSlips.com, GBATemp/HamletDuFromage, Sthetix,
-Breeze (NXCheatCode), ChanseyIsTheBest (60FPS/Res/GFX), MyNXCheats, ibnux und
-titledb **scrapen und herunterladen**. Alle Cheats in einer durchsuchbaren
-SQLite-Datenbank verwalten und direkt auf die Switch-SD-Karte
-(Atmosphère / Breeze / EdiZon) oder als ZIP exportieren.
-
-### Alles von DevCatSKZ
-- Ein hervorgehobener Ein-Klick-Bereich, um die **fertigen Daten des Maintainers**
-  von GitHub zu laden statt zu scrapen: **Download Cheats** (fertiges Archiv),
-  **Download Database** (die komplette GUI-Datenbank, gemergt) oder **Download
-  Complete** (beides). Danach bietet die App jeweils an, auch die Cover zu laden.
-- Die Datenbank enthält nur Cover-**URLs**, niemals Cover-Bilder — es werden keine
-  urheberrechtlich geschützten Bilddaten weitergegeben; jeder Nutzer lädt die
-  Cover selbst von der Quelle.
-
-### Quellen
-- Scrape + offizielle API von **CheatSlips.com** (Metadaten ohne Login,
-  Cheat-Inhalte über API-Token / E-Mail+Passwort).
-- Externe Cheat-Archive: **GBATemp/HamletDuFromage** (`titles_complete.zip`),
-  **HamletDuFromage 60FPS/Res/GFX**, **Sthetix** (tägliches Aggregat), **Breeze /
-  NXCheatCode**, **Chansey NX-60FPS-RES-GFX** (Live-Repo), **MyNXCheats** (Live-Repo),
-  **ibnux** und **titledb** `cheats.json`.
-- Ein-Klick-Pipeline **★ Scrape & Download Everything**.
-
-### Download
-- Offizieller **API**-Download (kein Browser) mit automatischem
-  **Browser-Fallback** (Playwright) bei erreichter Tages-Quota — löst jeden Build
-  zu seiner Cheat-Seite auf, erledigt Login/reCAPTCHA einmalig, setzt die
-  Website-Quota zurück und versucht es erneut.
-- **Browser-Login**-Button: einmaliger Login, Cookies bleiben für künftige Läufe erhalten.
-
-### Anreicherung
-- **Namen/Cover**, **Regionen** (mit switchbrew-/Homebrew-/Schrift-Fallbacks),
-  **Versionen** (titledb + cheatslips) und **Beschreibungen** füllen.
-- Versionen aus dem Kontextmenü laufen nur für die markierten Zeilen.
-
-### Export / Import
-- **Export auf die SD-Karte** (Atmosphère-/Breeze-/EdiZon-Layout, Laufwerks-Auto-Erkennung).
-- **Export als ZIP** (dieselbe SD-Struktur, datierter Standard-Dateiname) und
-  **Import ZIP** zurück in die Datenbank.
-- **Export DB** / **Import DB**: die komplette `cheats.db` sichern und später
-  wieder importieren — in die aktuelle Datenbank **mergen** (nichts wird entfernt,
-  eine echte Cheat-Anzahl geht nie verloren) oder die aktuelle **ersetzen**
-  (vorher wird ein Backup erstellt).
-
-### App
-- Durchsuchbare Datenbank-GUI (nach Name, Title-ID oder Build-ID), Cover-Panel,
-  Live-Disk-Abgleich, asynchrones Tabellen-Refresh, WAL-Datenbank.
-- **Dark Mode als Standard** mit Ein-Klick-Umschalter zwischen Hell und Dunkel,
-  der das komplette Programm neu einfärbt — Hauptfenster, Tabelle, Detail-Panel,
-  Log, Menüs und alle Unterfenster; die Auswahl bleibt zwischen den Läufen erhalten.
-- Online-Status-Anzeige, größenbegrenztes Log, Datei-Scan-Cache.
-- Portable Datenspeicherung neben der `.exe` (weicht auf `%LOCALAPPDATA%` aus,
-  wenn schreibgeschützt). Windows-Installer enthalten.
