@@ -867,6 +867,80 @@ class UpdateDialog:
         self.app.start_data_update(self.info)
 
 
+class UpdateProgressDialog:
+    """Modal, non-closable progress window shown for the whole update so the user
+    always sees what is happening (downloading, then installing)."""
+
+    def __init__(self, parent, on_cancel=None):
+        t = theme()
+        self.top = tk.Toplevel(parent)
+        self.top.title("Updating")
+        self.top.transient(parent)
+        self.top.resizable(False, False)
+        self.top.configure(bg=t["bg"])
+        self.top.protocol("WM_DELETE_WINDOW", lambda: None)  # can't be closed
+        frm = ttk.Frame(self.top, padding=18)
+        frm.pack(fill="both", expand=True)
+        self.phase = ttk.Label(frm, text="Preparing update…", font=("Segoe UI", 11, "bold"))
+        self.phase.pack(anchor="w")
+        self.bar = ttk.Progressbar(frm, length=400, mode="determinate", maximum=100)
+        self.bar.pack(fill="x", pady=(12, 6))
+        self.detail = ttk.Label(frm, text="", foreground=t["fg_muted"], font=("Segoe UI", 9))
+        self.detail.pack(anchor="w")
+        self.cancel_btn = None
+        if on_cancel:
+            self.cancel_btn = ttk.Button(frm, text="Cancel", command=on_cancel)
+            self.cancel_btn.pack(anchor="e", pady=(12, 0))
+        try:
+            self.top.grab_set()
+        except Exception:
+            pass
+        _center_dialog(self.top, parent)
+
+    def disable_cancel(self):
+        try:
+            if self.cancel_btn:
+                self.cancel_btn.config(state="disabled")
+        except Exception:
+            pass
+
+    def set_phase(self, text):
+        try:
+            self.phase.config(text=text)
+        except Exception:
+            pass
+
+    def set_progress(self, done, total, detail=""):
+        try:
+            self.bar.stop()
+            self.bar.config(mode="determinate", value=(int(done * 100 / total) if total else 0))
+            if detail:
+                self.detail.config(text=detail)
+        except Exception:
+            pass
+
+    def busy(self, phase=None, detail=""):
+        try:
+            if phase:
+                self.phase.config(text=phase)
+            if detail:
+                self.detail.config(text=detail)
+            self.bar.config(mode="indeterminate"); self.bar.start(14)
+            self.disable_cancel()  # past the point where cancelling is safe
+        except Exception:
+            pass
+
+    def close(self):
+        try:
+            self.bar.stop()
+        except Exception:
+            pass
+        try:
+            self.top.grab_release(); self.top.destroy()
+        except Exception:
+            pass
+
+
 class _QueueWriter:
     """File-like object that forwards written lines to a queue (for the log).
 
@@ -3272,23 +3346,33 @@ class ScraperGUI:
             return
         self._stop_event.clear()
         self._set_busy(True)
+        self._update_dlg = UpdateProgressDialog(self.root, on_cancel=self._cancel_update)
+        self._update_dlg.set_phase(f"Downloading update ({method})…")
         self.status_var.set("Downloading update…")
         threading.Thread(target=self._program_update_worker,
                          args=(method, prog), daemon=True).start()
 
+    def _cancel_update(self):
+        """User cancelled the update download."""
+        self._stop_event.set()
+        dlg = getattr(self, "_update_dlg", None)
+        if dlg:
+            dlg.set_phase("Cancelling…"); dlg.disable_cancel()
+
     def _program_update_worker(self, method: str, prog: dict):
         import tempfile
+        import zipfile
         asset = prog.get("setup") if method == "installer" else prog.get("portable")
         name = PROGRAM_SETUP_ASSET if method == "installer" else PROGRAM_PORTABLE_ASSET
         dest = Path(tempfile.gettempdir()) / name
 
         def cb(done, total):
-            kb = done // 1024
+            mb, tmb = done / 1048576, (total / 1048576 if total else 0)
             pct = f" ({int(done * 100 / total)}%)" if total else ""
             self._log_queue.put(("progress", done, max(total, 1),
-                                 f"Downloading update: {kb:,} KB{pct}"))
+                                 f"Downloading update: {mb:.1f} / {tmb:.1f} MB{pct}"))
         try:
-            self._log_queue.put(("status", f"Downloading the {method} update…"))
+            self._log_queue.put(("status", f"Downloading update ({method})…"))
             download_file(asset["url"], dest, progress_cb=cb,
                           should_stop=self._stop_event.is_set)
             # Guard against a silently-truncated download (dropped connection):
@@ -3296,18 +3380,37 @@ class ScraperGUI:
             want = int(asset.get("size") or 0)
             got = dest.stat().st_size
             if want and got != want:
-                raise RuntimeError(
-                    f"download incomplete: got {got:,} of {want:,} bytes")
-            self._log_queue.put(("program_update_ready", method, str(dest), prog))
+                raise RuntimeError(f"download incomplete: got {got:,} of {want:,} bytes")
+            if method == "portable":
+                # Extract here (worker thread) so the UI/progress dialog stays live.
+                self._log_queue.put(("update_phase", "Preparing update…", "Extracting files…"))
+                exe = Path(sys.executable).resolve()
+                work = Path(tempfile.gettempdir()) / "scs_update"
+                shutil.rmtree(work, ignore_errors=True)
+                work.mkdir(parents=True, exist_ok=True)
+                extract = work / "extract"
+                with zipfile.ZipFile(dest) as z:
+                    z.extractall(extract)
+                src = extract / "SwitchCheatsScraper"
+                if not (src / exe.name).exists():
+                    found = next(extract.rglob(exe.name), None)
+                    if not found:
+                        raise RuntimeError("the update archive did not contain the app")
+                    src = found.parent
+                payload = {"src": str(src), "extract": str(extract),
+                           "zip": str(dest), "work": str(work)}
+            else:
+                payload = {"setup": str(dest)}
+            self._log_queue.put(("program_update_ready", method, payload, prog))
         except Exception as exc:
             self._log_queue.put(("error", f"Downloading the update failed:\n{exc}"))
             self._log_queue.put(("download_done",))
 
-    def _apply_program_update(self, method: str, path: str, prog: dict):
+    def _apply_program_update(self, method: str, payload: dict, prog: dict):
         if method == "installer":
-            self._apply_installer_update(path, prog)
+            self._apply_installer_update(payload["setup"], prog)
         else:
-            self._apply_portable_update(path, prog)
+            self._apply_portable_update(payload, prog)
 
     def _advance_program_baseline(self, prog: dict):
         """Record this build as current so the same version isn't offered again."""
@@ -3324,15 +3427,25 @@ class ScraperGUI:
             pass
         os._exit(0)
 
+    def _update_failed(self, message: str):
+        dlg = getattr(self, "_update_dlg", None)
+        if dlg:
+            dlg.close(); self._update_dlg = None
+        self._set_busy(False)
+        messagebox.showwarning("Update", message)
+
     def _apply_installer_update(self, setup_path: str, prog: dict):
-        """Run the downloaded installer silently, in place (elevated via UAC),
-        then quit so the running files are unlocked. The installer's postinstall
-        [Run] entry relaunches the app afterwards, de-elevated."""
+        """Run the downloaded installer in place (elevated via UAC), then quit so
+        the running files are unlocked. /SILENT shows the installer's own progress
+        window so the user SEES the install; the postinstall [Run] entry relaunches
+        the app afterwards, de-elevated."""
         app_dir = str(Path(sys.executable).resolve().parent)
-        # /CLOSEAPPLICATIONS frees any file still locked by a lingering process;
-        # the relaunch is done once by the installer's postinstall [Run] entry.
-        args = (f'/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS '
+        args = (f'/SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS '
                 f'/DIR="{app_dir}"')
+        dlg = getattr(self, "_update_dlg", None)
+        if dlg:
+            dlg.busy("Installing update…",
+                     "A Setup window shows the progress; the app reopens automatically.")
         launched = False
         try:
             import ctypes
@@ -3343,9 +3456,7 @@ class ScraperGUI:
         except Exception as exc:
             self._append_log(f"Could not launch the installer: {exc}")
         if not launched:
-            self._set_busy(False)
-            messagebox.showwarning(
-                "Update",
+            self._update_failed(
                 "The update could not be started (the elevation prompt was declined "
                 "or blocked). Nothing has changed — try again, or update manually "
                 "from the GitHub release page.")
@@ -3354,45 +3465,28 @@ class ScraperGUI:
         self.status_var.set("Update installing — the app will close and reopen…")
         self._quit_for_update()
 
-    def _apply_portable_update(self, zip_path: str, prog: dict):
-        """Replace the portable app files in place: a detached helper waits for
-        this process to exit, copies the new files over the app folder (user data
-        next to the .exe is preserved — no mirror/delete), and relaunches the app.
-        No admin rights required."""
-        import tempfile
-        import zipfile
+    def _apply_portable_update(self, payload: dict, prog: dict):
+        """Replace the portable app files in place. A helper in a VISIBLE console
+        window (so the user sees the progress) waits briefly for this process to
+        exit, copies the new files over the app folder (user data next to the .exe
+        is preserved — /E, never mirror/delete), and relaunches. No admin needed."""
         import subprocess
         exe = Path(sys.executable).resolve()
         app_dir = exe.parent
-        work = Path(tempfile.gettempdir()) / "scs_update"
-        try:
-            shutil.rmtree(work, ignore_errors=True)
-            work.mkdir(parents=True, exist_ok=True)
-            extract = work / "extract"
-            with zipfile.ZipFile(zip_path) as z:
-                z.extractall(extract)
-            # Locate the folder inside the archive that holds the .exe.
-            src = extract / "SwitchCheatsScraper"
-            if not (src / exe.name).exists():
-                found = next(extract.rglob(exe.name), None)
-                if not found:
-                    raise RuntimeError("the update archive did not contain the app")
-                src = found.parent
-        except Exception as exc:
-            self._set_busy(False)
-            messagebox.showerror("Update", f"Preparing the update failed:\n{exc}")
-            return
+        src, extract = payload["src"], payload["extract"]
+        zip_path, work = payload["zip"], Path(payload["work"])
         bat = work / "apply_update.cmd"
-        # The app quits (os._exit) the instant this helper is launched, so a short
-        # grace delay is enough for it to release its file locks; robocopy's own
-        # retry (/R /W) is a safety net for any file still briefly locked. This
-        # uses only ping/robocopy/start — all work in a windowless detached
-        # process (tasklist does not). User data next to the .exe is NOT in the
-        # archive, so /E (copy, never mirror/delete) preserves it.
+        # Grace delay + robocopy /R cover the brief file-lock window after exit.
         script = (
             "@echo off\r\n"
+            "title Updating Switch Cheats Scraper\r\n"
+            "echo(\r\n"
+            "echo    Updating Switch Cheats Scraper ^& Downloader...\r\n"
+            "echo    Please wait - the app will reopen automatically.\r\n"
+            "echo(\r\n"
             "ping -n 4 127.0.0.1 >nul\r\n"
             f'robocopy "{src}" "{app_dir}" /E /R:25 /W:1 /NFL /NDL /NJH /NJS /NP >nul\r\n'
+            "echo    Done. Starting the app...\r\n"
             f'start "" "{exe}"\r\n'
             "ping -n 2 127.0.0.1 >nul\r\n"
             f'rmdir /S /Q "{extract}" >nul 2>&1\r\n'
@@ -3400,15 +3494,15 @@ class ScraperGUI:
             '(goto) 2>nul & del "%~f0"\r\n'
         )
         bat.write_text(script, encoding="utf-8")
-        DETACHED, NOWINDOW = 0x00000008, 0x08000000
+        dlg = getattr(self, "_update_dlg", None)
+        if dlg:
+            dlg.busy("Installing update…",
+                     "The app will close and reopen automatically in a moment.")
         try:
-            subprocess.Popen(["cmd", "/c", str(bat)],
-                             creationflags=DETACHED | NOWINDOW, cwd=str(work),
-                             close_fds=True, stdin=subprocess.DEVNULL,
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(["cmd", "/c", str(bat)], creationflags=0x00000010,  # NEW_CONSOLE
+                             cwd=str(work), close_fds=True)
         except Exception as exc:
-            self._set_busy(False)
-            messagebox.showerror("Update", f"Could not start the updater:\n{exc}")
+            self._update_failed(f"Could not start the updater:\n{exc}")
             return
         self._advance_program_baseline(prog)
         self.status_var.set("Updating — the app will close and reopen…")
@@ -6386,6 +6480,14 @@ Columns included:
             self.progress.config(maximum=max(total, 1), value=done)
             if label:
                 self.status_var.set(label)
+            dlg = getattr(self, "_update_dlg", None)
+            if dlg:
+                dlg.set_progress(done, total, label or "")
+        elif kind == "update_phase":
+            dlg = getattr(self, "_update_dlg", None)
+            if dlg:
+                dlg.busy(msg[1], msg[2] if len(msg) > 2 else "")
+            self.status_var.set(msg[1])
         elif kind == "status":
             self.status_var.set(msg[1])
         elif kind == "table_rows":
@@ -6427,6 +6529,9 @@ Columns included:
                 self.status_var.set("Scraping done - starting download...")
                 self.root.after(500, lambda: self._start_download(None))
         elif kind == "download_done":
+            dlg = getattr(self, "_update_dlg", None)
+            if dlg:
+                dlg.close(); self._update_dlg = None
             self._set_busy(False)
             self._update_downloaded_cache_incremental()
             self.refresh_table()

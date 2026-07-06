@@ -70,11 +70,26 @@ Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; IconFilename: "{app}\app.ico"; Tasks: desktopicon
 
 [Run]
+; Refresh the shell icon cache so the shortcut shows the NEW app.ico immediately.
+; Windows caches shortcut icons by path; since app.ico keeps the same path and
+; only its content changed, the old icon would otherwise linger until a reboot.
+Filename: "{sys}\ie4uinit.exe"; Parameters: "-show"; Flags: runhidden runasoriginaluser skipifdoesntexist
 ; Relaunch after install — including after a silent self-update (no skipifsilent),
 ; and as the original (non-elevated) user so the app doesn't run with admin rights.
 Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall runasoriginaluser
 
 [Code]
+{ Tell the shell that icons/associations changed so Explorer refreshes the
+  shortcut icon right away (otherwise the cached old app.ico can linger). }
+procedure SHChangeNotify(wEventId, uFlags: Integer; dwItem1, dwItem2: Cardinal);
+  external 'SHChangeNotify@shell32.dll stdcall';
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    SHChangeNotify($08000000, $0000, 0, 0);   { SHCNE_ASSOCCHANGED, SHCNF_IDLIST }
+end;
+
 { On uninstall, ask whether to also remove the user's data (DB, downloads,
   settings, login profile). This keeps the uninstaller friendly and safe. }
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
