@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 
 ## v1.2 — 2026-07-06
 
+### Added — 2026-07-07 (Switch homebrew app)
+- **New: standalone Switch homebrew app** (`SwitchCheatsDownloader.nro` v1.2.0,
+  source in [`SwitchCheatsNRO/`](SwitchCheatsNRO/)) — the on-console counterpart
+  of the desktop tool. Downloads the always-current `switch-cheats.zip` from the
+  `data` release directly on the Switch and extracts it into the Atmosphère
+  layout on the SD card. Auto-checks on launch (incl. download size), manual
+  re-check, resume for interrupted downloads, self-update via the `nro` release,
+  6 languages (EN/DE/ES/FR/IT/JA) with real diacritics, Joy-Con + touch control,
+  dark Switch-style UI with the official app icon. Ships as
+  `SwitchCheatsDownloader-Switch.zip` (extract to SD root) on the release page.
+
 ### Added
 - **Multi-language interface (6 languages).** The whole program is available in
   **English** (default), **Deutsch, Español, Français, Italiano and 日本語

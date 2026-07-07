@@ -5,6 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.2-blue" alt="Version">
   <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows" alt="Platform">
+  <img src="https://img.shields.io/badge/homebrew-Nintendo%20Switch-e60012?logo=nintendoswitch&logoColor=white" alt="Switch">
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
@@ -14,6 +15,13 @@
 A tool to **scrape and download** Nintendo Switch cheat codes from **[CheatSlips.com](https://www.cheatslips.com), [GBATempArchive](https://gbatemp.net), [HamletDuFromage](https://github.com/HamletDuFromage/switch-cheats-db), [Sthetix](https://github.com/sthetix/nx-cheats-db), [Breeze (NXCheatCode)](https://github.com/tomvita/NXCheatCode), [ChanseyIsTheBest (60FPS/Res/GFX)](https://github.com/ChanseyIsTheBest/NX-60FPS-RES-GFX-Cheats), [MyNXCheats](https://github.com/Arch9SK7/MyNXCheats), [ibnux](https://github.com/ibnux/switch-cheat) and [titledb](https://github.com/blawar/titledb)**, manage them in a **searchable SQLite database** (names, covers, regions, versions, descriptions) and export them straight into the right layout on your **Switch SD card** (Atmosphère / Breeze / EdiZon) — or as a ZIP.
 
 > Only use the tool with your **own** CheatSlips account. All cheat codes belong to their original authors/uploaders.
+
+<p align="center"><img src="screenshots/windows-tool.png" width="900" alt="Switch Cheats Scraper & Downloader (Windows)"></p>
+
+**How it works (Windows):**
+1. **Collect** — scrape CheatSlips and/or import 9+ community sources into a local **SQLite database** (game names, covers, regions, versions, descriptions).
+2. **Browse** — search and filter everything in the GUI.
+3. **Export** — one click to your SD card (Atmosphère / Breeze / EdiZon layout) or as ZIP. The merged dataset is also published as the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data), so nobody *has* to scrape.
 
 ## ⬇️ Download (Windows)
 
@@ -27,6 +35,18 @@ Ready-made builds are on the **[Releases](../../releases/latest)** page:
 | **Portable** (`SwitchCheatsScraper-portable.zip`) | Unzip and run `SwitchCheatsScraper.exe` — no install needed. Data lives **next to the EXE**. |
 
 No Python required — the EXE is self-contained. (The built-in Chromium ships with the app; Firefox/Chrome for the optional browser download are fetched on demand when selected.)
+
+## 🎮 Switch app (homebrew counterpart)
+
+The desktop tool has a **counterpart that runs directly on the Switch**: a standalone homebrew app (`SwitchCheatsDownloader.nro`) that fetches the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) **on the console** and extracts it straight into the Atmosphère layout on the SD card — no PC needed.
+
+<p align="center"><img src="screenshots/switch-app.png" width="720" alt="Switch Cheats Downloader homebrew app"></p>
+
+**What it does:** on launch it checks whether new cheats are available (same "re-upload without version bump" detection as the desktop tool, incl. download size), and one press on **A** downloads and extracts everything to `atmosphere/contents/<TitleID>/cheats/`. Interrupted downloads **resume** where they stopped, the app can **update itself** from this repo, and the UI speaks **6 languages** (EN/DE/ES/FR/IT/JA, auto-detected from the console) with full Joy-Con **and** touch control.
+
+**Install:** download [`SwitchCheatsDownloader-Switch.zip`](../../releases/latest) from the latest release and extract it to the **root of your SD card** (it contains `switch/SwitchCheatsDownloader.nro`), then launch *Switch Cheats Downloader* from the Homebrew Menu. Requires a modded Switch (Atmosphère + hbmenu) and Wi-Fi.
+
+Source & developer docs: [`SwitchCheatsNRO/`](SwitchCheatsNRO/) — build with devkitPro, see its [README](SwitchCheatsNRO/README.md).
 
 ## 📦 Always-current cheats & database
 
