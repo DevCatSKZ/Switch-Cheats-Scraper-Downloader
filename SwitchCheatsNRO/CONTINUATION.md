@@ -347,6 +347,17 @@ und `lang.txt` korrekt geschrieben.
    `main()`): navigiert erst, nachdem die Achse einmal in der Totzone
    gelesen wurde — filtert Init-/Resync-Bursts (Emulator-Fokuswechsel,
    Suspend/Resume) heraus.
+8. **Screenshots für GitHub** (Konvention: englische UI, siehe auch
+   Root-`CONTINUATION.md` Abschnitt 9): Vorher **alle** laufenden
+   Eden-Instanzen beenden — `Start-Process` startet sonst eine zweite
+   Instanz und man screenshottet die alte mit falscher Sprache/State.
+   Sprache über `lang.txt` (Text-Kürzel `EN`) auf der virtuellen SD setzen,
+   NICHT per Tasten durchschalten. Eden-Fenster startet teils **minimiert**
+   (GetWindowRect liefert dann 160×28 bzw. −32000er-Koordinaten) →
+   erst `ShowWindow(9)` + ggf. `SetWindowPos` auf sichtbare Position.
+   Zuschnitt auf den Render-Bereich: fensterrelativ x=8, y=55, 1280×720.
+   Ziel-Datei: `screenshots/switch-app.png` (Dateiname beibehalten, damit
+   README-/Release-Links gültig bleiben).
 
 ---
 
