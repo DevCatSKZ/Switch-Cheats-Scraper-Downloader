@@ -36,7 +36,7 @@ Ready-made builds are on the **[Releases](../../releases/latest)** page:
 
 No Python required — the EXE is self-contained. (The built-in Chromium ships with the app; Firefox/Chrome for the optional browser download are fetched on demand when selected.)
 
-## 🎮 Switch app (homebrew counterpart)
+## 🎮 Switch app (homebrew)
 
 The desktop tool has a **counterpart that runs directly on the Switch**: a standalone homebrew app (`SwitchCheatsDownloader.nro`) that fetches the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) **on the console** and extracts it straight into the Atmosphère layout on the SD card — no PC needed.
 
