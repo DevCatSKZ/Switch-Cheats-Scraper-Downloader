@@ -168,7 +168,7 @@ fun HomeScreen(
                     Spacer(Modifier.height(10.dp))
                     Text(vm.t("storage.safHint"), color = Prisma.Muted, fontSize = 12.sp)
                     Spacer(Modifier.height(8.dp))
-                    HoloButton(vm.t("storage.pickFolder")) { onPickFolder() }
+                    HoloButton(vm.t("storage.pickFolder")) { vm.armAutoInstall(); onPickFolder() }
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -191,7 +191,13 @@ fun HomeScreen(
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         HoloButton(vm.t("btn.start")) {
-                            vm.startInstall()
+                            when {
+                                // Ask for the general permission (explained), then auto-continue.
+                                vm.needAllFiles -> { vm.armAutoInstall(); vm.openPermDialog() }
+                                // Fallback only: one-tap folder pick, then the download runs itself.
+                                vm.needFolderGrant -> { vm.armAutoInstall(); onPickFolder() }
+                                else -> vm.startInstall()
+                            }
                         }
                         OutlinedButton(
                             onClick = onExport,

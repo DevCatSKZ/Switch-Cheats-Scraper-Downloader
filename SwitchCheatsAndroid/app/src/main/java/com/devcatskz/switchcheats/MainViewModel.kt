@@ -114,7 +114,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---- storage grants ----
-    fun onAllFilesGranted() { refreshWriteNeeds() }
+    // When the user taps Start but a grant is still missing, we remember to
+    // continue the download automatically once the grant comes back — so the
+    // flow is "tap Start (→ grant once) → it just downloads".
+    private var autoInstallAfterGrant = false
+    fun armAutoInstall() { autoInstallAfterGrant = true }
+
+    fun onAllFilesGranted() {
+        refreshWriteNeeds()
+        if (autoInstallAfterGrant && !needAllFiles && !needFolderGrant) {
+            autoInstallAfterGrant = false
+            startInstall()
+        }
+    }
 
     fun onFolderGranted(uri: Uri) {
         try {
@@ -126,6 +138,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             prefs.setSafUri(emulator, uri.toString())
         } catch (_: Exception) {}
         refreshWriteNeeds()
+        if (autoInstallAfterGrant) {
+            autoInstallAfterGrant = false
+            startInstall()
+        }
     }
 
     // ---- install ----
