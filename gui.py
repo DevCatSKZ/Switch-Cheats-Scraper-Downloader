@@ -1093,9 +1093,11 @@ class ScraperGUI:
         self.scrape_skip_zero = tk.BooleanVar(value=False)
         self.auto_download = tk.BooleanVar(value=True)
         self.rescan_all = tk.BooleanVar(value=False)
-        # When the API hits the daily quota, automatically reset it via a
-        # logged-in browser window and keep downloading until complete.
-        self.auto_reset_quota = tk.BooleanVar(value=True)
+        # Optional Phase-B browser fallback: the API pass ALWAYS resets the quota
+        # in the browser when the limit is hit; with this on it ALSO downloads via
+        # the logged-in browser the codes that exist only on the website (not via
+        # the API). Off by default — most builds come from the API + resets.
+        self.browser_fallback = tk.BooleanVar(value=False)
         self.browser_choice = tk.StringVar(value="Built-in")
         self.update_pages = tk.IntVar(value=5)
         # Check whether cheatslips.com is reachable on every program start.
@@ -1391,7 +1393,7 @@ class ScraperGUI:
         self.cache_covers.set(bool(data.get("cache_covers", True)))
         self.hide_placeholder_builds.set(bool(data.get("hide_placeholder_builds", True)))
         self.auto_scan_downloaded.set(bool(data.get("auto_scan_downloaded", False)))
-        self.auto_reset_quota.set(bool(data.get("auto_reset_quota", True)))
+        self.browser_fallback.set(bool(data.get("browser_fallback", False)))
         # Browser choice (migrate the old use_installed_browser bool).
         _legacy_ib = data.get("use_installed_browser")
         choice = data.get("browser_choice", "Chrome" if _legacy_ib else "Built-in")
@@ -1439,7 +1441,7 @@ class ScraperGUI:
             "cache_covers": self.cache_covers.get(),
             "hide_placeholder_builds": self.hide_placeholder_builds.get(),
             "auto_scan_downloaded": self.auto_scan_downloaded.get(),
-            "auto_reset_quota": self.auto_reset_quota.get(),
+            "browser_fallback": self.browser_fallback.get(),
             "browser_choice": self.browser_choice.get(),
             "scrape_full_catalog": self.scrape_full_catalog.get(),
             "scrape_skip_zero": self.scrape_skip_zero.get(),
@@ -2151,7 +2153,7 @@ class ScraperGUI:
         opts.pack(fill="x", pady=(6, 0))
         ttk.Checkbutton(
             opts, text="Download via browser when API is limited (keeps downloading until complete)",
-            variable=self.auto_reset_quota).pack(side="left", padx=(0, 12))
+            variable=self.browser_fallback).pack(side="left", padx=(0, 12))
         ttk.Label(opts, text="Browser:").pack(side="left", padx=(0, 3))
         self.browser_combo = ttk.Combobox(opts, textvariable=self.browser_choice,
                                           state="readonly", width=10,
@@ -2187,9 +2189,10 @@ class ScraperGUI:
         self._action_buttons += [self.dl_api_btn, self.dl_sel_btn, self.dl_browser_btn,
                                   self.dl_all_btn]
         _Tooltip(self.dl_api_btn,
-                 "Download cheat files via the official API ONLY (never the browser). "
-                 "Uses the selected rows, or ALL games if nothing is selected. "
-                 "Stops when the API daily quota is hit.")
+                 "Download cheat files via the official API. Uses the selected rows, "
+                 "or ALL games if nothing is selected. When the API limit is hit the "
+                 "quota is reset automatically and the download continues — the "
+                 "browser opens only for those resets, never to download cheats.")
         _Tooltip(self.dl_sel_btn,
                  "Download the SELECTED rows. Uses the API and — if 'Download via "
                  "browser when API is limited' is ticked — falls back to the browser "
@@ -2936,11 +2939,12 @@ class ScraperGUI:
             "output": self.dl_output.get(),
             "db_path": self.db_path.get(),
             "browser": self._browser_kind(),
+            "browser_fallback": True,   # this IS the browser-download path
             "title_ids": title_ids,   # None = all still-missing builds
         }
-        threading.Thread(target=self._browser_download_worker, args=(cfg,), daemon=True).start()
+        threading.Thread(target=self._missing_download_worker, args=(cfg,), daemon=True).start()
 
-    def _browser_download_worker(self, cfg):
+    def _missing_download_worker(self, cfg):
         old_stdout = sys.stdout
         sys.stdout = _QueueWriter(self._log_queue, mirror=self._log_writer)
         try:
@@ -4297,7 +4301,7 @@ class ScraperGUI:
             "token": self.api_token_var.get().strip() or None,
             "email": self.email_var.get().strip() or None,
             "password": self.password_var.get() or None,
-            "auto_reset": self.auto_reset_quota.get(),
+            "browser_fallback": self.browser_fallback.get(),
             "browser": self._browser_kind(),
         }
         threading.Thread(target=self._everything_worker, args=(cfg,), daemon=True).start()
@@ -4417,25 +4421,9 @@ class ScraperGUI:
                         trd.update(d, t)
                         self._log_queue.put(("progress", d, t, f"[{step}/{total}] Download {d}/{t} ({trd.pct()}%)"))
                     try:
-                        saved = api_download_from_db(api, db, out, resume=True,
-                                                     progress_cb=dp, should_stop=stop)
-                        print(f"Downloaded {saved} new cheat file(s) via API.")
+                        saved = self._api_download(api, db, out, cfg, progress_cb=dp)
+                        print(f"Downloaded {saved} new cheat file(s).")
                         cleanup_invalid_cheat_entries(db, out, should_stop=stop)
-                        # When the API hits its daily quota, fetch everything still
-                        # missing through the logged-in browser (auto-reset loop) —
-                        # this is the part that works while the API is quota-blocked.
-                        if cfg.get("auto_reset") and not stop():
-                            pairs = missing_build_pairs(db, out)
-                            if pairs:
-                                print(f"{len(pairs)} build(s) still missing after API — "
-                                      f"downloading via browser...")
-                                extra = self._run_quota_reset_loop(api, db, out, pairs, cfg)
-                                print(f"Browser download added {extra} more file(s).")
-                            else:
-                                print("Nothing left to download — dataset complete.")
-                        elif not cfg.get("auto_reset"):
-                            print("(Browser download off — tick 'Download via browser when "
-                                  "API is limited' to fetch quota-blocked builds.)")
                     except Exception as exc:
                         print(f"Download step issue: {exc}")
                 elif not have_token:
@@ -4806,7 +4794,7 @@ class ScraperGUI:
                 "Download the Firefox browser component for the app? (~85 MB)\n\n"
                 "It is stored in the app's own data folder.\n\n"
                 "Choose No to keep the built-in Chromium."):
-                self._start_browser_download("firefox")
+                self._start_component_download("firefox")
             else:
                 self.browser_choice.set("Built-in")
         elif kind in ("chrome", "edge"):
@@ -4821,7 +4809,10 @@ class ScraperGUI:
                 "Firefox or the built-in Chromium instead.")
             self.browser_choice.set("Built-in")
 
-    def _start_browser_download(self, target):
+    def _start_component_download(self, target):
+        """Download a Playwright BROWSER COMPONENT (e.g. Firefox) into the app's
+        data folder — NOT cheat files. Separate from _start_browser_download,
+        which downloads cheats via the logged-in browser."""
         self._stop_event.clear()
         self._set_busy(True)
         self._update_dlg = UpdateProgressDialog(self.root, on_cancel=self._cancel_update)
@@ -5517,6 +5508,8 @@ class ScraperGUI:
             "token": self.api_token_var.get().strip() or None,
             "output": self.dl_output.get(),
             "db_path": self.db_path.get(),
+            "browser_fallback": self.browser_fallback.get(),
+            "browser": self._browser_kind(),
         }
         threading.Thread(target=self._fix_zero_worker, args=(tids, cfg), daemon=True).start()
 
@@ -5540,10 +5533,8 @@ class ScraperGUI:
                 if api.token and api.token_works():
                     def dprog(done, total):
                         self._log_queue.put(("progress", done, total, f"Downloading {done}/{total}"))
-                    saved = api_download_from_db(api, db, Path(cfg["output"]),
-                                                 title_ids=title_ids, resume=True,
-                                                 progress_cb=dprog,
-                                                 should_stop=self._stop_event.is_set)
+                    saved = self._api_download(api, db, Path(cfg["output"]), cfg,
+                                               title_ids=title_ids, progress_cb=dprog)
                     print(f"Fix finished - {saved} new file(s).")
                 else:
                     print("Metadata refreshed. (No valid token - cheat codes not downloaded.)")
@@ -5773,7 +5764,7 @@ class ScraperGUI:
             "output": self.dl_output.get(),
             "db_path": self.db_path.get(),
             "pairs": pairs,
-            "auto_reset": self.auto_reset_quota.get(),
+            "browser_fallback": self.browser_fallback.get(),
             "browser": self._browser_kind(),
         }
         threading.Thread(target=self._retry_quota_worker, args=(cfg,), daemon=True).start()
@@ -5792,22 +5783,17 @@ class ScraperGUI:
             db = GameDatabase(Path(cfg["db_path"]))
             try:
                 out = Path(cfg["output"])
-                if cfg.get("auto_reset"):
-                    # Enrich each (tid, bid) with slug/source_id from the DB so the
-                    # browser fallback can reach the right game page.
-                    lookup = {(t.upper(), b.upper()): (slug, sid)
-                              for t, b, slug, sid in db.builds_for_download()}
-                    enriched = []
-                    for tid, bid in cfg["pairs"]:
-                        slug, sid = lookup.get((tid.upper(), bid.upper()), ("", ""))
-                        enriched.append((tid, bid, slug, sid))
-                    saved = self._run_quota_reset_loop(api, db, out, enriched, cfg)
-                else:
-                    def prog(done, total):
-                        self._log_queue.put(("progress", done, total, f"Retrying {done}/{total}"))
-                    saved = download_build_list(
-                        api, db, out, cfg["pairs"],
-                        progress_cb=prog, should_stop=self._stop_event.is_set)
+                # Enrich each (tid, bid) with slug/source_id from the DB so the
+                # browser fallback can reach the right game page. The reset loop
+                # downloads via the API and resets the quota whenever the limit is
+                # hit, so the whole retry set gets fetched.
+                lookup = {(t.upper(), b.upper()): (slug, sid)
+                          for t, b, slug, sid in db.builds_for_download()}
+                enriched = []
+                for tid, bid in cfg["pairs"]:
+                    slug, sid = lookup.get((tid.upper(), bid.upper()), ("", ""))
+                    enriched.append((tid, bid, slug, sid))
+                saved = self._run_quota_reset_loop(api, db, out, enriched, cfg)
                 print(f"Retry finished - {saved} new file(s).")
             finally:
                 db.close()
@@ -6607,10 +6593,11 @@ class ScraperGUI:
                 return
             if not messagebox.askyesno(
                 "Download (API only)",
-                t("Download cheat files for all {n} game(s) via the official API only "
-                  "(no browser)?\n\nAlready-downloaded builds are skipped.\n"
-                  "If the API daily quota is hit, it stops — use 'Download Selected' with "
-                  "the browser option for those.", n=n)):
+                t("Download cheat files for all {n} game(s) via the official API "
+                  "(no browser downloads)?\n\nAlready-downloaded builds are skipped. "
+                  "When the API limit is hit, the quota is reset automatically and "
+                  "the download continues — the browser opens only for those "
+                  "resets.", n=n)):
                 return
         self._start_api_download(tids)
 
@@ -6647,7 +6634,7 @@ class ScraperGUI:
             "token": self.api_token_var.get().strip() or None,
             "output": self.dl_output.get(),
             "db_path": self.db_path.get(),
-            "auto_reset": self.auto_reset_quota.get(),
+            "browser_fallback": self.browser_fallback.get(),
             "browser": self._browser_kind(),
         }
         threading.Thread(target=self._download_everything_worker, args=(cfg,), daemon=True).start()
@@ -6684,18 +6671,10 @@ class ScraperGUI:
                                 tr.update(done, total)
                                 self._log_queue.put(("progress", done, total,
                                     f"Downloading {done}/{total} ({tr.pct()}%) | {tr.rate_str('items')}"))
-                            saved = api_download_from_db(api, db, Path(cfg["output"]),
-                                                         title_ids=None, resume=True,
-                                                         progress_cb=dprog, should_stop=stopped)
+                            saved = self._api_download(api, db, Path(cfg["output"]), cfg,
+                                                       progress_cb=dprog)
                             print(f"Downloaded {saved} new file(s).")
                             cleanup_invalid_cheat_entries(db, Path(cfg["output"]), should_stop=stopped)
-                            # Fetch the rest via the browser when the API is limited.
-                            if cfg.get("auto_reset") and not stopped():
-                                pairs = missing_build_pairs(db, Path(cfg["output"]))
-                                if pairs:
-                                    extra = self._run_quota_reset_loop(
-                                        api, db, Path(cfg["output"]), pairs, cfg)
-                                    print(f"Browser download added {extra} more file(s).")
                         else:
                             print("Skipped (no valid token).")
                     except Exception as exc:
@@ -6744,9 +6723,8 @@ class ScraperGUI:
                             print(f"Refreshing {len(tids)} 0-cheat game(s) from the API...")
                             refresh_titles_from_api(api, db, tids, should_stop=stopped)
                             if token_ok and not stopped():
-                                saved = api_download_from_db(api, db, Path(cfg["output"]),
-                                                             title_ids=tids, resume=True,
-                                                             should_stop=stopped)
+                                saved = self._api_download(api, db, Path(cfg["output"]),
+                                                           cfg, title_ids=tids)
                                 print(f"0-cheat fix: {saved} new file(s).")
                                 cleanup_invalid_cheat_entries(db, Path(cfg["output"]), should_stop=stopped)
                     except Exception as exc:
@@ -6767,6 +6745,30 @@ class ScraperGUI:
             sys.stdout = old_stdout
             self._log_queue.put(("download_done",))
 
+    def _api_download(self, api, db, out, cfg, title_ids=None, progress_cb=None) -> int:
+        """Single entry point for downloading cheat CONTENT via the API.
+
+        cheatslips' content API has a tiny per-window limit (~3 requests) that
+        ONLY the browser quota reset refills. So this ALWAYS runs the reset loop:
+        get_game per title, and every time the limit is hit it presses the reset
+        button and continues — so a whole selection loads, not just the first
+        few. The browser opens for the resets (and, when the browser-download
+        option is on, for codes that exist only on the website).
+
+        Used by every download flow (Download, Download via API, Scrape &
+        Download Everything, Build Full Dataset, 0-cheat fix) so a marked-but-not-
+        downloaded set always loads completely. Returns the number of files saved.
+        """
+        out = Path(out)
+        pairs = missing_build_pairs(db, out)
+        if title_ids:
+            wanted = {(t or "").upper() for t in title_ids}
+            pairs = [p for p in pairs if (p[0] or "").upper() in wanted]
+        if not pairs:
+            print("Nothing left to download via the API.")
+            return 0
+        return self._run_quota_reset_loop(api, db, out, pairs, cfg)
+
     def _run_quota_reset_loop(self, api, db, out, pairs, cfg) -> int:
         """Open a persistent logged-in browser and download `pairs`, resetting the
         API quota in the browser whenever it is hit. Returns files saved.
@@ -6782,10 +6784,15 @@ class ScraperGUI:
                   "    pip install playwright\n    playwright install")
             return 0
 
-        print(f"\n=== Browser download: {len(pairs)} build(s) still missing ===")
-        print("A browser window will open. Log in once (solve the reCAPTCHA if "
-              "asked); the download then continues automatically. With saved "
-              "cookies the login should be automatic on later runs.")
+        print(f"\n=== Download: {len(pairs)} build(s) still missing ===")
+        print("Fastest path first: cheats are pulled through the API (one request "
+              "per game covers all its builds); when the API limit is hit the quota "
+              "is reset in the browser and the API continues — no per-build browser "
+              "downloads. Only codes that exist ONLY on the website are fetched via "
+              "the browser afterwards.")
+        print("A browser window will open (needed for the quota reset + the final "
+              "website-only pass). Log in once (solve the reCAPTCHA if asked); with "
+              "saved cookies the login is automatic on later runs.")
         session = _pw_scrape.BrowserSession(
             email=cfg.get("email"),
             password=cfg.get("password"),
@@ -6803,21 +6810,39 @@ class ScraperGUI:
             def reset_cb():
                 if self._stop_event.is_set():
                     return False
-                return session.reset_quota()
+                if not session.reset_quota():
+                    return False
+                # After a quota reset the API token must be re-requested, otherwise
+                # the API keeps returning the 'quota exceeded' message and the retry
+                # saves nothing. Refresh it so the refilled quota is actually seen.
+                try:
+                    if cfg.get("email") and cfg.get("password"):
+                        api.get_token(cfg["email"], cfg["password"])
+                    elif getattr(api, "email", None) and getattr(api, "password", None):
+                        api.get_token(api.email, api.password)
+                except Exception as exc:
+                    print(f"  (Could not refresh the API token after reset: {exc})")
+                return True
 
             def browser_dl(slug, tid, bid, sid):
                 if self._stop_event.is_set():
                     return None
                 return session.download_build(slug, tid, bid, out, sid)
 
+            # The quota reset ALWAYS uses the browser. The per-build browser
+            # download (Phase B — for codes that exist only on the website) is
+            # optional and controlled by the "download via browser when the API
+            # is limited" flag; with it off we still reset + pull via the API.
+            browser_cb = browser_dl if cfg.get("browser_fallback", False) else None
+
             def prog(done, total):
                 self._log_queue.put(("progress", done, total,
-                                     f"Browser download {done}/{total}"))
+                                     f"Downloading {done}/{total}"))
 
             return download_with_quota_reset(
                 api, db, out, pairs,
                 reset_cb=reset_cb,
-                browser_download_cb=browser_dl,
+                browser_download_cb=browser_cb,
                 progress_cb=prog,
                 should_stop=self._stop_event.is_set,
                 log=print,
@@ -6836,14 +6861,18 @@ class ScraperGUI:
         self._set_busy(True)
         self.status_var.set("Connecting to the API...")
         # Read Tk variables here (main thread); never touch them from the worker.
+        # "Download this / Selected" is a TARGETED action: get these builds by any
+        # means — API first (with quota resets), then the browser for whatever the
+        # API doesn't list (many builds scraped from the website are not on the
+        # API). So the browser fallback is always ON here (the checkbox only gates
+        # the bulk flows, where thousands of slow browser downloads are unwanted).
         cfg = {
             "email": self.email_var.get().strip() or None,
             "password": self.password_var.get() or None,
             "token": self.api_token_var.get().strip() or None,
             "output": self.dl_output.get(),
             "db_path": self.db_path.get(),
-            "auto_reset": self.auto_reset_quota.get(),
-            "browser_fallback": True,   # on API quota, finish via the browser
+            "browser_fallback": True,
             "browser": self._browser_kind(),
         }
         threading.Thread(
@@ -6851,8 +6880,11 @@ class ScraperGUI:
         ).start()
 
     def _start_api_download(self, title_ids):
-        """Download via the official API only — forces the browser fallback off,
-        regardless of the 'Download via browser when API is limited' checkbox."""
+        """Download via the official API — no per-build BROWSER download, but the
+        API quota reset IS used, so a whole selection loads even past the API's
+        tiny per-window limit: it fetches via the API, and every time the limit
+        is hit it presses the reset and continues. The browser opens only for
+        those resets, never to download cheats."""
         self._stop_event.clear()
         self._save_settings()
         self._set_busy(True)
@@ -6863,9 +6895,8 @@ class ScraperGUI:
             "token": self.api_token_var.get().strip() or None,
             "output": self.dl_output.get(),
             "db_path": self.db_path.get(),
-            "auto_reset": False,        # pure API — never open the browser
-            "browser_fallback": False,  # …not even when the quota is hit
-            "browser": "builtin",
+            "browser_fallback": False,  # API only — never DOWNLOAD via the browser
+            "browser": self._browser_kind(),
         }
         threading.Thread(
             target=self._download_worker, args=(title_ids, cfg), daemon=True
@@ -6889,55 +6920,21 @@ class ScraperGUI:
             db = GameDatabase(Path(cfg["db_path"]))
             try:
                 out = Path(cfg["output"])
-                if cfg.get("auto_reset"):
-                    # Continuous reset+download cycle: try every missing build, reset
-                    # the API quota in the browser whenever it is hit, and keep going.
-                    pairs = missing_build_pairs(db, out)
-                    if title_ids:
-                        wanted = {t.upper() for t in title_ids}
-                        pairs = [p for p in pairs if p[0].upper() in wanted]
-                    if pairs:
-                        saved = self._run_quota_reset_loop(api, db, out, pairs, cfg)
-                        print(f"Download finished - {saved} new file(s).")
-                    else:
-                        print("Nothing left to download — database is complete.")
-                else:
-                    tracker = ProgressTracker("download")
-                    def progress(done, total):
-                        tracker.update(done, total)
-                        msg = f"Downloaded {done}/{total} ({tracker.pct()}%) | {tracker.rate_str('items')} | ~{tracker.eta_str()} remaining"
-                        self._log_queue.put(("progress", done, total, msg))
+                tracker = ProgressTracker("download")
+                def progress(done, total):
+                    tracker.update(done, total)
+                    msg = f"Downloaded {done}/{total} ({tracker.pct()}%) | {tracker.rate_str('items')} | ~{tracker.eta_str()} remaining"
+                    self._log_queue.put(("progress", done, total, msg))
 
-                    stats: dict = {}
-                    saved = api_download_from_db(
-                        api, db, out,
-                        title_ids=title_ids,
-                        resume=True,
-                        progress_cb=progress,
-                        should_stop=self._stop_event.is_set,
-                        stats=stats,
-                    )
-                    print(f"Download finished - {saved} new file(s).")
-                    # Delete any files that only contain a quota/placeholder message and
-                    # reset their database entries so they are re-tried after the quota resets.
-                    cleaned = cleanup_invalid_cheat_entries(
-                        db, out, should_stop=self._stop_event.is_set)
+                saved = self._api_download(api, db, out, cfg, title_ids=title_ids,
+                                           progress_cb=progress)
+                print(f"Download finished - {saved} new file(s).")
+                # Delete any files that only contain a quota/placeholder message and
+                # reset their database entries so they are re-tried after a reset.
+                cleaned = cleanup_invalid_cheat_entries(
+                    db, out, should_stop=self._stop_event.is_set)
+                if cleaned:
                     print(f"Cleaned up {cleaned} invalid cheat entries.")
-                    # When the API hit its daily limit, keep going with the browser
-                    # (HTML) download for whatever is still missing — unless this is
-                    # the dedicated "Download (API only)" button (browser_fallback off).
-                    if (cfg.get("browser_fallback") and stats.get("quota")
-                            and not self._stop_event.is_set()):
-                        pairs = missing_build_pairs(db, out)
-                        if title_ids:
-                            wanted = {t.upper() for t in title_ids}
-                            pairs = [p for p in pairs if p[0].upper() in wanted]
-                        if pairs:
-                            print(f"\nAPI limit reached — continuing with the browser "
-                                  f"download for {len(pairs)} remaining build(s)...")
-                            saved += self._run_quota_reset_loop(api, db, out, pairs, cfg)
-                            print(f"Download finished - {saved} new file(s) total "
-                                  f"(API + browser).")
                 # Make every build's cheat count match its actual .txt on disk.
                 if not self._stop_event.is_set():
                     recount_cheats_from_disk(db, out, only_missing=False,

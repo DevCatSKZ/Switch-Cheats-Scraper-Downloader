@@ -4,11 +4,40 @@ All notable changes to this project are documented here.
 
 ## v1.3 — 2026-07-08
 
-### Changed
+### Changed — download engine reworked around the API + quota reset
+- **All API downloads now get past cheatslips' tiny per-window content limit
+  automatically.** The content API only serves ~3 cheats per window and only a
+  browser quota reset refills it, so every download now: pulls cheats via the
+  API **per game** (one request covers all of a game's builds), and the moment
+  the limit is hit it **presses "reset my quota" in the browser, refreshes the
+  API token and continues** — repeating until the whole selection is done. No
+  more "only the first few loaded".
+- **`get_game` (per-title) instead of `get_build` (per-build).** cheatslips'
+  per-build endpoint returns empty; the per-title endpoint returns real codes
+  for every build of a game in a single request — far fewer requests, so the
+  limit is tripped much less often.
+- **Requests are sequential with a small pause** (was up to 4 in parallel),
+  which alone trips the throttle far less.
+- **"Download this" / "Download Selected"** now fetch a build by any means:
+  API + resets first, then the **browser** for builds the API doesn't list
+  (many builds scraped from the website are not on the API).
+- **"Download via browser when API is limited"** is now its own option, **off
+  by default**, and controls only the browser fallback (it no longer gates the
+  quota reset, which always runs). Bulk builds no longer do thousands of slow
+  browser downloads unless you ask for it.
 - The **"full catalog (all games, slower)"** scrape option now defaults to
-  **OFF**, so a fresh install uses the fast `/entry` "latest cheats" feed
-  (both discovery modes find the same cheat-having builds; the full catalog
-  is just much slower). Your saved preference is respected on upgrade.
+  **OFF** (fast `/entry` feed; both find the same cheat-having builds).
+
+### Fixed
+- **"Download via Browser" no longer triggers a stuck browser "update".** A
+  method-name collision made that button secretly run the Firefox-component
+  installer with your selection as its target — an un-cancellable dialog. It
+  now uses the same bundled Chromium as everything else.
+- **The browser download no longer churns / looks endless.** When the browser
+  session is closed mid-run it stops immediately instead of failing on every
+  remaining build; and the API pass no longer walks the whole list once the
+  quota is exhausted.
+- Remaining maintenance/download dialogs translated in all 6 languages.
 
 ### Added
 - **"Prisma (Holo-Glass)" signature theme** — deep petrol-black with a

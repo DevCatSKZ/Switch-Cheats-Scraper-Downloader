@@ -29,6 +29,29 @@ from scraper import save_cheat_merged, BUILD_UNAVAILABLE
 
 BASE_URL = "https://www.cheatslips.com"
 
+# Raised when the browser page/context has been closed mid-run (window closed,
+# crash, …). The download loop must abort immediately instead of churning
+# through every remaining build, each failing the same way. The message is
+# matched by scraper.download_with_quota_reset (which does not import this
+# module) via looks_like_closed_browser().
+BROWSER_CLOSED_MARKER = "browser session was closed"
+
+
+class BrowserClosed(RuntimeError):
+    """The Playwright page/context/browser was closed while downloading."""
+    def __init__(self, detail: str = ""):
+        super().__init__(f"{BROWSER_CLOSED_MARKER}: {detail}".rstrip(": "))
+
+
+def is_session_closed_error(exc: Exception) -> bool:
+    """True if an exception means the page/context/browser is gone for good."""
+    s = str(exc).lower()
+    return ("has been closed" in s
+            or "target page, context or browser" in s
+            or "target closed" in s
+            or BROWSER_CLOSED_MARKER in s)
+
+
 # Playwright browsers already ensured this session (avoid repeat installs).
 _BROWSERS_READY = set()
 
@@ -86,6 +109,101 @@ _DATA_DIR = Path(os.environ.get("SCS_DATA_DIR") or _HERE)
 # reset need no further login. This is independent of the user's Firefox/Chrome.
 PROFILE_DIR = _DATA_DIR / "browser_profile"
 STORAGE_FILE = PROFILE_DIR / "storage_state.json"
+
+# On-demand browsers (Firefox — and Chrome if ever downloaded) live in a WRITABLE
+# per-user folder, so the app can ship small (only Chromium is bundled) and still
+# work from a read-only Program Files install. Chromium uses the bundled copy
+# (PLAYWRIGHT_BROWSERS_PATH=0); on-demand browsers are launched with an explicit
+# executable_path taken from this folder.
+USER_BROWSERS_DIR = _DATA_DIR / "ms-playwright"
+
+
+def firefox_executable() -> Optional[Path]:
+    """Path to a Playwright-Firefox binary downloaded into USER_BROWSERS_DIR, else None."""
+    try:
+        for d in sorted(USER_BROWSERS_DIR.glob("firefox-*"), reverse=True):
+            exe = d / "firefox" / "firefox.exe"
+            if exe.exists():
+                return exe
+    except Exception:
+        pass
+    return None
+
+
+def firefox_ready() -> bool:
+    return firefox_executable() is not None
+
+
+def _driver_install_cmd(target: str):
+    """(cmd, env) to run Playwright's 'install <target>', frozen or from source."""
+    if getattr(sys, "frozen", False):
+        from playwright._impl._driver import compute_driver_executable, get_driver_env
+        drv = compute_driver_executable()
+        cmd = list(drv) if isinstance(drv, (list, tuple)) else [drv]
+        return cmd + ["install", target], dict(get_driver_env())
+    return [sys.executable, "-m", "playwright", "install", target], dict(os.environ)
+
+
+def _run_pw_install(cmd, env, progress_cb, log, should_stop) -> bool:
+    """Run a 'playwright install ...' command, streaming its live progress (the CLI
+    prints a \\r-updating bar) to progress_cb(percent, line). Returns True on success."""
+    try:
+        proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True, bufsize=1)
+    except Exception as exc:
+        log(f"Could not start the browser download: {exc}")
+        return False
+    splitter = re.compile(r"[\r\n]")
+    last_pct, buf = -1, ""
+
+    def emit(part: str):
+        nonlocal last_pct
+        part = part.strip()
+        if not part:
+            return
+        m = re.search(r"(\d+)%", part)
+        pct = int(m.group(1)) if m else (last_pct if last_pct >= 0 else 0)
+        if m:
+            last_pct = pct
+        if progress_cb:
+            progress_cb(pct, part)
+
+    try:
+        while True:
+            if should_stop and should_stop():
+                proc.terminate()
+                log("Browser download cancelled.")
+                return False
+            chunk = proc.stdout.read(128)
+            if not chunk:
+                break
+            buf += chunk
+            parts = splitter.split(buf)
+            buf = parts.pop()
+            for p in parts:
+                emit(p)
+        if buf:
+            emit(buf)
+    except Exception:
+        pass
+    proc.wait()
+    ok = proc.returncode == 0
+    log("Browser download finished." if ok else f"Browser download failed (exit {proc.returncode}).")
+    return ok
+
+
+def install_browser_userdir(target: str,
+                            progress_cb: Optional[Callable[[int, str], None]] = None,
+                            log: Callable[[str], None] = print,
+                            should_stop: Optional[Callable[[], bool]] = None) -> bool:
+    """Download a self-contained Playwright browser component ('firefox') into
+    USER_BROWSERS_DIR (a writable per-user folder — no admin, not a system-wide
+    browser). Reports live progress via progress_cb(percent, line)."""
+    USER_BROWSERS_DIR.mkdir(parents=True, exist_ok=True)
+    cmd, env = _driver_install_cmd(target)
+    env["PLAYWRIGHT_BROWSERS_PATH"] = str(USER_BROWSERS_DIR)   # override the bundled '0'
+    log(f"Downloading {target} into {USER_BROWSERS_DIR} ...")
+    return _run_pw_install(cmd, env, progress_cb, log, should_stop)
 
 _UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
        "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
@@ -600,6 +718,8 @@ def _download_build(page, source_id: str, build_id: Optional[str], slug: str,
     try:
         page.goto(url, wait_until="domcontentloaded", timeout=30000)
     except Exception as exc:
+        if is_session_closed_error(exc):
+            raise BrowserClosed(str(exc))
         log(f"    Could not load page: {exc}")
         return None
 
@@ -1100,13 +1220,22 @@ class BrowserSession:
             return self._pw.chromium.launch_persistent_context(args=chromium_args, **common)
 
         def _firefox():
-            return self._pw.firefox.launch_persistent_context(**common)
+            # Firefox is downloaded on demand into USER_BROWSERS_DIR (it is not
+            # bundled). Launch it explicitly from there via executable_path.
+            fx = firefox_executable()
+            kwargs = dict(common)
+            if fx:
+                kwargs["executable_path"] = str(fx)
+            return self._pw.firefox.launch_persistent_context(**kwargs)
 
         if b == "firefox":
+            if not firefox_ready():
+                self.log("Firefox is not downloaded yet; using the bundled Chromium. "
+                         "Pick Firefox in the Browser dropdown to download it.")
+                return self._launch_auto(_chromium, "chromium")
             self.log("Launching persistent profile (Firefox)")
             try:
-                # Firefox uses Playwright's own build — auto-installed if missing.
-                return self._launch_auto(_firefox, "firefox")
+                return _firefox()
             except Exception as exc:
                 self.log(f"Firefox unavailable ({exc}); using bundled Chromium instead.")
                 return self._launch_auto(_chromium, "chromium")
@@ -1197,6 +1326,8 @@ class BrowserSession:
         Returns the saved path, ``None`` (transient — retry later) or
         ``BUILD_UNAVAILABLE`` (no codes on ANY source).
         """
+        if self._page is None or self._page.is_closed():
+            raise BrowserClosed("page is already closed")
         if not self.ensure_login():
             return None
         out = Path(out_dir)
@@ -1242,6 +1373,8 @@ class BrowserSession:
                             and str(pid) not in ids):
                         ids.append(str(pid))
             except Exception as exc:
+                if is_session_closed_error(exc):
+                    raise BrowserClosed(str(exc))
                 self.log(f"  Could not read build page for {build_id}: {exc}")
         if ids:
             return ids

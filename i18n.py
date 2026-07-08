@@ -4153,6 +4153,63 @@ _merge({
         "de": "Fehlgeschlagen: {err}", "es": "Falló: {err}",
         "fr": "Échec : {err}", "it": "Non riuscito: {err}",
         "ja": "失敗しました: {err}"},
+    "Download cheat files for all {n} game(s) via the official API "
+    "(no browser downloads)?\n\nAlready-downloaded builds are skipped. "
+    "When the API limit is hit, the quota is reset automatically and "
+    "the download continues — the browser opens only for those resets.": {
+        "de": "Cheat-Dateien für alle {n} Spiel(e) über die offizielle API laden "
+              "(keine Browser-Downloads)?\n\nBereits geladene Builds werden "
+              "übersprungen. Wenn das API-Limit erreicht ist, wird das Kontingent "
+              "automatisch zurückgesetzt und der Download fortgesetzt — der Browser "
+              "öffnet sich nur für diese Resets.",
+        "es": "¿Descargar archivos de cheats de los {n} juego(s) mediante la API "
+              "oficial (sin descargas por navegador)?\n\nLas builds ya descargadas se "
+              "omiten. Cuando se alcanza el límite de la API, la cuota se restablece "
+              "automáticamente y la descarga continúa; el navegador solo se abre para "
+              "esos restablecimientos.",
+        "fr": "Télécharger les fichiers de cheats des {n} jeu(x) via l'API officielle "
+              "(sans téléchargements par le navigateur) ?\n\nLes builds déjà "
+              "téléchargées sont ignorées. Lorsque la limite de l'API est atteinte, le "
+              "quota est réinitialisé automatiquement et le téléchargement continue — "
+              "le navigateur ne s'ouvre que pour ces réinitialisations.",
+        "it": "Scaricare i file di cheat per tutti i {n} giochi tramite l'API "
+              "ufficiale (senza download dal browser)?\n\nLe build già scaricate "
+              "vengono saltate. Quando si raggiunge il limite dell'API, la quota viene "
+              "reimpostata automaticamente e il download continua: il browser si apre "
+              "solo per questi reset.",
+        "ja": "{n} 件すべてのゲームのチートファイルを公式 API 経由で"
+              "ダウンロードしますか（ブラウザによるダウンロードなし）？\n\n"
+              "ダウンロード済みのビルドはスキップされます。API の上限に達すると、"
+              "クォータが自動的にリセットされてダウンロードが続行されます。"
+              "ブラウザはそのリセットのときだけ開きます。"},
+    "Download cheat files via the official API. Uses the selected rows, "
+    "or ALL games if nothing is selected. When the API limit is hit the "
+    "quota is reset automatically and the download continues — the "
+    "browser opens only for those resets, never to download cheats.": {
+        "de": "Cheat-Dateien über die offizielle API laden. Nutzt die ausgewählten "
+              "Zeilen oder ALLE Spiele, wenn nichts ausgewählt ist. Bei erreichtem "
+              "API-Limit wird das Kontingent automatisch zurückgesetzt und der "
+              "Download fortgesetzt — der Browser öffnet sich nur für diese Resets, "
+              "nie um Cheats zu laden.",
+        "es": "Descarga archivos de cheats mediante la API oficial. Usa las filas "
+              "seleccionadas, o TODOS los juegos si no hay selección. Cuando se "
+              "alcanza el límite de la API, la cuota se restablece automáticamente y "
+              "la descarga continúa; el navegador solo se abre para esos "
+              "restablecimientos, nunca para descargar cheats.",
+        "fr": "Télécharge les fichiers de cheats via l'API officielle. Utilise les "
+              "lignes sélectionnées, ou TOUS les jeux si rien n'est sélectionné. "
+              "Quand la limite de l'API est atteinte, le quota est réinitialisé "
+              "automatiquement et le téléchargement continue — le navigateur ne "
+              "s'ouvre que pour ces réinitialisations, jamais pour télécharger.",
+        "it": "Scarica i file di cheat tramite l'API ufficiale. Usa le righe "
+              "selezionate, o TUTTI i giochi se non c'è selezione. Quando si "
+              "raggiunge il limite dell'API, la quota viene reimpostata "
+              "automaticamente e il download continua: il browser si apre solo per "
+              "quei reset, mai per scaricare cheat.",
+        "ja": "公式 API でチートファイルをダウンロードします。選択行、または未選択なら"
+              "すべてのゲームを対象にします。API の上限に達するとクォータが自動的に"
+              "リセットされてダウンロードが続行されます — ブラウザはそのリセットの"
+              "ときだけ開き、チートのダウンロードには使いません。"},
     "Could not start the updater:\n{err}": {
         "de": "Updater konnte nicht gestartet werden:\n{err}",
         "es": "No se pudo iniciar el actualizador:\n{err}",

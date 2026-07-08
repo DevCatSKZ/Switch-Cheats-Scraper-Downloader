@@ -275,6 +275,21 @@ BUILD_UNAVAILABLE = "__BUILD_UNAVAILABLE__"
 UNAVAILABLE_SOURCE_PREFIX = "unavailable"
 
 
+def looks_like_closed_browser(exc: Exception) -> bool:
+    """True when an exception from the browser-download callback means the
+    Playwright page/context/browser was closed (window closed, crash, …).
+
+    The browser code (playwright_scrape) lives in a module that imports THIS
+    one, so we cannot import its exception type here without a cycle — we match
+    the message instead. Keep the markers in sync with
+    playwright_scrape.is_session_closed_error()."""
+    s = str(exc).lower()
+    return ("has been closed" in s
+            or "target page, context or browser" in s
+            or "target closed" in s
+            or "browser session was closed" in s)
+
+
 def check_cheatslips_online(timeout: int = 10) -> bool:
     """Return True when cheatslips.com is reachable and serving pages.
 
@@ -1990,19 +2005,23 @@ def refresh_titles_from_api(api: "CheatslipsAPI", db: "GameDatabase",
 def api_download_from_db(api: "CheatslipsAPI", db: "GameDatabase", output_dir,
                          title_ids: Optional[List[str]] = None,
                          resume: bool = True, flat_output: bool = False,
-                         progress_cb=None, should_stop=None, max_workers: int = 4,
-                         stats: Optional[dict] = None) -> int:
+                         progress_cb=None, should_stop=None, max_workers: int = 1,
+                         stats: Optional[dict] = None, pause: float = 0.15) -> int:
     """Download cheat files for the given title ids (or all in the DB) via the API.
 
     No browser/reCAPTCHA. Writes titles/{titleId}/cheats/{buildId}.txt. Returns
-    the number of newly written files. Downloads up to max_workers games in parallel.
+    the number of newly written files.
+
+    Requests run ONE at a time with a small ``pause`` between them: cheatslips'
+    cheat-content API throttles aggressively when hit with several requests at
+    once, so a single paced request stream trips the limit far less often than a
+    parallel pool did (``max_workers`` is kept only for backward compatibility
+    and no longer parallelises).
 
     If ``stats`` (a dict) is passed it is filled with the run counters plus a
     ``quota_hit`` flag, so callers can tell whether cheatslips rate-limited the
     download and decide to fall back to the browser.
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
     out = Path(output_dir)
     if title_ids is None:
         title_ids = db.all_title_ids()
@@ -2011,12 +2030,14 @@ def api_download_from_db(api: "CheatslipsAPI", db: "GameDatabase", output_dir,
 
     # Thread-safe counters and locks
     lock = threading.Lock()
-    counters = {"saved": 0, "skipped": 0, "notfound": 0, "done": 0, "quota": 0}
+    counters = {"saved": 0, "skipped": 0, "notfound": 0, "done": 0, "quota": 0,
+                "consec_quota": 0}
     saved_pairs = []  # (title_id, build_id) of files actually downloaded this run
     quota_pairs = []  # (title_id, build_id) that returned a quota message
     quota_hit = threading.Event()  # set once cheatslips reports the download quota
 
-    print(f"API download: {total} game(s) to check ({max_workers} parallel workers).")
+    print(f"API download: {total} game(s) to check "
+          f"(sequential, {pause:g}s pause between requests).")
 
     def download_game(tid):
         """Download a single game's cheats. Returns (saved_count, skip, notfound)."""
@@ -2076,17 +2097,21 @@ def api_download_from_db(api: "CheatslipsAPI", db: "GameDatabase", output_dir,
                     if is_quota_message(content):
                         with lock:
                             counters["quota"] += 1
-                            qn, saved_so_far = counters["quota"], counters["saved"]
+                            counters["consec_quota"] += 1
+                            cq = counters["consec_quota"]
                             quota_pairs.append((tid, bid))
                         print(f"  QUOTA {tid}/{bid}: short quota message from the API "
                               f"(len={len(content.strip())}: {snippet!r})")
-                        # Only conclude a real account-wide daily limit once MANY
-                        # builds in a row return quota AND nothing has downloaded.
-                        if qn >= 20 and saved_so_far == 0 and not quota_hit.is_set():
+                        # The API's per-window limit is exhausted. Once several
+                        # builds IN A ROW return the quota message, stop hammering it
+                        # (nothing more will download without a reset) — do NOT churn
+                        # through the whole remaining list. Only a quota reset refills
+                        # it, which the reset loop does automatically.
+                        if cq >= 8 and not quota_hit.is_set():
                             quota_hit.set()
-                            print("  ⚠ 20+ builds returned 'quota exceeded' and none "
-                                  "downloaded — treating this as an account-wide daily "
-                                  "limit and stopping. Retry after it resets.")
+                            print("  ⚠ API limit reached (several 'quota exceeded' in a "
+                                  "row) — stopping. Turn on 'Auto reset API limit' to "
+                                  "reset the quota and continue automatically.")
                         continue  # skip only this build; keep trying the rest
                     print(f"  SKIP {tid}/{bid}: empty/invalid content "
                           f"(len={len(content.strip())}: {snippet!r})")
@@ -2113,6 +2138,7 @@ def api_download_from_db(api: "CheatslipsAPI", db: "GameDatabase", output_dir,
                     downloaded.add(bid)
                     local_saved += 1
                     counters["saved"] += 1
+                    counters["consec_quota"] = 0    # progress -> reset the streak
                     saved_pairs.append((tid, bid))
 
             with lock:
@@ -2125,18 +2151,19 @@ def api_download_from_db(api: "CheatslipsAPI", db: "GameDatabase", output_dir,
 
         return local_saved, local_skipped, local_notfound
 
-    # Download with thread pool
-    with ThreadPoolExecutor(max_workers=max(1, max_workers)) as executor:
-        futures = {executor.submit(download_game, tid): tid for tid in title_ids}
-        for future in as_completed(futures):
-            if progress_cb:
-                with lock:
-                    progress_cb(counters["done"], total)
-
-            if (should_stop and should_stop()) or quota_hit.is_set():
-                for f in futures:
-                    f.cancel()
-                break
+    # Download ONE game at a time with a small pause between requests. Spreading
+    # the requests out (instead of firing 4 at once) trips the API's throttle far
+    # less often, so we need far fewer quota resets.
+    n = len(title_ids)
+    for idx, tid in enumerate(title_ids):
+        if (should_stop and should_stop()) or quota_hit.is_set():
+            break
+        download_game(tid)
+        if progress_cb:
+            with lock:
+                progress_cb(counters["done"], total)
+        if pause and idx + 1 < n:
+            time.sleep(pause)
 
     # Mark every downloaded build as coming from cheatslips (main thread).
     for tid, bid in saved_pairs:
@@ -2166,54 +2193,19 @@ def api_download_from_db(api: "CheatslipsAPI", db: "GameDatabase", output_dir,
 def download_build_list(api: "CheatslipsAPI", db: "GameDatabase", output_dir,
                         pairs: List[tuple], flat_output: bool = False,
                         progress_cb=None, should_stop=None) -> int:
-    """Download specific (title_id, build_id) pairs via the per-build API endpoint.
+    """Download specific (title_id, build_id) pairs via the API only (no reset,
+    no browser). Used for a quick API-only retry of previously-skipped builds.
 
-    Used to retry builds that were previously skipped because of the daily quota.
+    cheatslips' per-BUILD endpoint returns empty, so this delegates to the
+    per-TITLE engine (``download_with_quota_reset`` with no reset/browser
+    callbacks): one ``get_game`` per title fetches all of its builds at once.
     Returns the number of newly saved files.
     """
-    out = Path(output_dir)
-    out.mkdir(parents=True, exist_ok=True)
-    downloaded = scan_downloaded_build_ids(out)
-    total = len(pairs)
-    saved = 0
-    for i, (tid, bid) in enumerate(pairs, 1):
-        if should_stop and should_stop():
-            break
-        tid = tid.upper()
-        bid = bid.upper()
-        if progress_cb:
-            progress_cb(i, total)
-        if bid in downloaded:
-            continue
-        try:
-            data = api.get_build(tid, bid)
-            if isinstance(data, dict) and "message" in data:
-                msg = str(data.get("message", "")).lower()
-                if "invalid token" in msg:
-                    raise RuntimeError("API token invalid/expired.")
-                if "quota exceeded" in msg or "limit" in msg:
-                    print(f"  QUOTA {tid}/{bid}: still quota-limited")
-                    continue
-                print(f"  SKIP {tid}/{bid}: {data.get('message')}")
-                continue
-            content = data.get("content") or ""
-            if not is_valid_cheat_content(content):
-                snippet = content.strip().replace("\n", " ")[:70]
-                print(f"  SKIP {tid}/{bid}: invalid/quota content ({snippet!r})")
-                continue
-            save_dir = out / "by_bid" if flat_output else out / "titles" / tid / "cheats"
-            save_path = save_dir / f"{bid}.txt"
-            save_cheat_merged(save_path, content)
-            downloaded.add(bid)
-            saved += 1
-            try:
-                db.set_build_source(tid, bid, "cheatslips")
-            except Exception:
-                pass
-            print(f"  SAVED {tid}/{bid}")
-        except Exception as exc:
-            print(f"  ERROR {tid}/{bid}: {exc}")
-    return saved
+    return download_with_quota_reset(
+        api, db, output_dir, pairs,
+        reset_cb=None, browser_download_cb=None,
+        flat_output=flat_output, progress_cb=progress_cb,
+        should_stop=should_stop)
 
 
 def missing_build_pairs(db: "GameDatabase", output_dir) -> List[Tuple[str, str, str, str]]:
@@ -2284,6 +2276,86 @@ def _fetch_and_save_build(api: "CheatslipsAPI", db: "GameDatabase", out: Path,
     return "saved"
 
 
+def _api_download_title(api: "CheatslipsAPI", db: "GameDatabase", out: Path,
+                        tid: str, needed_bids: set, downloaded: set,
+                        flat_output: bool, reset_cb, reset_state: list,
+                        max_resets: int, should_stop, log, pause: float = 0.35) -> int:
+    """Download ALL cheats for one title via the per-title API endpoint.
+
+    cheatslips' per-BUILD endpoint (``get_build``) returns empty, but the
+    per-TITLE endpoint (``get_game``) returns real codes for every build of the
+    title in a SINGLE request — so one call covers all of a title's builds,
+    keeping the request count (and thus the rate-limit/throttle) low.
+
+    "Limit reached" is detected as: the API answered with cheat entries but none
+    carry real codes (only a short placeholder). On that, we press the quota
+    reset and retry the SAME title, repeating until it succeeds or the reset
+    budget is exhausted — bypassing the limit WITHOUT the browser. Returns the
+    number of builds saved; whatever stays missing is left for the browser pass.
+    """
+    MAX_TITLE_RESETS = 8            # resets spent on one stubborn title
+    title_resets = 0
+    while True:
+        try:
+            data = api.get_game(tid)
+        except Exception as exc:
+            log(f"  API error for {tid}: {exc}")
+            return 0
+        msg = str((data or {}).get("message", "")).lower()
+        if "invalid token" in msg:
+            raise RuntimeError("API token invalid/expired.")
+        cheats = (data or {}).get("cheats") or []
+
+        # Group every upload's content by build id (a build can have several).
+        by_bid: Dict[str, list] = {}
+        any_valid = False
+        for c in cheats:
+            b = (c.get("buildid") or c.get("build_id") or "").upper()
+            if not b:
+                continue
+            cont = c.get("content") or ""
+            by_bid.setdefault(b, []).append(cont)
+            if is_valid_cheat_content(cont):
+                any_valid = True
+
+        # Throttle / "limit reached" — the reset trigger: cheat entries present
+        # but none contain real codes.
+        if cheats and not any_valid:
+            if (reset_cb and reset_state[0] < max_resets
+                    and title_resets < MAX_TITLE_RESETS
+                    and not (should_stop and should_stop())):
+                reset_state[0] += 1
+                title_resets += 1
+                log(f"  LIMIT on {tid}: API throttled — pressing reset "
+                    f"(#{reset_state[0]}) and retrying via API...")
+                if not reset_cb():
+                    log("  Quota reset failed — leaving the rest for the browser.")
+                    return 0
+                if pause:
+                    time.sleep(pause)
+                continue
+            log(f"  LIMIT on {tid}: still throttled — will try the browser later.")
+            return 0
+
+        # Not throttled: save every needed build we actually got codes for.
+        saved = 0
+        for bid in list(needed_bids):
+            contents = [c for c in by_bid.get(bid, []) if is_valid_cheat_content(c)]
+            if not contents:
+                continue           # no API codes for this build -> browser pass
+            merged = "\n\n".join(contents)
+            save_dir = out / "by_bid" if flat_output else out / "titles" / tid / "cheats"
+            save_cheat_merged(save_dir / f"{bid}.txt", merged)
+            downloaded.add(bid)
+            try:
+                db.set_build_source(tid, bid, "cheatslips")
+            except Exception:
+                pass
+            saved += 1
+            log(f"  SAVED (api) {tid}/{bid}")
+        return saved
+
+
 def download_with_quota_reset(api: "CheatslipsAPI", db: "GameDatabase", output_dir,
                               pairs: List[Tuple],
                               reset_cb: Optional[Callable[[], bool]] = None,
@@ -2291,79 +2363,94 @@ def download_with_quota_reset(api: "CheatslipsAPI", db: "GameDatabase", output_d
                               flat_output: bool = False,
                               progress_cb=None, should_stop=None,
                               log=print, max_resets: int = 1000) -> int:
-    """Download the given builds, automatically resetting the API quota in between.
+    """Download ``pairs`` fastest-path-first, in two phases:
 
-    For each (title_id, build_id[, slug, source_id]) pair this:
-      1. requests the build from the API;
-      2. if the API reports the quota/rate limit, calls ``reset_cb`` (a browser
-         quota reset) and retries the SAME build;
-      3. if it still fails and ``browser_download_cb`` is given, downloads the
-         build directly through the logged-in browser (ZIP/HTML), extracted and
-         sorted into the same titles/{tid}/cheats/{bid}.txt layout.
+      PHASE A — API by title: one ``get_game`` per title fetches EVERY build of
+        that title at once (few requests -> little throttling). When the API
+        throttles ("limit reached"), press the quota reset and retry via the
+        API, repeating so the limit is bypassed WITHOUT the browser.
+      PHASE B — Browser: only for the builds the API does not serve (codes that
+        exist only as a website download). Runs once, after the API pass.
 
-    Loops until every build is downloaded, ``should_stop`` fires, or the reset
-    budget (``max_resets``) is exhausted. Returns the number of files saved.
+    Returns the number of files saved.
     """
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     downloaded = scan_downloaded_build_ids(out)
-    total = len(pairs)
     saved = 0
-    resets = 0
-    unavailable = []  # (tid, bid) builds confirmed to have no codes on cheatslips
+    reset_state = [0]          # total resets used (mutable so the helper shares it)
+    unavailable = []           # (tid, bid) builds confirmed to have no codes
 
-    log(f"Browser download: {total} build(s) to fetch.")
+    # Group missing builds by title so ONE API request covers all its builds.
+    by_title: Dict[str, dict] = {}
+    for entry in pairs:
+        tid = (entry[0] or "").upper()
+        bid = (entry[1] or "").upper()
+        if not tid or not bid or bid in downloaded:
+            continue
+        slot = by_title.setdefault(tid, {"needed": set(), "entries": {}})
+        slot["needed"].add(bid)
+        slot["entries"][bid] = entry
 
-    for i, entry in enumerate(pairs, 1):
+    total_builds = sum(len(v["needed"]) for v in by_title.values())
+    total_titles = len(by_title)
+
+    # ---------------- PHASE A: API + reset (no browser) ----------------
+    log(f"API download: {total_builds} build(s) across {total_titles} title(s) — "
+        f"per-title endpoint with quota resets.")
+    still_missing = []
+    # Small pause between titles to avoid hammering the API (the throttle is
+    # count-based, ~3 requests per window, so a bigger pause would not avoid it —
+    # the quota reset does the heavy lifting).
+    API_PAUSE = 0.15
+    for ti, (tid, slot) in enumerate(by_title.items(), 1):
         if should_stop and should_stop():
             log("Stopped by user.")
             break
-        tid = (entry[0] or "").upper()
-        bid = (entry[1] or "").upper()
-        slug = entry[2] if len(entry) > 2 else None
-        sid = entry[3] if len(entry) > 3 else None
         if progress_cb:
-            progress_cb(i, total)
-        if not tid or not bid or bid in downloaded:
-            continue
+            progress_cb(ti, total_titles)
+        saved += _api_download_title(api, db, out, tid, slot["needed"], downloaded,
+                                     flat_output, reset_cb, reset_state, max_resets,
+                                     should_stop, log)
+        for bid in slot["needed"]:
+            if bid not in downloaded:
+                still_missing.append(slot["entries"][bid])
+        if API_PAUSE and ti < total_titles:
+            time.sleep(API_PAUSE)
 
-        status = _fetch_and_save_build(api, db, out, tid, bid, flat_output, downloaded, log)
+    log(f"API pass done: {saved} file(s) saved via API, {reset_state[0]} reset(s) "
+        f"used. {len(still_missing)} build(s) not available via the API.")
 
-        # Reset-and-retry ONCE if the API reports the quota. A browser reset only
-        # refills the WEBSITE quota, not the API's daily quota, so retrying the API
-        # more than once can never succeed — capping at 1 reset per build prevents
-        # an endless reset loop; anything still failing falls through to the
-        # browser download below.
-        build_resets = 0
-        while status == "quota" and build_resets < 1:
+    # ---------------- PHASE B: browser only for API-less builds ----------------
+    if browser_download_cb and still_missing and not (should_stop and should_stop()):
+        n_b = len(still_missing)
+        log(f"\n=== Browser pass: {n_b} build(s) only downloadable on the website ===")
+        for j, entry in enumerate(still_missing, 1):
             if should_stop and should_stop():
+                log("Stopped by user.")
                 break
-            if not reset_cb:
-                log(f"  QUOTA {tid}/{bid}: no quota-reset configured.")
-                break
-            if resets >= max_resets:
-                log(f"  Reached the reset budget ({max_resets}); switching to browser only.")
-                break
-            resets += 1
-            build_resets += 1
-            log(f"  QUOTA {tid}/{bid}: resetting the quota via browser (reset #{resets})...")
-            if not reset_cb():
-                log("  Quota reset failed — aborting browser download.")
-                status = "error"
-                break
-            log("  Quota reset done — retrying the download once.")
-            status = _fetch_and_save_build(api, db, out, tid, bid, flat_output, downloaded, log)
-
-        if status == "saved":
-            saved += 1
-            continue
-
-        # API exhausted/failed/returned empty content for this build: try a direct browser download.
-        if status in ("quota", "error", "skip") and browser_download_cb and not (should_stop and should_stop()):
-            log(f"  Falling back to direct browser download for {tid}/{bid}...")
+            tid = (entry[0] or "").upper()
+            bid = (entry[1] or "").upper()
+            slug = entry[2] if len(entry) > 2 else None
+            sid = entry[3] if len(entry) > 3 else None
+            if progress_cb:
+                progress_cb(j, n_b)
+            if not tid or not bid or bid in downloaded:
+                continue
+            log(f"  Browser download for {tid}/{bid}...")
             try:
                 path = browser_download_cb(slug, tid, bid, sid)
             except Exception as exc:
+                if looks_like_closed_browser(exc):
+                    # The browser window/session is gone. Do NOT keep churning
+                    # through the remaining builds (each would fail the same way,
+                    # flooding the log and looking like an endless loop) — stop
+                    # now. Re-running resumes where this left off.
+                    log("  The browser was closed — stopping the browser download "
+                        "here.")
+                    log("  Re-run the download to resume; already-downloaded builds "
+                        "are skipped.")
+                    break
                 log(f"  Browser download error for {tid}/{bid}: {exc}")
                 path = None
             if path == BUILD_UNAVAILABLE:
@@ -2385,7 +2472,7 @@ def download_with_quota_reset(api: "CheatslipsAPI", db: "GameDatabase", output_d
                     pass
                 log(f"  SAVED (browser) {tid}/{bid}")
 
-    log(f"Browser download finished: {saved} file(s) saved, {resets} quota reset(s) used.")
+    log(f"Download finished: {saved} file(s) saved, {reset_state[0]} quota reset(s) used.")
     if unavailable:
         log(f"{len(unavailable)} build(s) had no codes on cheatslips and were marked "
             f"to skip next time:")
