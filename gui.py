@@ -1085,10 +1085,11 @@ class ScraperGUI:
         self.auto_scan_downloaded = tk.BooleanVar(value=False)
         # Two independent scrape controls (decoupled):
         #  - full catalog: discover over /games (ALL games) instead of the fast
-        #    /entry "latest cheats" feed. Default on = the complete dataset.
+        #    /entry "latest cheats" feed. Default OFF = fast /entry feed; both
+        #    find the same cheat-having builds, full catalog is just much slower.
         #  - skip 0-cheat: drop builds with 0 cheats during scrape. Default OFF so
         #    0-cheat builds stay in the DB and are visible under "Not downloaded".
-        self.scrape_full_catalog = tk.BooleanVar(value=True)
+        self.scrape_full_catalog = tk.BooleanVar(value=False)
         self.scrape_skip_zero = tk.BooleanVar(value=False)
         self.auto_download = tk.BooleanVar(value=True)
         self.rescan_all = tk.BooleanVar(value=False)
@@ -1401,7 +1402,7 @@ class ScraperGUI:
         # discovery + skip 0-cheat, i.e. NOT full catalog and skip zero.
         legacy = data.get("scrape_entry_only")
         self.scrape_full_catalog.set(bool(data.get(
-            "scrape_full_catalog", (not legacy) if legacy is not None else True)))
+            "scrape_full_catalog", (not legacy) if legacy is not None else False)))
         self.scrape_skip_zero.set(bool(data.get(
             "scrape_skip_zero", legacy if legacy is not None else False)))
         self.online_check_startup.set(bool(data.get("online_check_startup", True)))

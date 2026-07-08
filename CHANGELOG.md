@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## v1.3 — 2026-07-08
 
+### Changed
+- The **"full catalog (all games, slower)"** scrape option now defaults to
+  **OFF**, so a fresh install uses the fast `/entry` "latest cheats" feed
+  (both discovery modes find the same cheat-having builds; the full catalog
+  is just much slower). Your saved preference is respected on upgrade.
+
 ### Added
 - **"Prisma (Holo-Glass)" signature theme** — deep petrol-black with a
   teal-mint accent, electric-violet gradient highlights and gold accents.
