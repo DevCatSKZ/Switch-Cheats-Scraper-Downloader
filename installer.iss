@@ -4,7 +4,7 @@
 
 #define AppName "Switch Cheats Scraper & Downloader"
 #define AppExe "SwitchCheatsScraper.exe"
-#define AppVersion "1.1"
+#define AppVersion "1.3"
 #define AppPublisher "Mr.Skittelz aka KatzenCode"
 #define AppURL "https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader"
 
@@ -17,7 +17,7 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}/releases
-VersionInfoVersion=1.1.0.0
+VersionInfoVersion=1.2.0.0
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription={#AppName} Setup
 ; Default into 32-bit Program Files, as requested. {commonpf32} is always
@@ -51,9 +51,19 @@ ArchitecturesInstallIn64BitMode=x64compatible
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
+; Japanese ships with Inno Setup 6 under Languages\ (version-matched to your
+; install, so there is no separate .isl file to keep in sync).
+Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+; Desktop shortcut ON by default — it points at {app}\app.ico (not the exe's
+; embedded icon), so it reliably shows the current app icon. This spares users
+; from creating a manual shortcut (which uses the exe icon and can show a generic
+; icon until Windows refreshes its cache).
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
 ; The whole PyInstaller one-folder output.
@@ -78,16 +88,78 @@ Filename: "{sys}\ie4uinit.exe"; Parameters: "-show"; Flags: runhidden runasorigi
 ; and as the original (non-elevated) user so the app doesn't run with admin rights.
 Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall runasoriginaluser
 
+[UninstallDelete]
+; default_lang.txt is written at install time (not tracked by [Files]), so
+; remove it explicitly to leave a clean {app} folder behind.
+Type: files; Name: "{app}\default_lang.txt"
+
 [Code]
 { Tell the shell that icons/associations changed so Explorer refreshes the
   shortcut icon right away (otherwise the cached old app.ico can linger). }
 procedure SHChangeNotify(wEventId, uFlags: Integer; dwItem1, dwItem2: Cardinal);
   external 'SHChangeNotify@shell32.dll stdcall';
 
+var
+  LangPage: TInputOptionWizardPage;
+
+{ Program language code for the option index on the custom page. The app reads
+  default_lang.txt (written below) on first run to pick its start language. }
+function LangCodeByIndex(I: Integer): String;
+begin
+  case I of
+    1: Result := 'de';
+    2: Result := 'es';
+    3: Result := 'fr';
+    4: Result := 'it';
+    5: Result := 'ja';
+  else
+    Result := 'en';
+  end;
+end;
+
+{ Pre-select the program language from the installer's own wizard language, so
+  choosing German setup -> the program also starts in German. }
+function DefaultLangIndex: Integer;
+var
+  L: String;
+begin
+  L := ActiveLanguage();
+  if L = 'german' then Result := 1
+  else if L = 'spanish' then Result := 2
+  else if L = 'french' then Result := 3
+  else if L = 'italian' then Result := 4
+  else if L = 'japanese' then Result := 5
+  else Result := 0;
+end;
+
+procedure InitializeWizard;
+begin
+  { A dedicated page (after "Select Destination Location") lets the user choose
+    the program language explicitly (all 6), pre-set from the wizard language. }
+  LangPage := CreateInputOptionPage(wpSelectDir,
+    'Program language / Programmsprache',
+    'Which language should Switch Cheats Scraper start in?',
+    'Pick the language for the program interface. You can change it any time later inside the app.',
+    True, False);
+  LangPage.Add('English');
+  LangPage.Add('Deutsch (German)');
+  LangPage.Add('Espanol (Spanish)');
+  LangPage.Add('Francais (French)');
+  LangPage.Add('Italiano (Italian)');
+  LangPage.Add('Nihongo (Japanese)');
+  LangPage.SelectedValueIndex := DefaultLangIndex;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
+  begin
     SHChangeNotify($08000000, $0000, 0, 0);   { SHCNE_ASSOCCHANGED, SHCNF_IDLIST }
+    { Persist the chosen program language next to the exe. _installer_default_
+      language() in gui.py reads this on the first run (before settings.json). }
+    SaveStringToFile(ExpandConstant('{app}\default_lang.txt'),
+                     LangCodeByIndex(LangPage.SelectedValueIndex), False);
+  end;
 end;
 
 { On uninstall, ask whether to also remove the user's data (DB, downloads,

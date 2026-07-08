@@ -49,10 +49,12 @@ gepflegte `switch-cheats.zip`), aber keinen Code.
 - **App-Self-Update**: analog zur "Nach Updates suchen"-Funktion kann die App
   auch ihre **eigene neue `.nro`-Version** von einem GitHub-Release laden und
   sich selbst ersetzen (Details siehe unten).
-- **Modernes, dunkles UI** angelehnt an das Switch-Systemeinstellungsmenü:
-  linke Kategorie-Leiste + rechtes Detail-Panel, blauer Akzent, Fußleiste mit
-  Online-Status (wird alle 5 Sekunden aktualisiert), aktuellem Sprachkürzel
-  und Tasten-Hinweisen. VSync begrenzt die Renderschleife (Akku/Wärme).
+- **"Prisma (Holo-Glas)"-Design** — dasselbe Signatur-Theme wie die
+  Windows-Version (tiefes Petrol-Schwarz, Teal-Mint-Akzent,
+  Teal→Violett-Verlaufs-Button, Gold-Highlights): linke Kategorie-Leiste +
+  rechtes Detail-Panel, Fußleiste mit Online-Status (wird alle 5 Sekunden
+  aktualisiert), aktuellem Sprachkürzel und Tasten-Hinweisen. VSync begrenzt
+  die Renderschleife (Akku/Wärme).
 - **Vollständige Joycon-/Controller-Steuerung**: Steuerkreuz **oder linker
   Stick** hoch/runter zur Navigation, **A** bestätigt, **B** bricht eine
   laufende Aktion ab, **+** beendet die App (bricht dabei laufende Downloads

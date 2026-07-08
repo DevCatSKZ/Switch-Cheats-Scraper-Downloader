@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.3-blue" alt="Version">
   <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows" alt="Platform">
   <img src="https://img.shields.io/badge/homebrew-Nintendo%20Switch-e60012?logo=nintendoswitch&logoColor=white" alt="Switch">
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python">
@@ -61,6 +61,8 @@ In the app, the **★ Get Everything from DevCatSKZ** card downloads these with 
 
 ## ✨ Highlights
 
+- **"Prisma (Holo-Glass)" signature look** — the default theme on Windows *and* the Switch app: deep petrol-black, teal-mint accents, gradient highlights. Switchable to classic Dark/Light via the theme dropdown.
+- **Get the Switch app with one click** — the **Download Switch App** button fetches the always-latest homebrew `.nro` and can copy it straight onto your (auto-detected) Switch SD card.
 - **Everything from DevCatSKZ in one click** — no scraping needed: pull the ready-made cheat archive and the complete database straight from the [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) (the database stores only cover *URLs*, never cover images). Kept up to date as new cheats come in.
 - **Self-update via "Check Updates"** — checks [GitHub](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/latest) for a newer program build **and** newer cheats/database packages. Detects both a new version (e.g. 1.2) **and** a re-upload of the current release/data (a fix without a version bump, via the upload date). Program updates install themselves (the app restarts); data updates are downloaded and imported. Optional automatic check at startup.
 - **Multi-language (6 languages)** — the whole interface in **English, Deutsch, Español, Français, Italiano and 日本語**. Switch it via the language selector next to the dark/light toggle; also selectable **in the installer**. Default is English. *(→ [Language](#-language))*

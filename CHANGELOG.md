@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-08
+
+### Added
+- **"Prisma (Holo-Glass)" signature theme** — deep petrol-black with a
+  teal-mint accent, electric-violet gradient highlights and gold accents.
+  It is the new **default theme on both platforms** (Windows *and* the
+  Switch app), so desktop and console share one unified look. The theme
+  switcher is now a **dropdown** (Prisma / Dark / Light) next to the
+  language picker; your previously saved theme choice is kept.
+- **Download Switch App** (in the "★ Get Everything from DevCatSKZ" card):
+  downloads the Switch homebrew app — always the **latest** version from
+  the `nro` release — and, with the optional **"Copy to SD card"** checkbox
+  (off by default), places it straight onto an auto-detected Switch SD card
+  as `/switch/SwitchCheatsDownloader.nro` (same detection as the cheats SD
+  export). Downloads are validated against the NRO file signature.
+- **Switch app v1.3.0**: ships the Prisma look as its default design
+  (teal-glass panels, gradient primary button, gold highlights).
+
+### Fixed
+- Typing in the **Output** field no longer rebuilds the game table on every
+  keystroke — it is debounced now, like the search box.
+
 ## v1.2 — 2026-07-06
 
 ### Added — 2026-07-07 (Switch homebrew app)

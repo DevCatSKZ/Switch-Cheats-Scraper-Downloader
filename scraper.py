@@ -42,7 +42,7 @@ from bs4 import BeautifulSoup
 
 # --- Application identity --------------------------------------------------
 APP_NAME = "Switch Cheats Scraper & Downloader"
-APP_VERSION = "1.1"
+APP_VERSION = "1.3"
 APP_AUTHOR = "DevCatSKZ"
 
 BASE_URL = "https://www.cheatslips.com"
@@ -63,6 +63,14 @@ DEVCAT_DB_ASSET = "database.db"
 GITHUB_API = "https://api.github.com"
 PROGRAM_SETUP_ASSET = "SwitchCheatsScraper-Setup.exe"
 PROGRAM_PORTABLE_ASSET = "SwitchCheatsScraper-portable.zip"
+
+# --- Switch homebrew app (the on-console counterpart of this tool) -----------
+# A fixed-tag release ("nro") always carries the LATEST .nro build; its version
+# lives in the release *title* (e.g. "v1.2.0") because the tag never changes.
+# On the SD card the app belongs into /switch/ so hbmenu can launch it.
+NRO_RELEASE_TAG = "nro"
+NRO_ASSET = "SwitchCheatsDownloader.nro"
+NRO_SD_DIR = "switch"
 
 
 def devcat_asset_url(asset: str) -> str:
@@ -192,6 +200,72 @@ def download_file(url: str, dest, progress_cb=None, should_stop=None,
                     progress_cb(written, total)
     part.replace(dest)
     return written
+
+
+def fetch_switch_app_info(timeout: int = 15) -> dict:
+    """Version + download URL of the latest Switch homebrew app (.nro).
+
+    Reads the fixed-tag ``nro`` release; the app version is carried in the
+    release *title* (e.g. ``v1.2.0``) — the tag itself never changes, so the
+    same URL always yields the newest build. Raises on network error or when
+    the release/asset is missing.
+    """
+    rel = fetch_github_release(NRO_RELEASE_TAG, timeout=timeout)
+    asset = find_release_asset(rel, NRO_ASSET)
+    if not asset or not asset.get("url"):
+        raise RuntimeError(
+            f"Asset '{NRO_ASSET}' not found in the '{NRO_RELEASE_TAG}' release.")
+    version = str(rel.get("name") or "").strip() or rel.get("tag") or "?"
+    return {
+        "version": version.lstrip("vV") or "?",
+        "url": asset["url"],
+        "size": int(asset.get("size") or 0),
+        "updated_at": asset.get("updated_at"),
+    }
+
+
+def download_switch_app(dest, progress_cb=None, should_stop=None) -> dict:
+    """Download the latest Switch homebrew app (.nro) to *dest*.
+
+    Always fetches the CURRENT build (see fetch_switch_app_info). The file is
+    validated via the NRO magic ("NRO0" at offset 0x10) so a truncated
+    download or an HTML error page is never handed to the user. Returns the
+    info dict from fetch_switch_app_info() plus ``path``.
+    """
+    info = fetch_switch_app_info()
+    dest = Path(dest)
+    download_file(info["url"], dest, progress_cb=progress_cb,
+                  should_stop=should_stop)
+    with open(dest, "rb") as f:
+        head = f.read(0x14)
+    if len(head) < 0x14 or head[0x10:0x14] != b"NRO0":
+        try:
+            dest.unlink()
+        except Exception:
+            pass
+        raise RuntimeError("Downloaded file is not a valid NRO (bad magic).")
+    info["path"] = str(dest)
+    return info
+
+
+def copy_nro_to_sd(nro_path, sd_root) -> str:
+    """Place a downloaded .nro onto a Switch SD card as /switch/<NRO_ASSET>.
+
+    ``sd_root`` must look like a Switch SD root (CFW marker folder present) —
+    the same validation the cheats SD export uses. Returns the target path.
+    """
+    root = Path(sd_root)
+    if not looks_like_sd_root(root):
+        raise RuntimeError(
+            f"'{sd_root}' does not look like a Switch SD card root "
+            "(no atmosphere/switch/Nintendo folder found).")
+    target = root / NRO_SD_DIR / NRO_ASSET
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # Copy via temp + replace so a yanked card never leaves a truncated app.
+    tmp = target.with_suffix(target.suffix + ".part")
+    shutil.copyfile(nro_path, tmp)
+    tmp.replace(target)
+    return str(target)
 
 # Sentinel returned by the browser download path when a build conclusively has
 # no downloadable codes on cheatslips (a codeless "names-only" upload, or a

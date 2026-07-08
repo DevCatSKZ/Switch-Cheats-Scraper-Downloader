@@ -32,6 +32,13 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+import i18n
+from i18n import t
+# Patch the Tk/ttk widget factories, menus, dialogs and messageboxes so every
+# static text/label/title/message is auto-translated at build time. Must run
+# BEFORE any widget is created (the active language is chosen in __init__).
+i18n.install_tk_i18n()
+
 from scraper import (
     APP_NAME,
     APP_VERSION,
@@ -41,8 +48,12 @@ from scraper import (
     DEVCAT_DATA_TAG,
     PROGRAM_SETUP_ASSET,
     PROGRAM_PORTABLE_ASSET,
+    NRO_ASSET,
+    NRO_SD_DIR,
     devcat_asset_url,
     download_file,
+    download_switch_app,
+    copy_nro_to_sd,
     fetch_github_release,
     find_release_asset,
     version_is_newer,
@@ -162,6 +173,31 @@ SETTINGS_FILE = str(DATA_DIR / "settings.json")
 # version bump) is detected. Lives in the data dir, so it survives app updates.
 UPDATE_STATE_FILE = str(DATA_DIR / "update_state.json")
 
+
+def _installer_default_language() -> str:
+    """Read the language the installer selected (default_lang.txt next to the
+    executable/script), so a fresh install starts in the chosen language.
+    Returns an i18n code, defaulting to English."""
+    try:
+        base = Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve().parent
+        for cand in (base / "default_lang.txt", DATA_DIR / "default_lang.txt"):
+            if cand.exists():
+                return i18n.normalize_lang(cand.read_text(encoding="utf-8").strip())
+    except Exception:
+        pass
+    return "en"
+
+
+class _TrVar(tk.StringVar):
+    """A StringVar whose value is translated into the active language on set().
+
+    Used for the status bar so plain ``set("Ready.")`` calls localise
+    automatically. Pre-translated strings (already-formatted templates) pass
+    through unchanged, since a translated string is not itself a catalogue key."""
+
+    def set(self, value):
+        super().set(i18n.t(value) if isinstance(value, str) else value)
+
 # Locally cached titledb region files used to look up game descriptions offline
 # (English regions — descriptions there are in English). Filled by "Fill Names".
 _TITLEDB_DESC_REGIONS = ["US.en", "GB.en", "AU.en"]
@@ -179,72 +215,129 @@ _BROWSER_KINDS = {
 # whole program — main window, panels, table, log, menus and every sub-dialog.
 # Keys are semantic roles, not raw colours, so both themes stay in sync.
 THEMES = {
+    # Modern "slate" dark — deep neutral background, soft off-white text, one
+    # calm blue accent. Tuned for long reading sessions and a pro, low-glare feel.
     "dark": {
-        "bg":          "#1e1f22",  # window / frames
-        "surface":     "#2b2d31",  # buttons, headings, labelframe body
-        "hover":       "#3a3d43",  # active button / heading
-        "field":       "#141517",  # entry / combobox / text input background
-        "fg":          "#e4e6eb",  # primary text
-        "fg_muted":    "#9aa0a6",  # secondary / subtle text
-        "border":      "#3a3d43",
-        "select_bg":   "#2d4f8a",  # selected table row / text
+        "bg":          "#14161b",  # app canvas
+        "surface":     "#1d2026",  # cards, buttons, headings, labelframe body
+        "hover":       "#2a2e37",  # hover / active
+        "field":       "#0e1014",  # entry / combobox / text input background
+        "fg":          "#e6e9ef",  # primary text
+        "fg_muted":    "#8b93a1",  # secondary / subtle text
+        "border":      "#2b3039",  # subtle separators / outlines
+        "select_bg":   "#1f3d68",  # selected table row / text (muted blue)
         "select_fg":   "#ffffff",
-        "accent":      "#4a9eff",  # focus ring, progressbar, links
-        "accent_hover": "#63abff",
-        "accent_press": "#3a86e0",
-        "featured_bg": "#182233",  # accent-tinted panel for the DevCat section
-        "featured_border": "#4a9eff",
-        "tree_bg":     "#232427",
-        "ok":          "#4ade80",  # green (downloaded / online)
-        "warn":        "#f0a020",  # orange (nameless / warning)
-        "error":       "#ff6b6b",  # red (missing / offline)
-        "link":        "#4a9eff",
-        "checking":    "#d0a030",  # amber (busy check)
-        "title":       "#f5f6f8",  # bold headings in the detail panel
-        "nonbase_bg":  "#4a2a2a",  # update/DLC row background tint
-        "tooltip_bg":  "#3a3d43",
-        "tooltip_fg":  "#e4e6eb",
-        "log_bg":      "#141517",
-        "log_fg":      "#c8ccd0",
+        "accent":      "#4c9dff",  # focus ring, progressbar, links, primary CTA
+        "accent_hover": "#66acff",
+        "accent_press": "#3d86e6",
+        "featured_bg": "#141d2e",  # accent-tinted panel for the DevCat section
+        "featured_border": "#2f5da8",
+        "tree_bg":     "#181b21",
+        "tree_alt":    "#20242d",  # alternating table row
+        "ok":          "#3fb950",  # green (downloaded / online)
+        "warn":        "#e3a72f",  # amber (nameless / warning)
+        "error":       "#f85149",  # red (missing / offline)
+        "link":        "#4c9dff",
+        "checking":    "#d0a030",
+        "title":       "#f3f5f9",  # bold headings in the detail panel
+        "heading_fg":  "#a7afbd",  # section (labelframe) headers
+        "nonbase_bg":  "#382530",  # update/DLC row background tint
+        "tooltip_bg":  "#2a2e37",
+        "tooltip_fg":  "#e6e9ef",
+        "log_bg":      "#0e1014",
+        "log_fg":      "#c6ccd6",
+        "accent_fg":   "#ffffff",  # text ON accent buttons
     },
+    # Clean light — soft neutral canvas with white cards/controls, crisp borders
+    # and a confident blue accent. Calm, high-contrast, professional.
     "light": {
-        "bg":          "#f0f0f0",
-        "surface":     "#e4e4e4",
-        "hover":       "#d5d5d5",
+        "bg":          "#eef0f3",  # soft gray canvas
+        "surface":     "#ffffff",  # white cards, buttons, controls
+        "hover":       "#e7ebf1",
         "field":       "#ffffff",
-        "fg":          "#1a1a1a",
-        "fg_muted":    "#555555",
-        "border":      "#b8b8b8",
-        "select_bg":   "#cce0ff",
-        "select_fg":   "#000000",
-        "accent":      "#1a6fd4",
-        "accent_hover": "#2f7fe0",
-        "accent_press": "#155cb0",
-        "featured_bg": "#eef4fc",  # soft blue-tinted panel for the DevCat section
-        "featured_border": "#a9c8ef",
+        "fg":          "#1b1f24",
+        "fg_muted":    "#616b78",
+        "border":      "#d4d9e0",
+        "select_bg":   "#d8e5ff",
+        "select_fg":   "#0f2544",
+        "accent":      "#2563eb",
+        "accent_hover": "#3b74ee",
+        "accent_press": "#1d4fd0",
+        "featured_bg": "#eef4ff",  # soft blue-tinted panel for the DevCat section
+        "featured_border": "#bcd2f6",
         "tree_bg":     "#ffffff",
+        "tree_alt":    "#f5f7fa",
         "ok":          "#1a8f3c",
-        "warn":        "#cc6600",
-        "error":       "#c0392b",
-        "link":        "#1a6fd4",
+        "warn":        "#b7791f",
+        "error":       "#d1342b",
+        "link":        "#2563eb",
         "checking":    "#b8860b",
-        "title":       "#1a1a1a",
-        "nonbase_bg":  "#ffe0e0",
-        "tooltip_bg":  "#ffffe0",
-        "tooltip_fg":  "#333333",
-        "log_bg":      "#111111",
-        "log_fg":      "#dddddd",
+        "title":       "#1b1f24",
+        "heading_fg":  "#4b5563",
+        "nonbase_bg":  "#fde8e8",
+        "tooltip_bg":  "#20242c",  # dark tooltip on light UI (modern)
+        "tooltip_fg":  "#f0f2f5",
+        "log_bg":      "#0e1014",
+        "log_fg":      "#c6ccd6",
+        "accent_fg":   "#ffffff",
+    },
+    # "Prisma (Holo-Glas)" — deep petrol-black signature theme with a teal-mint
+    # primary accent, electric-violet secondary and gold highlights. Tk has no
+    # real alpha/blur/gradients, so every translucent tone of the spec is
+    # PRE-BLENDED onto its background:
+    #   surface      = panel #0B141C + 7%  glass tint #3EE6D0  -> "glass"
+    #   featured_bg  = panel #0B141C + 12% glass tint          -> hero glass
+    #   border       = #FFFFFF @14% on #040A10                 -> hairline
+    #   select_bg    = accent #2DE1C2 @18% on surface          -> active fill
+    #   fg_muted     = #EAF7F3 @88% on panel                   -> secondary text
+    #   nonbase_bg   = violet #7C5CFF @15% on tree_bg          -> DLC row tint
+    "prisma": {
+        "bg":          "#040a10",  # deep petrol-black canvas
+        "surface":     "#0f2329",  # glass panels/cards (teal-tinted)
+        "hover":       "#133a3b",  # hover = a touch more accent in the glass
+        "field":       "#050d13",  # inputs sit slightly below the canvas
+        "fg":          "#f0fbf8",  # cool white
+        "fg_muted":    "#cfdcd9",
+        "border":      "#272c31",  # 14% white hairline
+        "select_bg":   "#144545",  # accent @18% fill for active rows
+        "select_fg":   "#f0fbf8",
+        "accent":      "#2de1c2",  # teal-mint (primary)
+        "accent_hover": "#4fe9ce",
+        "accent_press": "#1fc4a8",
+        "featured_bg": "#112d32",  # hero card = stronger glass tint
+        "featured_border": "#135750",  # glass border (#30E6C8 @~30%)
+        "tree_bg":     "#0b141c",
+        "tree_alt":    "#0e1b24",
+        "ok":          "#3ee68f",
+        "warn":        "#ffc24b",  # gold doubles as the highlight colour
+        "error":       "#ff6b7a",
+        "link":        "#2de1c2",
+        "checking":    "#ffc24b",
+        "title":       "#f0fbf8",
+        "heading_fg":  "#b7cfc9",
+        "nonbase_bg":  "#1c1f3e",  # electric-violet tint (secondary accent)
+        "tooltip_bg":  "#0f2329",
+        "tooltip_fg":  "#f0fbf8",
+        "log_bg":      "#050d13",
+        "log_fg":      "#bfd9d2",
+        "accent_fg":   "#04211c",  # dark petrol on the bright accent — never white
+        # Buttons exakt wie auf der Switch-Version: sehr dunkles Panel-Glas
+        # (#0B141C) mit dezenter Haarlinie; Hover in Akzent-Glas.
+        "btn_bg":      "#0b141c",  # = kColItem der Switch-App
+        "btn_border":  "#272c31",  # = kColHairline der Switch-App
+        "btn_hover":   "#144545",  # = kColItemHover (Akzent 18%)
     },
 }
 
 # The palette currently in force. Read via theme() so module-level widgets
 # (tooltips, dialogs) pick up the same colours the main window uses.
-_ACTIVE = {"name": "dark"}
+# "Prisma (Holo-Glas)" is the signature default — matching the Switch app.
+_ACTIVE = {"name": "prisma"}
 
 
 def theme() -> dict:
     """Return the active colour palette."""
-    return THEMES.get(_ACTIVE["name"], THEMES["dark"])
+    return THEMES.get(_ACTIVE["name"], THEMES["prisma"])
 
 
 class _Tooltip:
@@ -353,8 +446,8 @@ class ProgressTracker:
 
 
 def _default_zip_name() -> str:
-    """Default export archive name using today's date, e.g. switch-cheats-05072026.zip."""
-    return f"switch-cheats-{time.strftime('%d%m%Y')}.zip"
+    """Default export archive name (matches the data-release asset)."""
+    return "switch-cheats.zip"
 
 
 def _center_dialog(top, parent):
@@ -554,8 +647,9 @@ class ExportSDDialog:
         roots = self._detect()
         if roots:
             self.sd_var.set(roots[0])
-            extra = f" (+{len(roots) - 1} more)" if len(roots) > 1 else ""
-            self.valid_lbl.config(text=f"✓ Auto-detected SD card: {roots[0]}{extra}",
+            extra = t(" (+{n} more)", n=len(roots) - 1) if len(roots) > 1 else ""
+            self.valid_lbl.config(text=t("✓ Auto-detected SD card: {info}",
+                                         info=f"{roots[0]}{extra}"),
                                   foreground=theme()["ok"])
         else:
             self.valid_lbl.config(
@@ -981,8 +1075,8 @@ class ScraperGUI:
         self.root.minsize(1200, 800)
 
         self.db_path = tk.StringVar(value=DEFAULT_DB)
-        self.status_var = tk.StringVar(value="Ready.")
-        self.total_games_var = tk.StringVar(value="0 games")
+        self.status_var = _TrVar(value="Ready.")
+        self.total_games_var = tk.StringVar(value=t("{n} games", n=0))
         self.search_var = tk.StringVar()
         self.not_downloaded_only = tk.BooleanVar(value=False)
         self.names_missing = tk.BooleanVar(value=False)
@@ -1008,6 +1102,10 @@ class ScraperGUI:
         # When ON, a DevCatSKZ download also fetches the cover images afterwards.
         # Off by default — covers are not part of the archive and cost extra time.
         self.devcat_covers = tk.BooleanVar(value=False)
+        # "Download Switch App": when ON the freshly downloaded .nro is copied
+        # straight onto a detected Switch SD card (like the cheats SD export).
+        # Off by default — plugging in the SD card is the deliberate choice.
+        self.nroapp_copy_sd = tk.BooleanVar(value=False)
         # Check GitHub for a newer program build / data package at every start.
         self.update_check_startup = tk.BooleanVar(value=True)
         # SD-card export (remembered between runs).
@@ -1020,7 +1118,7 @@ class ScraperGUI:
         self.password_var = tk.StringVar()
         self.api_token_var = tk.StringVar()
         self.remember_pw = tk.BooleanVar(value=True)
-        self.show_images = tk.BooleanVar(value=True)
+        self.show_images = tk.BooleanVar(value=False)
         self.show_description = tk.BooleanVar(value=False)
         self.cache_covers = tk.BooleanVar(value=True)
         self._img_refs = {}      # url -> PhotoImage (kept to avoid GC)
@@ -1051,9 +1149,16 @@ class ScraperGUI:
         # Colour theme (dark is the default). Loaded from settings below, then
         # applied to the ttk styles BEFORE any widget is built so creation-time
         # colours are already correct.
-        self.theme_name = "dark"
+        self.theme_name = "prisma"
+
+        # Language: default to the installer's choice (default_lang.txt); a saved
+        # "language" in settings.json (read in _load_settings) overrides it. The
+        # active language must be set BEFORE any widget is built so the Tk
+        # auto-translation hook picks it up at creation time.
+        self.language = i18n.set_language(_installer_default_language())
 
         self._loaded_geometry = False
+        self._saved_window_state = None
         self._load_settings()
         # Seed the updater's first-run baseline as early as possible, so the
         # "install date" anchor reflects the true first program start.
@@ -1103,12 +1208,18 @@ class ScraperGUI:
         self.root.minsize(min_w, min_h)
 
         if not self._loaded_geometry:
-            # Open at a comfortable size, centered on the screen.
+            # Open at a comfortable size, centered on the screen — this becomes the
+            # "restore" size once the (first-run) maximized window is un-maximized.
             win_w = min(max(toolbar_w, 1400), avail_w)
             win_h = min(940, avail_h)
             pos_x = max(0, (screen_w - win_w) // 2)
             pos_y = max(0, (screen_h - win_h) // 2 - 20)
             self.root.geometry(f"{win_w}x{win_h}+{pos_x}+{pos_y}")
+            # First launch: start maximized (full screen) for the best first look.
+            try:
+                self.root.state("zoomed")
+            except Exception:
+                pass
         else:
             # Clamp a restored geometry (e.g. saved on a larger monitor) so the
             # window always stays fully visible on the current screen.
@@ -1119,6 +1230,12 @@ class ScraperGUI:
                 x = min(max(int(m.group(3)), 0), max(0, screen_w - w))
                 y = min(max(int(m.group(4)), 0), max(0, screen_h - h))
                 self.root.geometry(f"{w}x{h}+{x}+{y}")
+            # Restore a previously maximized window.
+            if self._saved_window_state == "zoomed":
+                try:
+                    self.root.state("zoomed")
+                except Exception:
+                    pass
 
         self._install_window_controls()
 
@@ -1265,8 +1382,10 @@ class ScraperGUI:
         self.password_var.set(data.get("password", ""))
         self.remember_pw.set(bool(data.get("remember_pw", True)))
         _theme = data.get("theme", "dark")
-        self.theme_name = _theme if _theme in THEMES else "dark"
-        self.show_images.set(bool(data.get("show_images", True)))
+        self.theme_name = _theme if _theme in THEMES else "prisma"
+        if data.get("language"):
+            self.language = i18n.set_language(data["language"])
+        self.show_images.set(bool(data.get("show_images", False)))
         self.show_description.set(bool(data.get("show_description", False)))
         self.cache_covers.set(bool(data.get("cache_covers", True)))
         self.hide_placeholder_builds.set(bool(data.get("hide_placeholder_builds", True)))
@@ -1287,6 +1406,7 @@ class ScraperGUI:
             "scrape_skip_zero", legacy if legacy is not None else False)))
         self.online_check_startup.set(bool(data.get("online_check_startup", True)))
         self.devcat_covers.set(bool(data.get("devcat_covers", False)))
+        self.nroapp_copy_sd.set(bool(data.get("nroapp_copy_sd", False)))
         self.update_check_startup.set(bool(data.get("update_check_startup", True)))
         self.sd_export_root.set(data.get("sd_export_root", ""))
         self.sd_export_mode.set(data.get("sd_export_mode", "atmosphere"))
@@ -1302,6 +1422,7 @@ class ScraperGUI:
                 self._loaded_geometry = True
             except Exception:
                 pass
+        self._saved_window_state = data.get("window_state")
 
     def _save_settings(self):
         remember = self.remember_pw.get()
@@ -1311,6 +1432,7 @@ class ScraperGUI:
             "password": self.password_var.get() if remember else "",
             "remember_pw": remember,
             "theme": self.theme_name,
+            "language": self.language,
             "show_images": self.show_images.get(),
             "show_description": self.show_description.get(),
             "cache_covers": self.cache_covers.get(),
@@ -1322,6 +1444,7 @@ class ScraperGUI:
             "scrape_skip_zero": self.scrape_skip_zero.get(),
             "online_check_startup": self.online_check_startup.get(),
             "devcat_covers": self.devcat_covers.get(),
+            "nroapp_copy_sd": self.nroapp_copy_sd.get(),
             "update_check_startup": self.update_check_startup.get(),
             "sd_export_root": self.sd_export_root.get(),
             "sd_export_mode": self.sd_export_mode.get(),
@@ -1331,6 +1454,7 @@ class ScraperGUI:
         }
         try:
             data["geometry"] = self.root.geometry()
+            data["window_state"] = self.root.state()   # "zoomed" (maximized) or "normal"
         except Exception:
             pass
         try:
@@ -1382,6 +1506,9 @@ class ScraperGUI:
         t = theme()
         self.tree.tag_configure("done", foreground=t["ok"])
         self.tree.tag_configure("nameless", foreground=t["warn"])
+        # Subtle zebra striping on alternating rows (background only, so it never
+        # clashes with the done/nameless text colours).
+        self.tree.tag_configure("stripe", background=t.get("tree_alt", t["tree_bg"]))
         # Background tint for update/DLC title ids (cheats need the base id).
         # Background-only so it never clashes with the done/nameless text colours.
         self.tree.tag_configure("nonbase", background=t["nonbase_bg"])
@@ -1413,7 +1540,7 @@ class ScraperGUI:
         sub-dialogs) for the given theme name. Safe to call before the widgets
         exist (initial styling) and again on every toggle."""
         if name not in THEMES:
-            name = "dark"
+            name = "prisma"
         self.theme_name = name
         _ACTIVE["name"] = name
         t = theme()
@@ -1427,49 +1554,71 @@ class ScraperGUI:
         FIELD, FG, MUT = t["field"], t["fg"], t["fg_muted"]
         BORDER, SEL, SELFG, ACCENT = t["border"], t["select_bg"], t["select_fg"], t["accent"]
 
+        HEAD = t.get("heading_fg", MUT)
+        BASE = ("Segoe UI", 9)
+        SEMI = ("Segoe UI Semibold", 9)
         st.configure(".", background=BG, foreground=FG, fieldbackground=FIELD,
                      bordercolor=BORDER, darkcolor=SURF, lightcolor=SURF,
-                     troughcolor=SURF, arrowcolor=FG, insertcolor=FG,
-                     focuscolor=ACCENT, selectbackground=SEL, selectforeground=SELFG)
+                     troughcolor=SURF, arrowcolor=MUT, insertcolor=FG,
+                     focuscolor=ACCENT, selectbackground=SEL, selectforeground=SELFG,
+                     font=BASE)
         st.configure("TFrame", background=BG)
-        st.configure("TLabel", background=BG, foreground=FG)
-        st.configure("TLabelframe", background=BG, bordercolor=BORDER)
-        st.configure("TLabelframe.Label", background=BG, foreground=MUT)
-        st.configure("TButton", background=SURF, foreground=FG, bordercolor=BORDER,
-                     focuscolor=BG, padding=(8, 3))
+        st.configure("TLabel", background=BG, foreground=FG, font=BASE)
+        # Sections read as clean cards with a hairline border + quiet header label.
+        st.configure("TLabelframe", background=BG, bordercolor=BORDER,
+                     relief="solid", borderwidth=1)
+        st.configure("TLabelframe.Label", background=BG, foreground=HEAD, font=SEMI)
+        # Buttons — flat, roomy, with an accent outline on hover/focus. Themes
+        # can tint them separately from the panels (Prisma: teal glass chips).
+        BTN_BG = t.get("btn_bg", SURF)
+        BTN_BORDER = t.get("btn_border", BORDER)
+        BTN_HOV = t.get("btn_hover", HOV)
+        st.configure("TButton", background=BTN_BG, foreground=FG, bordercolor=BTN_BORDER,
+                     focuscolor=BTN_BG, relief="flat", padding=(11, 5), anchor="center")
         st.map("TButton",
-               background=[("pressed", HOV), ("active", HOV), ("disabled", BG)],
-               foreground=[("disabled", MUT)])
-        st.configure("TMenubutton", background=SURF, foreground=FG,
-                     bordercolor=BORDER, arrowcolor=FG, padding=(8, 3))
-        st.map("TMenubutton", background=[("active", HOV)])
+               background=[("pressed", BTN_HOV), ("active", BTN_HOV), ("disabled", BG)],
+               foreground=[("disabled", MUT)],
+               bordercolor=[("active", ACCENT), ("focus", ACCENT)])
+        st.configure("TMenubutton", background=BTN_BG, foreground=FG, bordercolor=BTN_BORDER,
+                     arrowcolor=MUT, relief="flat", padding=(11, 5))
+        st.map("TMenubutton", background=[("active", BTN_HOV)], bordercolor=[("active", ACCENT)])
         st.configure("TCheckbutton", background=BG, foreground=FG, focuscolor=BG,
-                     indicatorbackground=FIELD, indicatorforeground=FG, bordercolor=BORDER)
+                     indicatorbackground=FIELD, indicatorforeground="#ffffff", bordercolor=BORDER)
         st.map("TCheckbutton", background=[("active", BG)], foreground=[("disabled", MUT)],
-               indicatorbackground=[("selected", FIELD), ("pressed", FIELD)])
+               indicatorbackground=[("selected", ACCENT), ("active", HOV)],
+               bordercolor=[("selected", ACCENT)])
         st.configure("TRadiobutton", background=BG, foreground=FG, focuscolor=BG,
-                     indicatorbackground=FIELD, indicatorforeground=FG, bordercolor=BORDER)
+                     indicatorbackground=FIELD, indicatorforeground=ACCENT, bordercolor=BORDER)
         st.map("TRadiobutton", background=[("active", BG)], foreground=[("disabled", MUT)],
-               indicatorbackground=[("selected", FIELD), ("pressed", FIELD)])
+               indicatorbackground=[("selected", FIELD)])
         st.configure("TEntry", fieldbackground=FIELD, foreground=FG, insertcolor=FG,
-                     bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER)
-        st.map("TEntry", fieldbackground=[("readonly", SURF)],
-               foreground=[("disabled", MUT)], bordercolor=[("focus", ACCENT)])
+                     bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER, padding=(6, 4))
+        st.map("TEntry", fieldbackground=[("readonly", SURF)], foreground=[("disabled", MUT)],
+               bordercolor=[("focus", ACCENT)], lightcolor=[("focus", ACCENT)],
+               darkcolor=[("focus", ACCENT)])
         st.configure("TCombobox", fieldbackground=FIELD, foreground=FG, background=SURF,
-                     arrowcolor=FG, bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER)
-        st.map("TCombobox", fieldbackground=[("readonly", FIELD)],
-               foreground=[("disabled", MUT)], bordercolor=[("focus", ACCENT)])
-        st.configure("TProgressbar", background=ACCENT, troughcolor=SURF, bordercolor=BORDER)
+                     arrowcolor=MUT, bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER,
+                     padding=(6, 4))
+        st.map("TCombobox", fieldbackground=[("readonly", FIELD)], foreground=[("disabled", MUT)],
+               bordercolor=[("focus", ACCENT)], arrowcolor=[("active", FG)])
+        st.configure("TSpinbox", fieldbackground=FIELD, foreground=FG, arrowcolor=MUT,
+                     bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER, padding=(6, 3))
+        st.map("TSpinbox", bordercolor=[("focus", ACCENT)])
+        st.configure("TProgressbar", background=ACCENT, troughcolor=FIELD,
+                     bordercolor=BORDER, lightcolor=ACCENT, darkcolor=ACCENT, thickness=8)
         for sb in ("Vertical.TScrollbar", "Horizontal.TScrollbar"):
-            st.configure(sb, background=SURF, troughcolor=BG, bordercolor=BORDER, arrowcolor=FG)
-            st.map(sb, background=[("active", HOV)])
+            st.configure(sb, background=BORDER, troughcolor=BG, bordercolor=BG,
+                         arrowcolor=MUT, relief="flat")
+            st.map(sb, background=[("active", HOV), ("pressed", ACCENT)])
         st.configure("TPanedwindow", background=BG)
+        st.configure("Sash", background=BORDER, sashthickness=6)
+        # Table — roomier rows + a quiet, flat header.
         st.configure("Treeview", background=t["tree_bg"], fieldbackground=t["tree_bg"],
-                     foreground=FG, bordercolor=BORDER)
+                     foreground=FG, bordercolor=BORDER, relief="flat", rowheight=27, font=BASE)
         st.map("Treeview", background=[("selected", SEL)], foreground=[("selected", SELFG)])
-        st.configure("Treeview.Heading", background=SURF, foreground=FG,
-                     bordercolor=BORDER, relief="flat")
-        st.map("Treeview.Heading", background=[("active", HOV)])
+        st.configure("Treeview.Heading", background=SURF, foreground=HEAD, bordercolor=BORDER,
+                     relief="flat", padding=(8, 6), font=SEMI)
+        st.map("Treeview.Heading", background=[("active", HOV)], foreground=[("active", FG)])
 
         # --- Featured "Get everything from DevCatSKZ" card --------------
         # A compact, accent-tinted card: one primary (accent) button plus two
@@ -1485,17 +1634,18 @@ class ScraperGUI:
                      focuscolor=panel)
         st.map("Featured.TCheckbutton", background=[("active", panel)],
                foreground=[("disabled", MUT)])
-        st.configure("Accent.TButton", background=ACCENT, foreground="#ffffff",
+        st.configure("Accent.TButton", background=ACCENT,
+                     foreground=t.get("accent_fg", "#ffffff"),
                      bordercolor=ACCENT, focuscolor=panel, font=("Segoe UI", 9, "bold"),
                      padding=(12, 6))
         st.map("Accent.TButton",
                background=[("pressed", t["accent_press"]), ("active", t["accent_hover"]),
                            ("disabled", SURF)],
                foreground=[("disabled", MUT)])
-        st.configure("FeaturedSec.TButton", background=SURF, foreground=FG,
-                     bordercolor=BORDER, focuscolor=panel, padding=(10, 6))
+        st.configure("FeaturedSec.TButton", background=BTN_BG, foreground=FG,
+                     bordercolor=BTN_BORDER, focuscolor=panel, padding=(10, 6))
         st.map("FeaturedSec.TButton",
-               background=[("pressed", HOV), ("active", HOV), ("disabled", panel)],
+               background=[("pressed", BTN_HOV), ("active", BTN_HOV), ("disabled", panel)],
                foreground=[("disabled", MUT)])
 
         # Combobox dropdown list is a classic Tk listbox styled via the option DB.
@@ -1520,17 +1670,103 @@ class ScraperGUI:
             except Exception:
                 pass
         if hasattr(self, "online_status_lbl") and \
-                self.online_status_lbl.cget("text") in ("● not checked", ""):
+                self.online_status_lbl.cget("text") in (i18n.t("● not checked"), "● not checked", ""):
             self.online_status_lbl.config(foreground=MUT)
-        if hasattr(self, "theme_btn"):
-            self.theme_btn.configure(
-                text="☀ Light Mode" if name == "dark" else "☾ Dark Mode")
+        if hasattr(self, "theme_combo"):
+            try:
+                self.theme_combo.current(self._THEME_ORDER.index(self.theme_name))
+            except Exception:
+                pass
 
-    def on_toggle_theme(self):
-        """Flip between dark and light mode and remember the choice."""
-        self._apply_theme("light" if self.theme_name == "dark" else "dark")
+    # Theme selection: a dropdown (like the language picker). The ORDER maps
+    # combobox indices to theme keys; display names are translated at build
+    # time (a language change restarts the app anyway).
+    _THEME_ORDER = ("prisma", "dark", "light")
+
+    def _theme_display_names(self):
+        return [t("◆ Prisma"), t("☾ Dark"), t("☀ Light")]
+
+    def on_theme_selected(self, _event=None):
+        """Theme picked in the dropdown: apply and remember it."""
+        idx = self.theme_combo.current()
+        if 0 <= idx < len(self._THEME_ORDER):
+            self._apply_theme(self._THEME_ORDER[idx])
+            self._save_settings()
+            self._append_log(f"Theme: {self.theme_name}.")
+        try:
+            self.theme_combo.selection_clear()
+        except Exception:
+            pass
+
+    def _on_language_selected(self, _e=None):
+        """Language picked in the combobox: confirm, save and restart so every
+        widget is rebuilt in the new language (the cleanest, most reliable way)."""
+        name = self.lang_display.get()
+        code = next((c for c, n in i18n.LANGUAGES.items() if n == name), self.language)
+        if code == self.language:
+            return
+        lang_name = i18n.LANGUAGES.get(code, name)
+        if not messagebox.askyesno(
+                t("Restart to change language"),
+                t("Switch the program language now?\n\nThe app will close and reopen "
+                  "in {lang}.", lang=lang_name)):
+            self.lang_display.set(i18n.language_name(self.language))  # revert
+            return
+        self.language = code
+        i18n.set_language(code)
         self._save_settings()
-        self._append_log(f"Theme: {self.theme_name} mode.")
+        self._restart_app()
+
+    def _restart_app(self):
+        """Relaunch this program (used after a language change), then quit so the
+        new process owns the window. Works for both the frozen exe and source.
+
+        The new process is fully DETACHED with its own DEVNULL std handles. This
+        is essential for a packaged *windowed* build: there sys.stdin/out/err are
+        None, and a plain Popen would try to inherit those invalid handles and
+        fail with WinError 6 — so the app would close without ever reopening."""
+        import subprocess
+        if getattr(sys, "frozen", False):
+            args = [sys.executable] + sys.argv[1:]
+            workdir = os.path.dirname(os.path.abspath(sys.executable))
+        else:
+            script = os.path.abspath(sys.argv[0])
+            args = [sys.executable, script] + sys.argv[1:]
+            workdir = os.path.dirname(script)
+        creationflags = 0
+        if os.name == "nt":
+            # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP — the child survives our
+            # os._exit and does not depend on this (closing) process' console.
+            creationflags = 0x00000008 | 0x00000200
+        launched = False
+        try:
+            subprocess.Popen(
+                args, cwd=workdir, close_fds=True, creationflags=creationflags,
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL)
+            launched = True
+        except Exception as exc:
+            self._append_log(f"Restart failed: {exc}")
+        try:
+            if self._log_writer and hasattr(self._log_writer, "close"):
+                self._log_writer.close()
+        except Exception:
+            pass
+        if not launched:
+            # Couldn't relaunch — don't kill the app silently; the language is
+            # already saved, so tell the user to reopen it manually.
+            try:
+                messagebox.showinfo(
+                    t("Restart to change language"),
+                    t("Please close and reopen the app to apply the new language."))
+            except Exception:
+                pass
+            return
+        try:
+            self.root.destroy()
+        except Exception:
+            pass
+        os._exit(0)
 
     # ------------------------------------------------------------------ UI
     def _build_toolbar(self):
@@ -1617,6 +1853,28 @@ class ScraperGUI:
             font=("Segoe UI", 8))
         self.update_status_lbl.pack(side="left", padx=(8, 0))
         self._action_buttons += [self.check_updates_btn]
+        # ---- Switch homebrew app: download the on-console counterpart --------
+        srow = ttk.Frame(feat, style="Featured.TFrame")
+        srow.pack(anchor="w", fill="x", pady=(8, 0))
+        self.nroapp_btn = ttk.Button(
+            srow, text="Download Switch App", style="FeaturedSec.TButton",
+            command=self.on_download_switch_app)
+        self.nroapp_btn.pack(side="left")
+        nroapp_cb = ttk.Checkbutton(
+            srow, text="Copy to SD card", variable=self.nroapp_copy_sd,
+            style="Featured.TCheckbutton", command=self._save_settings)
+        nroapp_cb.pack(side="left", padx=(8, 0))
+        self._action_buttons += [self.nroapp_btn]
+        _Tooltip(self.nroapp_btn,
+                 "Download the Switch homebrew app (SwitchCheatsDownloader.nro) — "
+                 "the on-console counterpart of this tool. It fetches the "
+                 "always-current cheats archive directly on the Switch. Always "
+                 "downloads the LATEST app version.")
+        _Tooltip(nroapp_cb,
+                 "ON: the downloaded app is copied straight onto your Switch SD "
+                 "card as /switch/SwitchCheatsDownloader.nro (auto-detected, like "
+                 "the cheats SD export).\nOFF: you pick where to save the .nro "
+                 "yourself.")
         _Tooltip(self.check_updates_btn,
                  "Check GitHub for a newer program build AND newer cheats/database "
                  "packages. Detects both a new version (e.g. 1.1) and a re-upload "
@@ -1642,7 +1900,9 @@ class ScraperGUI:
         # the block a sensible width (not edge-to-edge) and about as tall as the
         # DevCat card beside it, so the two read as one balanced unit.
         src_grid = ttk.Frame(combo)
-        src_grid.pack(side="left", anchor="n")
+        # Center the button grid vertically so its gap to the frame border is the
+        # same top and bottom (the DevCatSKZ card on the right is taller).
+        src_grid.pack(side="left", anchor="center")
         self.gba_btn = ttk.Button(src_grid, text="Download GBATemp Archive", command=self.on_gbatemp)
         self.hamlet_btn = ttk.Button(src_grid, text="Download Hamlet TitleDB",
                                      command=self.on_hamlet_titledb)
@@ -1876,9 +2136,11 @@ class ScraperGUI:
         ttk.Label(action, text="Output:").pack(side="left", padx=(0, 4))
         out_entry = ttk.Entry(action, textvariable=self.dl_output, width=52)
         out_entry.pack(side="left", padx=(0, 2))
-        out_entry.bind("<KeyRelease>", lambda _e: self.refresh_table())
+        # Entprellt wie das Suchfeld: ein voller Tabellenaufbau pro Tastendruck
+        # macht das Tippen im Pfadfeld sonst spuerbar zaeh.
+        out_entry.bind("<KeyRelease>", lambda _e: self._debounced_refresh_table())
         ttk.Button(action, text="...", width=3, command=self._choose_output).pack(side="left", padx=(0, 2))
-        ttk.Button(action, text="Open", width=5, command=self._open_output).pack(side="left", padx=(0, 8))
+        ttk.Button(action, text="Open", width=7, command=self._open_output).pack(side="left", padx=(0, 8))
 
         # Options row: browser fallback + browser choice + manual reset.
         opts = ttk.Frame(dl_group)
@@ -1887,8 +2149,15 @@ class ScraperGUI:
             opts, text="Download via browser when API is limited (keeps downloading until complete)",
             variable=self.auto_reset_quota).pack(side="left", padx=(0, 12))
         ttk.Label(opts, text="Browser:").pack(side="left", padx=(0, 3))
-        ttk.Combobox(opts, textvariable=self.browser_choice, state="readonly", width=10,
-                     values=list(_BROWSER_KINDS.keys())).pack(side="left", padx=(0, 12))
+        self.browser_combo = ttk.Combobox(opts, textvariable=self.browser_choice,
+                                          state="readonly", width=10,
+                                          values=list(_BROWSER_KINDS.keys()))
+        self.browser_combo.pack(side="left", padx=(0, 12))
+        self.browser_combo.bind("<<ComboboxSelected>>", self._on_browser_selected)
+        _Tooltip(self.browser_combo,
+                 "Browser used for login / quota reset. Built-in Chromium ships "
+                 "with the app. Firefox is downloaded on demand into your data "
+                 "folder (no admin). Chrome uses your installed Google Chrome.")
         self.reset_quota_btn = ttk.Button(
             opts, text="Reset API Limit", command=self.on_reset_api_limit)
         self.reset_quota_btn.pack(side="left")
@@ -1956,11 +2225,27 @@ class ScraperGUI:
                         command=self._on_select_row).pack(side="left")
         # Dark/light toggle, far right of the filter row. Label shows the mode
         # you'll switch TO; _apply_theme keeps it in sync.
-        self.theme_btn = ttk.Button(
-            search_group, width=13, command=self.on_toggle_theme,
-            text="☀ Light Mode" if self.theme_name == "dark" else "☾ Dark Mode")
-        self.theme_btn.pack(side="right", padx=(6, 2))
-        _Tooltip(self.theme_btn, "Switch between dark and light mode (saved between runs).")
+        self.theme_combo = ttk.Combobox(
+            search_group, width=11, state="readonly",
+            values=self._theme_display_names())
+        try:
+            self.theme_combo.current(self._THEME_ORDER.index(self.theme_name))
+        except Exception:
+            self.theme_combo.current(0)
+        self.theme_combo.bind("<<ComboboxSelected>>", self.on_theme_selected)
+        self.theme_combo.pack(side="right", padx=(6, 2))
+        _Tooltip(self.theme_combo, "Choose the theme (saved between runs).")
+
+        # Language picker (native names, so each is readable in its own script).
+        # Changing it saves the choice and restarts the app in the new language.
+        self.lang_display = tk.StringVar(value=i18n.language_name(self.language))
+        self.lang_combo = ttk.Combobox(
+            search_group, width=11, state="readonly", textvariable=self.lang_display,
+            values=list(i18n.LANGUAGES.values()))
+        self.lang_combo.pack(side="right", padx=(6, 2))
+        self.lang_combo.bind("<<ComboboxSelected>>", self._on_language_selected)
+        _Tooltip(self.lang_combo,
+                 "Choose the program language. The app restarts to apply it.")
 
     def _build_main(self):
         # Table (left) + cheat-names panel (right), resizable.
@@ -2295,8 +2580,8 @@ class ScraperGUI:
         """
         path = Path(snap["db_path"])
         if not path.exists():
-            self._log_queue.put(("table_rows", gen, [], "0 games",
-                f"No database yet at {path} - click 'Scrape all' to build it."))
+            self._log_queue.put(("table_rows", gen, [], t("{n} games", n=0),
+                t("No database yet at {path} - click 'Scrape all' to build it.", path=path)))
             return
         try:
             db = GameDatabase(path)
@@ -2395,7 +2680,7 @@ class ScraperGUI:
             parts.append("cache fallback")
         else:
             parts.append("cached")
-        games_label = f"{total_games} game{'s' if total_games != 1 else ''}"
+        games_label = t("{n} games", n=total_games)
         self._log_queue.put(("table_rows", gen, prepared, games_label,
                              " · ".join(parts)))
 
@@ -2421,7 +2706,11 @@ class ScraperGUI:
                 return  # cancelled by a newer refresh mid-insert
             end = min(start + chunk, len(prepared))
             with self._row_lock:
-                for values, tags, slug, cheats in prepared[start:end]:
+                for offset, (values, tags, slug, cheats) in enumerate(prepared[start:end]):
+                    # Zebra-stripe odd rows (skip rows that already have a
+                    # background tint so the two never fight over the background).
+                    if (start + offset) % 2 and "nonbase" not in tags:
+                        tags = tuple(tags) + ("stripe",)
                     item = self.tree.insert("", "end", values=values, tags=tags)
                     self._row_slugs[item] = slug
                     self._row_cheats[item] = cheats
@@ -2470,21 +2759,21 @@ class ScraperGUI:
         n = len(self.tree.selection())
         m, idx = self.context_menu, self._ctx_index
         m.entryconfig(idx["download"],
-                      label=f"Download ({n})" if n > 1 else "Download this")
+                      label=t("Download ({n})", n=n) if n > 1 else t("Download this"))
         m.entryconfig(idx["download_api"],
-                      label=f"Download via API ({n})" if n > 1 else "Download via API")
+                      label=t("Download via API ({n})", n=n) if n > 1 else t("Download via API"))
         m.entryconfig(idx["download_browser"],
-                      label=f"Download via browser ({n})" if n > 1
-                      else "Download via browser (bypass API limit)")
+                      label=t("Download via browser ({n})", n=n) if n > 1
+                      else t("Download via browser (bypass API limit)"))
         m.entryconfig(idx["check_file"],
-                      label=f"Check Cheat Files ({n})" if n > 1 else "Check Cheat File")
+                      label=t("Check Cheat Files ({n})", n=n) if n > 1 else t("Check Cheat File"))
         m.entryconfig(idx["export_zip"],
-                      label=f"Export to ZIP ({n} selected)" if n > 1 else "Export to ZIP")
+                      label=t("Export to ZIP ({n} selected)", n=n) if n > 1 else t("Export to ZIP"))
         self._ctx_info_menu.entryconfig(
             self._ctx_info_cover_index,
-            label=f"Download cover (selected {n})" if n > 1 else "Download cover (selected)")
+            label=t("Download cover (selected {n})", n=n) if n > 1 else t("Download cover (selected)"))
         m.entryconfig(idx["delete"],
-                      label=f"Delete ({n})" if n > 1 else "Delete entry")
+                      label=t("Delete ({n})", n=n) if n > 1 else t("Delete entry"))
         try:
             self.context_menu.tk_popup(event.x_root, event.y_root)
         finally:
@@ -2523,7 +2812,8 @@ class ScraperGUI:
             return
         if not messagebox.askyesno(
             "Download game info",
-            f"Refresh game metadata (name, cover, build list, credits) for {len(tids)} selected game(s)?"):
+            t("Refresh game metadata (name, cover, build list, credits) for {n} selected game(s)?",
+              n=len(tids))):
             return
         self._save_settings()
         self._stop_event.clear()
@@ -2594,10 +2884,10 @@ class ScraperGUI:
             return
         if not messagebox.askyesno(
             "Download via browser",
-            f"Open a browser and download {len(tids)} game(s) directly from "
-            "cheatslips.com?\n\n"
-            "You log in once (solve the reCAPTCHA if asked); the quota is reset "
-            "automatically when needed."):
+            t("Open a browser and download {n} game(s) directly from "
+              "cheatslips.com?\n\n"
+              "You log in once (solve the reCAPTCHA if asked); the quota is reset "
+              "automatically when needed.", n=len(tids))):
             return
         self._start_browser_download(tids)
 
@@ -2624,9 +2914,9 @@ class ScraperGUI:
         else:
             if not messagebox.askyesno(
                 "Download via browser",
-                f"Open a browser and download {len(tids)} selected game(s) directly "
-                "from cheatslips.com?\n\nYou log in once (solve the reCAPTCHA if "
-                "asked); the quota is reset automatically when needed."):
+                t("Open a browser and download {n} selected game(s) directly "
+                  "from cheatslips.com?\n\nYou log in once (solve the reCAPTCHA if "
+                  "asked); the quota is reset automatically when needed.", n=len(tids))):
                 return
         self._start_browser_download(tids)
 
@@ -2680,7 +2970,8 @@ class ScraperGUI:
         finally:
             sys.stdout.flush()
             sys.stdout = old_stdout
-            self._log_queue.put(("download_done",))
+            # True = auto-refresh like the Refresh button after a cheat download.
+            self._log_queue.put(("download_done", True))
 
     def on_reset_api_limit(self):
         if self._busy:
@@ -2729,7 +3020,7 @@ class ScraperGUI:
             return
         self._stop_event.clear()
         self._set_busy(True)
-        self.status_var.set(f"Checking {len(pairs)} cheat file(s)...")
+        self.status_var.set(t("Checking {n} cheat file(s)...", n=len(pairs)))
         cfg = {"output": self.dl_output.get().strip() or DEFAULT_OUTPUT,
                "db_path": self.db_path.get()}
         threading.Thread(target=self._check_cheat_file_worker,
@@ -2813,8 +3104,9 @@ class ScraperGUI:
             self.status_var.set("Check cheat file: nothing checked.")
             return
         n = len(reports)
-        self.status_var.set(f"Checked {n} cheat file(s)"
-                            + (f" — {synced} count(s) corrected." if synced else "."))
+        self.status_var.set(
+            t("Checked {n} cheat file(s) — {s} count(s) corrected.", n=n, s=synced)
+            if synced else t("Checked {n} cheat file(s).", n=n))
         # Refresh FIRST (only when something changed), THEN show the modal — so
         # the table is already up to date when the dialog blocks the loop.
         if synced:
@@ -2873,7 +3165,7 @@ class ScraperGUI:
             return
         self._stop_event.clear()
         self._set_busy(True)
-        self.status_var.set(f"Exporting cheats to SD ({mode_label})...")
+        self.status_var.set(t("Exporting cheats to SD ({mode})...", mode=mode_label))
         cfg = {"db_path": self.db_path.get(), "output": self.dl_output.get(),
                "sd_root": r["sd_root"], "mode": r["mode"], "title_ids": scope_tids}
         threading.Thread(target=self._export_sd_worker, args=(cfg,), daemon=True).start()
@@ -2965,7 +3257,7 @@ class ScraperGUI:
         scope_tids = selected if r["scope"] == "selected" else None
         self._stop_event.clear()
         self._set_busy(True)
-        self.status_var.set(f"Exporting cheats to ZIP ({mode_label})...")
+        self.status_var.set(t("Exporting cheats to ZIP ({mode})...", mode=mode_label))
         cfg = {"db_path": self.db_path.get(), "output": self.dl_output.get(),
                "zip_path": r["zip_path"], "mode": r["mode"], "title_ids": scope_tids}
         threading.Thread(target=self._export_zip_worker, args=(cfg,), daemon=True).start()
@@ -3159,11 +3451,124 @@ class ScraperGUI:
         if cheats_summary:
             parts.append(f"Cheats: {cheats_summary[0]} file(s) for "
                          f"{cheats_summary[1]} game(s)")
-        self.status_var.set("DevCatSKZ download done — " + " · ".join(parts))
+        self.status_var.set(t("DevCatSKZ download done — {parts}", parts=" · ".join(parts)))
         # Covers are fetched only when the user opted in via the card checkbox
         # (off by default). No prompt — the checkbox is the choice.
         if self.devcat_covers.get():
             self.root.after(10, lambda: self._download_covers(None))
+
+    # ---------------------------------------------- Switch homebrew app (.nro)
+    def on_download_switch_app(self):
+        """Download the latest Switch app; optionally copy it onto the SD card.
+
+        Mirrors the cheats SD export: the card is auto-detected via the CFW
+        marker folders; with the checkbox off the user just picks a save
+        location. Always fetches the CURRENT app version from GitHub.
+        """
+        if self._busy:
+            return
+        sd_root = None
+        if self.nroapp_copy_sd.get():
+            roots = [r for r in detect_sd_roots() if looks_like_sd_root(r)]
+            if len(roots) == 1:
+                sd_root = roots[0]
+            else:
+                initial = (self.sd_export_root.get()
+                           or (roots[0] if roots else ""))
+                chosen = filedialog.askdirectory(
+                    title=t("Select your Switch SD card root"),
+                    initialdir=initial or None, parent=self.root)
+                if not chosen:
+                    return
+                if not looks_like_sd_root(chosen) and not messagebox.askyesno(
+                        "Download Switch App",
+                        t("'{path}' does not look like a Switch SD card "
+                          "(no atmosphere/switch/Nintendo folder). Use it "
+                          "anyway?", path=chosen), parent=self.root):
+                    return
+                sd_root = chosen
+            target_txt = os.path.join(sd_root, NRO_SD_DIR, NRO_ASSET)
+            if not messagebox.askyesno(
+                    "Download Switch App",
+                    t("Download the latest Switch app and copy it to:\n"
+                      "{target}\n\nAn existing copy on the card is replaced. "
+                      "Proceed?", target=target_txt), parent=self.root):
+                return
+            import tempfile
+            dest = Path(tempfile.gettempdir()) / NRO_ASSET
+        else:
+            path = filedialog.asksaveasfilename(
+                title=t("Save Switch app as..."),
+                initialfile=NRO_ASSET, defaultextension=".nro",
+                filetypes=[(t("Switch homebrew app"), "*.nro")],
+                parent=self.root)
+            if not path:
+                return
+            dest = Path(path)
+        self._stop_event.clear()
+        self._save_settings()
+        self._set_busy(True)
+        self.status_var.set(t("Downloading Switch app..."))
+        threading.Thread(target=self._switch_app_worker,
+                         args=(dest, sd_root), daemon=True).start()
+
+    def _switch_app_worker(self, dest, sd_root):
+        old_stdout = sys.stdout
+        sys.stdout = _QueueWriter(self._log_queue, mirror=self._log_writer)
+        try:
+            def prog(done, total):
+                kb = done // 1024
+                pct = f" ({int(done * 100 / total)}%)" if total else ""
+                self._log_queue.put(("progress", done, max(total, 1),
+                                     f"Switch app: {kb:,} KB{pct}"))
+            info = download_switch_app(dest, progress_cb=prog,
+                                       should_stop=self._stop_event.is_set)
+            print(f"Switch app v{info['version']} downloaded "
+                  f"({info['size'] // 1024:,} KB).")
+            target = None
+            if sd_root:
+                target = copy_nro_to_sd(info["path"], sd_root)
+                print(f"Copied to {target}")
+                try:
+                    Path(info["path"]).unlink()
+                except Exception:
+                    pass
+            self._log_queue.put(("switchapp_done", info, target))
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            self._log_queue.put(("error", f"Switch app download failed:\n{exc}"))
+            self._log_queue.put(("switchapp_done", None, None))
+        finally:
+            sys.stdout.flush()
+            sys.stdout = old_stdout
+
+    def _finish_switch_app(self, info, target):
+        self._set_busy(False)
+        if not info:
+            self.status_var.set(t("Switch app download failed — see log."))
+            return
+        ver = info.get("version", "?")
+        try:
+            self.root.lift(); self.root.focus_force()
+        except Exception:
+            pass
+        if target:
+            self.status_var.set(t("Switch app v{ver} copied to SD card.", ver=ver))
+            self.root.after(10, lambda: messagebox.showinfo(
+                "Download Switch App",
+                t("Switch app v{ver} copied to:\n{target}\n\n"
+                  "You can now safely eject the card and launch "
+                  "'Switch Cheats Downloader' from the Homebrew Menu.",
+                  ver=ver, target=target), parent=self.root))
+        else:
+            self.status_var.set(t("Switch app v{ver} downloaded.", ver=ver))
+            self.root.after(10, lambda: messagebox.showinfo(
+                "Download Switch App",
+                t("Switch app v{ver} saved to:\n{path}\n\n"
+                  "Copy it into the /switch/ folder on your Switch SD card and "
+                  "launch it from the Homebrew Menu.",
+                  ver=ver, path=info.get("path", "?")), parent=self.root))
 
     def _advance_data_baseline(self, cheats=False, db=False, when=None):
         """Mark the cheats/database packages as current as of *when* (now)."""
@@ -3347,7 +3752,7 @@ class ScraperGUI:
         self._stop_event.clear()
         self._set_busy(True)
         self._update_dlg = UpdateProgressDialog(self.root, on_cancel=self._cancel_update)
-        self._update_dlg.set_phase(f"Downloading update ({method})…")
+        self._update_dlg.set_phase(t("Downloading update ({method})…", method=method))
         self.status_var.set("Downloading update…")
         threading.Thread(target=self._program_update_worker,
                          args=(method, prog), daemon=True).start()
@@ -3372,7 +3777,7 @@ class ScraperGUI:
             self._log_queue.put(("progress", done, max(total, 1),
                                  f"Downloading update: {mb:.1f} / {tmb:.1f} MB{pct}"))
         try:
-            self._log_queue.put(("status", f"Downloading update ({method})…"))
+            self._log_queue.put(("status", t("Downloading update ({method})…", method=method)))
             download_file(asset["url"], dest, progress_cb=cb,
                           should_stop=self._stop_event.is_set)
             # Guard against a silently-truncated download (dropped connection):
@@ -3647,7 +4052,7 @@ class ScraperGUI:
                 except Exception as exc:
                     print(f"Open Link: could not open {url}: {exc}")
             if opened:
-                self.status_var.set(f"Opened {opened} link(s) in browser.")
+                self.status_var.set(t("Opened {n} link(s) in browser.", n=opened))
         finally:
             db.close()
 
@@ -3692,7 +4097,7 @@ class ScraperGUI:
                     subprocess.Popen(["open", "-R", str(path)])
                 else:
                     subprocess.Popen(["xdg-open", str(path.parent)])
-                self.status_var.set(f"Revealed {path.name} in Explorer.")
+                self.status_var.set(t("Revealed {name} in Explorer.", name=path.name))
             else:
                 # File not downloaded — open the title folder (or output root).
                 folder = out / "titles" / (tid or "").upper()
@@ -3749,9 +4154,10 @@ class ScraperGUI:
             return
         if not messagebox.askyesno(
             "Download covers",
-            "Download cover images for all entries in the database and save them to\n"
-            f"{COVERS_DIR}?\n\n"
-            "Already-saved covers are skipped. (Entries without a cover URL are ignored.)",
+            t("Download cover images for all entries in the database and save them to\n"
+              "{dir}?\n\n"
+              "Already-saved covers are skipped. (Entries without a cover URL are ignored.)",
+              dir=COVERS_DIR),
         ):
             return
         self._download_covers(None)
@@ -4045,8 +4451,8 @@ class ScraperGUI:
             return
         if not messagebox.askyesno(
             "Delete entries",
-            f"Delete {len(pairs)} selected entr{'y' if len(pairs)==1 else 'ies'}?\n"
-            "This also deletes the downloaded cheat file(s) on disk.",
+            t("Delete {n} selected entries?\n"
+              "This also deletes the downloaded cheat file(s) on disk.", n=len(pairs)),
         ):
             return
         out = Path(self.dl_output.get())
@@ -4132,7 +4538,7 @@ class ScraperGUI:
             messagebox.showwarning("Edit IDs", "An entry with those IDs already exists.")
             return
         moved = self._move_cheat_file(old_tid, old_bid, new_tid, new_bid)
-        self.status_var.set("Entry updated" + (" and file moved." if moved else "."))
+        self.status_var.set(t("Entry updated and file moved.") if moved else t("Entry updated."))
         self.refresh_table()
 
     def _move_cheat_file(self, old_tid, old_bid, new_tid, new_bid) -> bool:
@@ -4233,7 +4639,8 @@ class ScraperGUI:
         except Exception as exc:
             messagebox.showerror("Edit entry", str(exc))
             return
-        self.status_var.set(f"Saved {r['title_id']}/{r['build_id']} ({len(names)} cheat(s)).")
+        self.status_var.set(t("Saved {tid}/{bid} ({n} cheat(s)).",
+                              tid=r['title_id'], bid=r['build_id'], n=len(names)))
         self.refresh_table()
 
     def on_refresh(self):
@@ -4355,6 +4762,67 @@ class ScraperGUI:
         """Canonical browser kind for the chosen entry: builtin/chrome/edge/firefox."""
         return _BROWSER_KINDS.get(self.browser_choice.get(), "builtin")
 
+    def _on_browser_selected(self, event=None):
+        """When the user picks a browser in the dropdown, make sure it's available.
+        Firefox is offered as an on-demand download into the data folder (no admin);
+        Chrome uses the installed Google Chrome (offered for download if missing).
+        On No / cancel / failure, revert to the built-in Chromium."""
+        kind = self._browser_kind()
+        if kind == "builtin" or not _PW_OK:
+            return
+        if self._busy:
+            messagebox.showinfo("Browser", "Please wait for the current task to "
+                                           "finish before switching the browser.")
+            self.browser_choice.set("Built-in")
+            return
+        if kind == "firefox":
+            if _pw_scrape.firefox_ready():
+                self.status_var.set("Firefox is ready.")
+                return
+            if messagebox.askyesno(
+                "Download Firefox",
+                "Download the Firefox browser component for the app? (~85 MB)\n\n"
+                "It is stored in the app's own data folder.\n\n"
+                "Choose No to keep the built-in Chromium."):
+                self._start_browser_download("firefox")
+            else:
+                self.browser_choice.set("Built-in")
+        elif kind in ("chrome", "edge"):
+            # Chrome/Edge drive the user's OWN installed browser — we never install
+            # a system browser. If none is present, just point them at an option.
+            if _pw_scrape.find_installed_browser():
+                self.status_var.set(t("Using your installed {name}.", name=kind))
+                return
+            messagebox.showinfo(
+                "Chrome not found",
+                "Google Chrome wasn't found on your system.\n\nInstall Chrome, or use "
+                "Firefox or the built-in Chromium instead.")
+            self.browser_choice.set("Built-in")
+
+    def _start_browser_download(self, target):
+        self._stop_event.clear()
+        self._set_busy(True)
+        self._update_dlg = UpdateProgressDialog(self.root, on_cancel=self._cancel_update)
+        self._update_dlg.set_phase(t("Downloading {name}…", name=target.capitalize()))
+        self.status_var.set(t("Downloading {name}…", name=target))
+        threading.Thread(target=self._browser_download_worker,
+                         args=(target,), daemon=True).start()
+
+    def _browser_download_worker(self, target):
+        # Only self-contained browser components (Firefox) are downloaded — into
+        # the app's data folder. We never install a system-wide browser.
+        def cb(pct, line):
+            self._log_queue.put(("progress", pct, 100, f"Downloading {target}: {pct}%"))
+        try:
+            ok = _pw_scrape.install_browser_userdir(
+                target, progress_cb=cb,
+                log=lambda m: self._log_queue.put(str(m)),
+                should_stop=self._stop_event.is_set)
+            self._log_queue.put(("browser_dl_done", target, bool(ok)))
+        except Exception as exc:
+            self._log_queue.put(("error", f"Browser download failed:\n{exc}"))
+            self._log_queue.put(("browser_dl_done", target, False))
+
     def _secret_entry(self, parent, var, width):
         """A masked entry (•••) with a small show/hide toggle button.
         Returns (entry, button) — the caller packs them."""
@@ -4366,7 +4834,7 @@ class ScraperGUI:
             ent.config(show="" if state["shown"] else "•")
             btn.config(text="hide" if state["shown"] else "show")
 
-        btn = ttk.Button(parent, text="show", width=5, command=toggle)
+        btn = ttk.Button(parent, text="show", width=9, command=toggle)
         return ent, btn
 
     def _build_api(self, cfg):
@@ -4437,14 +4905,14 @@ class ScraperGUI:
             return
         if not messagebox.askyesno(
             title,
-            message + "\n\nAfterwards: names + covers + region, versions "
-            "(titledb only) and a\ncheat-count recount from disk.",
+            t(message) + "\n\n" + t("Afterwards: names + covers + region, versions "
+                                    "(titledb only) and a\ncheat-count recount from disk."),
         ):
             return
         self._save_settings()
         self._stop_event.clear()
         self._set_busy(True)
-        self.status_var.set(f"Downloading {label}...")
+        self.status_var.set(t("Downloading {name}...", name=label))
         cfg = {
             "output": self.dl_output.get(),
             "db_path": self.db_path.get(),
@@ -4704,7 +5172,7 @@ class ScraperGUI:
         cached = self._load_downloaded_cache()
         cached.add(bid.upper())
         self._save_downloaded_cache(cached)
-        self.status_var.set(f"Added {tid}/{bid} ({len(names)} cheat(s)).")
+        self.status_var.set(t("Added {tid}/{bid} ({n} cheat(s)).", tid=tid, bid=bid, n=len(names)))
         self.refresh_table()
 
     def _info_cfg(self):
@@ -4723,7 +5191,7 @@ class ScraperGUI:
         self._save_settings()
         self._stop_event.clear()
         self._set_busy(True)
-        self.status_var.set(f"{label}...")
+        self.status_var.set(t(label) + "...")
         threading.Thread(target=self._info_task_worker,
                          args=(label, task, self._info_cfg()), daemon=True).start()
 
@@ -4853,8 +5321,8 @@ class ScraperGUI:
             return
         self._start_archive_import(
             "Import ZIP",
-            f"Import cheats from:\n{zpath}\n\nAdd them to the database and the "
-            "output folder?",
+            t("Import cheats from:\n{path}\n\nAdd them to the database and the "
+              "output folder?", path=zpath),
             "ZIP import",
             lambda out, db, prog, stop: import_cheats_from_zip(
                 out, db, zpath, progress_cb=prog, should_stop=stop))
@@ -4866,14 +5334,14 @@ class ScraperGUI:
         if not (out / "titles").exists() and not (out / "by_bid").exists():
             messagebox.showinfo(
                 "Import disk",
-                f"No titles/ or by_bid/ folder found in:\n{out}\n\n"
-                "Download or place cheat files there first.",
+                t("No titles/ or by_bid/ folder found in:\n{path}\n\n"
+                  "Download or place cheat files there first.", path=out),
             )
             return
         if not messagebox.askyesno(
             "Import disk",
-            f"Scan {out} for titles/ and by_bid/ cheat files and import missing entries into the DB?\n\n"
-            "Known build ids (e.g. Potion Permit) will be linked automatically.",
+            t("Scan {path} for titles/ and by_bid/ cheat files and import missing entries into the DB?\n\n"
+              "Known build ids (e.g. Potion Permit) will be linked automatically.", path=out),
         ):
             return
         self._stop_event.clear()
@@ -5225,9 +5693,9 @@ class ScraperGUI:
                     return
                 if not messagebox.askyesno(
                     "Retry 'unavailable' builds",
-                    f"{n} build(s) are marked as having no codes on cheatslips and "
-                    f"are skipped during downloads.\n\nClear these marks so they are "
-                    f"retried on the next download?"):
+                    t("{n} build(s) are marked as having no codes on cheatslips and "
+                      "are skipped during downloads.\n\nClear these marks so they are "
+                      "retried on the next download?", n=n)):
                     return
                 cleared = db.clear_unavailable()
             finally:
@@ -5236,7 +5704,7 @@ class ScraperGUI:
             messagebox.showerror("Retry 'unavailable' builds", str(exc))
             return
         self.status_var.set(
-            f"Cleared {cleared} 'unavailable' mark(s) — they will be retried next download.")
+            t("Cleared {n} 'unavailable' mark(s) — they will be retried next download.", n=cleared))
         self.refresh_table()
 
     def on_retry_quota_skipped(self):
@@ -5246,8 +5714,9 @@ class ScraperGUI:
         if not quota_file.exists():
             messagebox.showinfo(
                 "Retry quota-skipped builds",
-                f"No quota-skipped list found.\n\nExpected file:\n{quota_file}\n\n"
-                "Run a download first; skipped builds are recorded automatically.")
+                t("No quota-skipped list found.\n\nExpected file:\n{path}\n\n"
+                  "Run a download first; skipped builds are recorded automatically.",
+                  path=quota_file))
             return
         try:
             pairs = []
@@ -5266,8 +5735,8 @@ class ScraperGUI:
             return
         if not messagebox.askyesno(
             "Retry quota-skipped builds",
-            f"Retry {len(pairs)} build(s) from {quota_file.name}?\n\n"
-            "Make sure your quota has reset first.",
+            t("Retry {n} build(s) from {name}?\n\n"
+              "Make sure your quota has reset first.", n=len(pairs), name=quota_file.name),
         ):
             return
         self._save_settings()
@@ -5698,7 +6167,7 @@ class ScraperGUI:
         lines = ["\t".join(str(v) for v in self.tree.item(i, "values")) for i in sel]
         self.root.clipboard_clear()
         self.root.clipboard_append("\n".join(lines))
-        self.status_var.set(f"Copied {len(sel)} row(s) to clipboard.")
+        self.status_var.set(t("Copied {n} row(s) to clipboard.", n=len(sel)))
         return "break"
 
     def _copy_cell(self, event):
@@ -5711,7 +6180,7 @@ class ScraperGUI:
         if 0 <= idx < len(values):
             self.root.clipboard_clear()
             self.root.clipboard_append(str(values[idx]))
-            self.status_var.set(f"Copied: {values[idx]}")
+            self.status_var.set(t("Copied: {value}", value=values[idx]))
 
     def _choose_db(self):
         path = filedialog.askopenfilename(
@@ -5780,7 +6249,7 @@ class ScraperGUI:
         except Exception as exc:
             messagebox.showerror("Export CSV", f"Failed: {exc}")
             return
-        self.status_var.set(f"Exported {n} row(s) to {dest}")
+        self.status_var.set(t("Exported {n} row(s) to {dest}", n=n, dest=dest))
         messagebox.showinfo("Export CSV", f"""Exported {n} row(s) to:
 {dest}
 
@@ -5800,7 +6269,7 @@ Columns included:
         if not src.exists():
             messagebox.showwarning("Export database", "No database file yet. Scrape first.")
             return
-        default_name = f"cheats_backup_{_dt.date.today().isoformat()}.db"
+        default_name = "database.db"
         dest = filedialog.asksaveasfilename(
             title="Export full database",
             defaultextension=".db",
@@ -5835,9 +6304,11 @@ Columns included:
             size_mb = Path(dest).stat().st_size / (1024 * 1024)
         except Exception:
             size_mb = 0
-        self.status_var.set(f"Database exported to {dest} ({size_mb:.1f} MB)")
+        self.status_var.set(t("Database exported to {dest} ({size} MB)",
+                              dest=dest, size=f"{size_mb:.1f}"))
         messagebox.showinfo("Export database",
-                            f"Full database exported to:\n{dest}\n\n{size_mb:.1f} MB")
+                            t("Full database exported to:\n{dest}\n\n{size} MB",
+                              dest=dest, size=f"{size_mb:.1f}"))
 
     def on_import_db(self):
         """Import a previously exported cheats.db (merge into or replace the current)."""
@@ -5889,7 +6360,7 @@ Columns included:
 
         self._stop_event.clear()
         self._set_busy(True)
-        self.status_var.set(f"Importing database ({mode})...")
+        self.status_var.set(t("Importing database ({mode})...", mode=mode))
         threading.Thread(target=self._import_db_worker,
                          args=(str(live), str(src), mode), daemon=True).start()
 
@@ -6111,10 +6582,10 @@ Columns included:
                 return
             if not messagebox.askyesno(
                 "Download (API only)",
-                f"Download cheat files for all {n} game(s) via the official API only "
-                f"(no browser)?\n\nAlready-downloaded builds are skipped.\n"
-                f"If the API daily quota is hit, it stops — use 'Download Selected' with "
-                f"the browser option for those."):
+                t("Download cheat files for all {n} game(s) via the official API only "
+                  "(no browser)?\n\nAlready-downloaded builds are skipped.\n"
+                  "If the API daily quota is hit, it stops — use 'Download Selected' with "
+                  "the browser option for those.", n=n)):
                 return
         self._start_api_download(tids)
 
@@ -6132,13 +6603,13 @@ Columns included:
             return
         if not messagebox.askyesno(
             "Build Full Dataset",
-            f"Build a complete dataset for {n} game(s)?\nRuns in order:\n"
-            "  1. Download all cheat files (API)\n"
-            "  2. Fill names, region + versions (titledb / API)\n"
-            "  3. Fix ID names\n"
-            "  4. Fix 0-cheat entries\n\n"
-            "Each step continues even if a previous one fails.\n"
-            "Already-downloaded builds are skipped automatically.",
+            t("Build a complete dataset for {n} game(s)?\nRuns in order:\n"
+              "  1. Download all cheat files (API)\n"
+              "  2. Fill names, region + versions (titledb / API)\n"
+              "  3. Fix ID names\n"
+              "  4. Fix 0-cheat entries\n\n"
+              "Each step continues even if a previous one fails.\n"
+              "Already-downloaded builds are skipped automatically.", n=n),
         ):
             return
         self._stop_event.clear()
@@ -6456,7 +6927,9 @@ Columns included:
         finally:
             sys.stdout.flush()
             sys.stdout = old_stdout
-            self._log_queue.put(("download_done",))
+            # True = a cheat-file download finished -> auto-refresh like the
+            # Refresh button (recount from disk + rescan) so the row updates.
+            self._log_queue.put(("download_done", True))
 
     # ----------------------------------------------------------------- log
     def _drain_log(self):
@@ -6504,6 +6977,8 @@ Columns included:
             self._finish_import_db(msg[1])
         elif kind == "devcat_done":
             self._finish_devcat(msg[1], msg[2])
+        elif kind == "switchapp_done":
+            self._finish_switch_app(msg[1], msg[2])
         elif kind == "update_result":
             self._handle_update_result(msg[1], msg[2])
         elif kind == "update_error":
@@ -6534,7 +7009,27 @@ Columns included:
                 dlg.close(); self._update_dlg = None
             self._set_busy(False)
             self._update_downloaded_cache_incremental()
-            self.refresh_table()
+            # After a cheat-file download (Download this / via API / via browser),
+            # auto-refresh exactly like the Refresh button: recount cheats from disk
+            # + live rescan, so the just-downloaded build flips to "downloaded" and
+            # shows its real cheat count. Other operations reusing this event keep
+            # the lightweight cached redraw.
+            if len(msg) > 1 and msg[1] and Path(self.db_path.get()).exists():
+                self.on_refresh()
+            else:
+                self.refresh_table()
+        elif kind == "browser_dl_done":
+            target, ok = msg[1], msg[2]
+            dlg = getattr(self, "_update_dlg", None)
+            if dlg:
+                dlg.close(); self._update_dlg = None
+            self._set_busy(False)
+            if ok:
+                self._append_log(f"{target.capitalize()} downloaded — ready to use.")
+                self.status_var.set(t("{name} ready.", name=target.capitalize()))
+            else:
+                self.browser_choice.set("Built-in")   # revert to the built-in browser
+                self.status_var.set("Browser download cancelled/failed — using Built-in.")
         elif kind == "refresh_done":
             self._set_busy(False)
             self.refresh_table(force_scan=True)
@@ -6551,10 +7046,10 @@ Columns included:
             self._update_downloaded_cache_incremental()
             self.refresh_table()
             if new_builds and self.auto_download.get() and not self._stop_event.is_set():
-                self.status_var.set(f"{new_builds} new build(s) found - starting download...")
+                self.status_var.set(t("{n} new build(s) found - starting download...", n=new_builds))
                 self.root.after(500, lambda: self._start_download(None))
             else:
-                self.status_var.set(f"Update done - {new_builds} new build(s) found.")
+                self.status_var.set(t("Update done - {n} new build(s) found.", n=new_builds))
 
     def _append_log(self, msg: str):
         self.log.config(state="normal")

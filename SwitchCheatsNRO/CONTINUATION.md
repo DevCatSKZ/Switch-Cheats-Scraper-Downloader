@@ -361,7 +361,20 @@ und `lang.txt` korrekt geschrieben.
 
 ---
 
-## 10. Aktueller Stand (Juli 2026, v1.2.0)
+## 10. Aktueller Stand (Juli 2026, v1.3.0)
+
+### Neu in v1.3.0
+- **"Prisma (Holo-Glas)"-Design** als Standard (identische Palette wie
+  `gui.py THEMES["prisma"]` der Windows-Version): Petrol-Canvas `#040A10`,
+  Glas-Panels, Teal-Akzent `#2DE1C2`, Sekundärakzent Violett `#7C5CFF`
+  (Verlauf auf Primär-Buttons via `drawGradientRectH`, Text darauf
+  `kColOnAccent`), Gold `#FFC24B` für Highlights (Update-Zeile, Badge),
+  Haarlinien `#272C31`. Halbtransparente Vorgabe-Töne sind fest gemischt
+  (Kommentare an den `kCol*`-Konstanten).
+
+---
+
+## Alt: Stand v1.2.0
 
 ### Neu in v1.2.0 (alle Punkte im Eden-Emulator verifiziert)
 - **Echte Diakritika in ALLEN Sprachen** ("verfügbar", "Télécharger",

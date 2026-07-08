@@ -45,19 +45,27 @@ using i18n::tr;
 #define JOY_DOWN  15
 
 // ---------------------------------------------------------------------------
-// Farbschema (dunkel, angelehnt an das Switch System-Einstellungsmenue)
+// Farbschema: "Prisma (Holo-Glas)" - das Signatur-Design der Windows-Version
+// (gui.py THEMES["prisma"]), damit beide Programme einheitlich aussehen.
+// Tiefes Petrol-Schwarz, Teal-Mint als Primaerakzent, Elektro-Violett als
+// Sekundaerakzent (Verlaufs-Buttons), Gold als Highlight. Halbtransparente
+// Toene der Design-Vorgabe sind fest auf ihre Hintergruende gemischt.
 // ---------------------------------------------------------------------------
-static const SDL_Color kColBg          = {32, 32, 34, 255};
-static const SDL_Color kColSidebar     = {20, 20, 22, 255};
-static const SDL_Color kColPanel       = {42, 42, 45, 255};
-static const SDL_Color kColItem        = {30, 30, 32, 255};
-static const SDL_Color kColItemHover   = {52, 52, 56, 255};
-static const SDL_Color kColAccent      = {0, 173, 239, 255};   // Switch-Blau
-static const SDL_Color kColText        = {240, 240, 240, 255};
-static const SDL_Color kColTextMuted   = {150, 150, 155, 255};
-static const SDL_Color kColSuccess     = {104, 201, 102, 255};
-static const SDL_Color kColError       = {231, 76, 60, 255};
-static const SDL_Color kColFooter      = {16, 16, 18, 255};
+static const SDL_Color kColBg          = {4, 10, 16, 255};     // #040A10 Canvas
+static const SDL_Color kColSidebar     = {11, 20, 28, 255};    // #0B141C Panel
+static const SDL_Color kColPanel       = {15, 35, 41, 255};    // #0F2329 Glas (7% Teal)
+static const SDL_Color kColItem        = {11, 20, 28, 255};    // Button-/Trough-Glas
+static const SDL_Color kColItemHover   = {20, 69, 69, 255};    // #144545 aktiv (Akzent 18%)
+static const SDL_Color kColAccent      = {45, 225, 194, 255};  // #2DE1C2 Teal-Mint
+static const SDL_Color kColAccent2     = {124, 92, 255, 255};  // #7C5CFF Elektro-Violett
+static const SDL_Color kColGold        = {255, 194, 75, 255};  // #FFC24B Highlight
+static const SDL_Color kColOnAccent    = {4, 33, 28, 255};     // #04211C Text AUF Akzent
+static const SDL_Color kColHairline    = {39, 44, 49, 255};    // #272C31 Haarlinie (14% Weiss)
+static const SDL_Color kColText        = {240, 251, 248, 255}; // #F0FBF8
+static const SDL_Color kColTextMuted   = {207, 220, 217, 255}; // #CFDCD9 (88%)
+static const SDL_Color kColSuccess     = {62, 230, 143, 255};  // #3EE68F
+static const SDL_Color kColError       = {255, 107, 122, 255}; // #FF6B7A
+static const SDL_Color kColFooter      = {3, 7, 11, 255};
 
 // ---------------------------------------------------------------------------
 // Geteilter Zustand zwischen UI-Thread und Hintergrund-Worker
@@ -444,7 +452,6 @@ static void drawRectOutline(SDL_Renderer* r, int x, int y, int w, int h, SDL_Col
     setColor(r, c);
     SDL_RenderDrawRect(r, &rect);
 }
-
 static void drawText(SDL_Renderer* r, TTF_Font* font, const std::string& text, int x, int y, SDL_Color color) {
     if (text.empty() || !font) return;
     SDL_Surface* surf = TTF_RenderUTF8_Blended(font, text.c_str(), color);
@@ -466,12 +473,26 @@ static void drawTextCentered(SDL_Renderer* r, TTF_Font* font, const std::string&
     drawText(r, font, text, x, y + (lineH - th) / 2, color);
 }
 
+// Horizontaler Farbverlauf (fuer Primaer-Buttons: Teal -> Violett). SDL2 hat
+// keine Gradient-Primitive; spaltenweise Linien sind bei Button-Groesse billig.
+static void drawGradientRectH(SDL_Renderer* r, int x, int y, int w, int h,
+                              SDL_Color c1, SDL_Color c2) {
+    for (int i = 0; i < w; i++) {
+        float f = (w <= 1) ? 0.0f : static_cast<float>(i) / static_cast<float>(w - 1);
+        SDL_SetRenderDrawColor(r,
+            static_cast<Uint8>(c1.r + (c2.r - c1.r) * f),
+            static_cast<Uint8>(c1.g + (c2.g - c1.g) * f),
+            static_cast<Uint8>(c1.b + (c2.b - c1.b) * f), 255);
+        SDL_RenderDrawLine(r, x + i, y, x + i, y + h - 1);
+    }
+}
+
 static void drawProgressBar(SDL_Renderer* r, int x, int y, int w, int h, double frac, SDL_Color fg) {
     if (frac < 0) frac = 0;
     if (frac > 1) frac = 1;
     fillRect(r, x, y, w, h, kColItem);
     fillRect(r, x, y, static_cast<int>(w * frac), h, fg);
-    drawRectOutline(r, x, y, w, h, kColTextMuted);
+    drawRectOutline(r, x, y, w, h, kColHairline);
 }
 
 // ---------------------------------------------------------------------------
@@ -747,9 +768,9 @@ int main(int argc, char** argv) {
             SDL_Color textColor = isSelected ? kColText : kColTextMuted;
             drawTextCentered(renderer, fontBody, menuLabel(i), 32, y, itemH - 4, textColor);
             // Dezentes Badge am "App-Update"-Eintrag, wenn der stille Check
-            // beim Start eine neuere App-Version gefunden hat.
+            // beim Start eine neuere App-Version gefunden hat (Gold-Highlight).
             if (i == 2 && appBadge) {
-                fillRect(renderer, sidebarW - 34, y + (itemH - 4) / 2 - 6, 12, 12, kColAccent);
+                fillRect(renderer, sidebarW - 34, y + (itemH - 4) / 2 - 6, 12, 12, kColGold);
             }
         }
 
@@ -763,7 +784,7 @@ int main(int argc, char** argv) {
 
         drawText(renderer, fontTitle, menuLabel(selected), contentX, contentY, kColText);
         contentY += 70;
-        fillRect(renderer, contentX, contentY, panelW - 96, 2, kColSidebar);
+        fillRect(renderer, contentX, contentY, panelW - 96, 1, kColHairline);
         contentY += 30;
 
         std::string statusNow = getStatus();
@@ -808,7 +829,7 @@ int main(int argc, char** argv) {
                 contentY += 40;
                 drawText(renderer, fontBody,
                     updateAvail ? tr("check.available") : tr("check.uptodate"),
-                    contentX, contentY, updateAvail ? kColAccent : kColSuccess);
+                    contentX, contentY, updateAvail ? kColGold : kColSuccess);
                 contentY += 46;
             }
 
@@ -908,30 +929,45 @@ int main(int argc, char** argv) {
         // im Leerlauf je nach Panel Starten/Pruefen (Install), Sprachwechsel
         // (Info) oder Starten/Beenden (App-Update/Exit).
         {
-            auto drawPanelButton = [&](int x, const std::string& label, SDL_Color outline) {
-                fillRect(renderer, x, panelBtnY, panelBtnW, panelBtnH, kColItem);
-                drawRectOutline(renderer, x, panelBtnY, panelBtnW, panelBtnH, outline);
+            // Primaer-Buttons tragen den Signatur-Verlauf Teal -> Violett mit
+            // dunklem Petrol-Text; Sekundaer-Buttons sind Glasflaechen mit
+            // Haarlinien-Rand (Prisma-Designsprache).
+            auto drawPanelButton = [&](int x, const std::string& label,
+                                       bool primary, SDL_Color outline) {
+                if (primary) {
+                    // Signaturverlauf Teal -> Violett
+                    drawGradientRectH(renderer, x, panelBtnY, panelBtnW, panelBtnH,
+                                      kColAccent, kColAccent2);
+                } else {
+                    fillRect(renderer, x, panelBtnY, panelBtnW, panelBtnH, kColItem);
+                    drawRectOutline(renderer, x, panelBtnY, panelBtnW, panelBtnH, outline);
+                }
                 int cw = 0, ch = 0;
                 if (fontBody && TTF_SizeUTF8(fontBody, label.c_str(), &cw, &ch) == 0) {
                     drawText(renderer, fontBody, label,
-                        x + (panelBtnW - cw) / 2, panelBtnY + (panelBtnH - ch) / 2, kColText);
+                        x + (panelBtnW - cw) / 2, panelBtnY + (panelBtnH - ch) / 2,
+                        primary ? kColOnAccent : kColText);
                 }
             };
 
             if (curAction != Action::None) {
-                drawPanelButton(panelBtnX, std::string("B  ") + tr("btn.cancel"), kColTextMuted);
+                drawPanelButton(panelBtnX, std::string("B  ") + tr("btn.cancel"),
+                                false, kColHairline);
             } else if (selected == 0) {
-                drawPanelButton(panelBtnX, std::string("A  ") + tr("btn.start"), kColAccent);
-                drawPanelButton(panelBtn2X, std::string("Y  ") + tr("btn.check"), kColTextMuted);
+                drawPanelButton(panelBtnX, std::string("A  ") + tr("btn.start"),
+                                true, kColAccent);
+                drawPanelButton(panelBtn2X, std::string("Y  ") + tr("btn.check"),
+                                false, kColHairline);
             } else if (selected == 1) {
-                // Direkte Sprachauswahl: alle 6 Sprachen als Buttons,
-                // aktuelle Sprache hervorgehoben.
+                // Direkte Sprachauswahl: alle 6 Sprachen als Chips; die aktive
+                // traegt Akzent-Rand + Akzent-Fuellung (18%), inaktive nur
+                // Haarlinie + Sekundaertext.
                 int cur = static_cast<int>(i18n::getLang());
                 for (int i = 0; i < static_cast<int>(i18n::Lang::Count); i++) {
                     int x = panelBtnX + i * langBtnStride;
                     bool isCur = (i == cur);
                     fillRect(renderer, x, panelBtnY, langBtnW, panelBtnH, isCur ? kColItemHover : kColItem);
-                    drawRectOutline(renderer, x, panelBtnY, langBtnW, panelBtnH, isCur ? kColAccent : kColTextMuted);
+                    drawRectOutline(renderer, x, panelBtnY, langBtnW, panelBtnH, isCur ? kColAccent : kColHairline);
                     std::string code = i18n::langCode(static_cast<i18n::Lang>(i));
                     int cw = 0, ch = 0;
                     if (fontBody && TTF_SizeUTF8(fontBody, code.c_str(), &cw, &ch) == 0) {
@@ -941,7 +977,8 @@ int main(int argc, char** argv) {
                     }
                 }
             } else if (hasAction(selected)) {
-                drawPanelButton(panelBtnX, std::string("A  ") + tr(selected == 3 ? "menu.exit" : "btn.start"), kColAccent);
+                drawPanelButton(panelBtnX, std::string("A  ") + tr(selected == 3 ? "menu.exit" : "btn.start"),
+                                true, kColAccent);
             }
         }
 
