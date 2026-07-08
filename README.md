@@ -6,6 +6,7 @@
   <img src="https://img.shields.io/badge/version-1.3-blue" alt="Version">
   <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows" alt="Platform">
   <img src="https://img.shields.io/badge/homebrew-Nintendo%20Switch-e60012?logo=nintendoswitch&logoColor=white" alt="Switch">
+  <img src="https://img.shields.io/badge/Android-Eden%20%C2%B7%20Suyu%20%C2%B7%20Sudachi-3DDC84?logo=android&logoColor=white" alt="Android">
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
@@ -47,6 +48,18 @@ The desktop tool has a **counterpart that runs directly on the Switch**: a stand
 **Install:** download [`SwitchCheatsDownloader-Switch.zip`](../../releases/latest) from the latest release and extract it to the **root of your SD card** (it contains `switch/SwitchCheatsDownloader.nro`), then launch *Switch Cheats Downloader* from the Homebrew Menu. Requires a modded Switch (Atmosphère + hbmenu) and Wi-Fi.
 
 Source & developer docs: [`SwitchCheatsNRO/`](SwitchCheatsNRO/) — build with devkitPro, see its [README](SwitchCheatsNRO/README.md).
+
+## 🤖 Android app (emulators)
+
+The same downloader also runs on **Android**, for the Switch emulators **Eden, Suyu and Sudachi** (`SwitchCheatsDownloader-Android.apk`). It fetches the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) **on the phone** and writes the cheats straight into the emulator's load layout — no PC needed.
+
+**What it does:** pick your emulator, and one tap downloads every cheat and writes it to `.../load/<TitleID>/SwitchCheatsDownloader/cheats/<BuildID>.txt` in the emulator's data folder. Interrupted downloads **resume**, the app checks this repo for **updates** (both a newer APK and refreshed cheats, same re-upload detection as the desktop tool), and the UI speaks the same **6 languages** (EN/DE/ES/FR/IT/JA, auto-detected). Same **Holo-Glass** look as the Windows and Switch apps.
+
+**Storage:** on Android 11+ the emulators keep their cheats under `Android/data/…`, so the app requests **All files access** (`MANAGE_EXTERNAL_STORAGE`) and uses the Storage Access Framework as a fallback; an **export to a folder of your choice** is always available.
+
+**Install:** download [`SwitchCheatsDownloader-Android.apk`](../../releases/latest) from the latest release, allow installation from unknown sources, and grant **All files access** on first launch. Requires Android 8.0 (API 26)+.
+
+Source & developer docs: [`SwitchCheatsAndroid/`](SwitchCheatsAndroid/) — build with Gradle (`gradlew assembleRelease`), see its [README](SwitchCheatsAndroid/README.md).
 
 ## 📦 Always-current cheats & database
 
@@ -450,4 +463,4 @@ Each `.txt` contains all cheat codes for that Build ID in the standard format:
 
 ---
 
-**Switch Cheats Scraper & Downloader** · Version 1.2 · © DevCatSKZ
+**Switch Cheats Scraper & Downloader** · Version 1.3 · © DevCatSKZ

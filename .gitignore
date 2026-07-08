@@ -36,6 +36,7 @@ Output/
 
 # === Temporary / build artifacts ===
 *.html
+!docs/index.html
 *.log
 __pycache__/
 *.pyc
