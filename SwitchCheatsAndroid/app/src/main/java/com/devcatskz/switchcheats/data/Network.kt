@@ -37,6 +37,40 @@ object Network {
         return c
     }
 
+    /**
+     * Open [url] for a binary download, following redirects manually. Android's
+     * HttpURLConnection does NOT auto-follow 307/308, and GitHub release-asset
+     * downloads (github.com → objects.githubusercontent.com CDN) can use them —
+     * which surfaced as a "server didn't answer over HTTP" error on some networks.
+     * A neutral Accept avoids CDNs choking on the GitHub API media type.
+     */
+    private fun openDownload(url: String, rangeFrom: Long?): HttpURLConnection {
+        var current = url
+        var hops = 0
+        while (true) {
+            val c = URL(current).openConnection() as HttpURLConnection
+            c.setRequestProperty("User-Agent", Config.USER_AGENT)
+            c.setRequestProperty("Accept", "*/*")
+            c.connectTimeout = 15000
+            c.readTimeout = 30000
+            c.instanceFollowRedirects = false
+            if (rangeFrom != null && rangeFrom > 0) c.setRequestProperty("Range", "bytes=$rangeFrom-")
+            val code = c.responseCode
+            if (code in 300..399 && code != 304) {
+                val loc = c.getHeaderField("Location")
+                c.disconnect()
+                if (loc.isNullOrBlank() || ++hops > 6) throw IOException("SERVER_HTTP:$code")
+                current = try {
+                    URL(URL(current), loc).toString()
+                } catch (_: Exception) {
+                    throw IOException("SERVER_HTTP:$code")
+                }
+                continue
+            }
+            return c
+        }
+    }
+
     /** Quick connectivity probe — like the desktop/NRO online check. */
     fun isOnline(): Boolean = try {
         val c = open(Config.ONLINE_PROBE)
@@ -96,7 +130,7 @@ object Network {
         onProgress: (Long, Long) -> Unit,
         shouldStop: () -> Boolean,
     ): Boolean {
-        val c = open(url, rangeFrom = existing.takeIf { it > 0 })
+        val c = openDownload(url, existing.takeIf { it > 0 })
         try {
             val code = c.responseCode
             val resuming = code == 206 && existing > 0

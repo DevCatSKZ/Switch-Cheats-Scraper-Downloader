@@ -74,10 +74,10 @@ fun HomeScreen(
             confirmButton = {
                 TextButton(onClick = {
                     vm.dismissPermDialog()
-                    if (vm.needFolderGrant) onPickFolder() else onGrantAllFiles()
+                    onGrantAllFiles()   // always request the general storage permission
                 }) {
                     Text(
-                        if (vm.needFolderGrant) vm.t("storage.pickFolder") else vm.t("storage.grantAllFiles"),
+                        vm.t("storage.grantAllFiles"),
                         color = Prisma.Accent, fontWeight = FontWeight.Bold,
                     )
                 }

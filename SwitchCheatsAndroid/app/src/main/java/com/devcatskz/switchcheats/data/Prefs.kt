@@ -25,6 +25,12 @@ class Prefs(context: Context) {
         get() = sp.getString("emulator", Emulator.EDEN.id)!!
         set(v) = sp.edit().putString("emulator", v).apply()
 
+    /** Whether the one-time startup storage-permission prompt was already shown
+     *  (so we ask once, like a normal app — not on every launch). */
+    var permPrompted: Boolean
+        get() = sp.getBoolean("perm_prompted", false)
+        set(v) = sp.edit().putBoolean("perm_prompted", v).apply()
+
     var emulator: Emulator
         get() = Emulator.fromId(emulatorId)
         set(v) { emulatorId = v.id }

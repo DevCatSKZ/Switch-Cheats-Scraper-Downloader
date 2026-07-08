@@ -66,27 +66,35 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
         val asset = release.asset(Config.ASSET_NAME) ?: return InstallResult.Error("assetNotFound")
         val url = asset.downloadUrl.ifBlank { Config.ASSET_DOWNLOAD_URL }
 
-        // Resume only if the .part belongs to the same release state.
-        val metaMatches = tmpMeta.takeIf { it.exists() }?.readText()?.trim() == asset.updatedAt
-        if (!metaMatches) { tmpZip.delete(); tmpMeta.delete() }
-        val existing = if (tmpZip.exists()) tmpZip.length() else 0L
-
         progress.onPhase(InstallProgress.Phase.DOWNLOADING)
-        val raf = RandomAccessFile(tmpZip, "rw")
-        raf.seek(existing)
-        val sink = object : DownloadSink {
-            override fun write(buf: ByteArray, len: Int) = raf.write(buf, 0, len)
-            override fun truncate() { raf.setLength(0); raf.seek(0) }
-            override fun flush() { raf.fd.sync() }
+        var completed = false
+        var lastErr: IOException? = null
+        // Attempt 0 resumes a matching .part; a retry starts clean — this recovers
+        // from a stale/corrupt partial or a one-off server/redirect hiccup instead
+        // of surfacing a hard error.
+        for (attempt in 0..1) {
+            val metaMatches = tmpMeta.takeIf { it.exists() }?.readText()?.trim() == asset.updatedAt
+            if (attempt == 1 || !metaMatches) { tmpZip.delete(); tmpMeta.delete() }
+            val existing = if (tmpZip.exists()) tmpZip.length() else 0L
+            val raf = RandomAccessFile(tmpZip, "rw")
+            raf.seek(existing)
+            val sink = object : DownloadSink {
+                override fun write(buf: ByteArray, len: Int) = raf.write(buf, 0, len)
+                override fun truncate() { raf.setLength(0); raf.seek(0) }
+                override fun flush() { raf.fd.sync() }
+            }
+            try {
+                tmpMeta.writeText(asset.updatedAt)
+                completed = Network.download(url, existing, asset.size, sink, progress::onDownload, shouldStop)
+                lastErr = null
+                break
+            } catch (e: IOException) {
+                lastErr = e
+            } finally {
+                try { raf.close() } catch (_: Exception) {}
+            }
         }
-        val completed = try {
-            tmpMeta.writeText(asset.updatedAt)
-            Network.download(url, existing, asset.size, sink, progress::onDownload, shouldStop)
-        } catch (e: IOException) {
-            raf.close(); return InstallResult.Error(mapError(e))
-        } finally {
-            try { raf.close() } catch (_: Exception) {}
-        }
+        if (lastErr != null) return InstallResult.Error(mapError(lastErr))
         if (!completed) return InstallResult.CancelledResume
 
         // ---- extract + relayout ----

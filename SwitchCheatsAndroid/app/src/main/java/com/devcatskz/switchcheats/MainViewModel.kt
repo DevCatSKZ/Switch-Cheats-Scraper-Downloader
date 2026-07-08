@@ -40,9 +40,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var needFolderGrant by mutableStateOf(false); private set
 
     // Startup permission onboarding: a prominent, explained request shown once
-    // per launch while a storage grant is still missing.
+    // per install (persisted) while the general storage grant is missing.
     var showPermDialog by mutableStateOf(false); private set
-    private var permPromptShown = false
 
     var appUpdateText by mutableStateOf(""); private set
     var appUpdateReady by mutableStateOf<AssetInfo?>(null); private set
@@ -62,10 +61,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh() {
         refreshWriteNeeds()
-        // On first launch (or any launch where a grant is still missing) show the
-        // explained onboarding once, so new users learn WHY it's needed.
-        if (!permPromptShown && (needAllFiles || needFolderGrant)) {
-            permPromptShown = true
+        // Ask for the GENERAL storage permission ONCE per install (like a normal
+        // app): if it's still missing and we haven't asked yet, show the explained
+        // prompt. Once granted the app just works; if denied, the Start button
+        // re-offers it. The per-emulator folder grant is never the startup prompt.
+        if (!prefs.permPrompted && needAllFiles) {
+            prefs.permPrompted = true
             showPermDialog = true
         }
         checkUpdate()
@@ -133,9 +134,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val mode = Storage.resolveWriteMode(getApplication(), emulator, prefs)
         val writer = Storage.writerFor(getApplication(), mode)
         if (writer == null) {
-            // Missing a storage grant — explain and offer to grant instead of failing.
+            // Missing storage access — for the general permission show the explained
+            // dialog; if only the per-emulator folder is missing the inline prompt
+            // already offers it, so don't pop the general dialog then.
             refreshWriteNeeds()
-            showPermDialog = true
+            if (needAllFiles) showPermDialog = true
             return
         }
 
