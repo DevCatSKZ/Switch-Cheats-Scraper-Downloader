@@ -37,7 +37,8 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
 
     // ---- update check ---------------------------------------------------
     fun checkUpdate(emu: Emulator): UpdateStatus {
-        if (!Network.isOnline()) return UpdateStatus.Offline
+        // No separate connectivity probe (it produced false "offline" reports even
+        // while the actual GitHub request worked). The fetch itself decides.
         val release = try {
             Network.fetchRelease(Config.DATA_API_URL)
         } catch (e: IOException) {
@@ -56,9 +57,6 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
         progress: InstallProgress,
         shouldStop: () -> Boolean,
     ): InstallResult {
-        progress.onPhase(InstallProgress.Phase.CHECK_INTERNET)
-        if (!Network.isOnline()) return InstallResult.Offline
-
         progress.onPhase(InstallProgress.Phase.CONNECTING)
         val release = try {
             Network.fetchRelease(Config.DATA_API_URL)

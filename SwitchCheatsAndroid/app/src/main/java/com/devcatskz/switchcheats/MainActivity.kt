@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.DocumentsContract
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +21,12 @@ class MainActivity : ComponentActivity() {
     // Returning from the "All files access" settings screen.
     private val allFilesLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            vm.onAllFilesGranted()
+        }
+
+    // Android 8–10: runtime WRITE_EXTERNAL_STORAGE request.
+    private val writePermLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
             vm.onAllFilesGranted()
         }
 
@@ -41,7 +48,7 @@ class MainActivity : ComponentActivity() {
             SwitchCheatsTheme {
                 HomeScreen(
                     vm = vm,
-                    onGrantAllFiles = { openAllFilesAccess() },
+                    onGrantAllFiles = { grantStorageAccess() },
                     onPickFolder = { folderLauncher.launch(initialTreeUri()) },
                     onExport = { exportLauncher.launch(null) },
                 )
@@ -55,7 +62,9 @@ class MainActivity : ComponentActivity() {
         vm.onAllFilesGranted()   // re-evaluate after returning from settings
     }
 
-    private fun openAllFilesAccess() {
+    /** Request broad storage write access: All-files-access settings on
+     *  Android 11+, or the WRITE_EXTERNAL_STORAGE runtime permission on 8–10. */
+    private fun grantStorageAccess() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                 .setData("package:$packageName".toUri())
@@ -64,9 +73,17 @@ class MainActivity : ComponentActivity() {
             } catch (_: Exception) {
                 allFilesLauncher.launch(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
             }
+        } else {
+            writePermLauncher.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
         }
     }
 
-    /** Best-effort starting point for the folder picker (may be ignored by the OS). */
-    private fun initialTreeUri(): Uri? = null
+    /** Open the folder picker already pointed at the selected emulator's folder,
+     *  so granting it is a single confirmation (best-effort; the OS may ignore it). */
+    private fun initialTreeUri(): Uri? = try {
+        val docId = "primary:" + vm.emulator.loadRelPath
+        DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", docId)
+    } catch (_: Exception) {
+        null
+    }
 }

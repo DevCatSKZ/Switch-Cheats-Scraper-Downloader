@@ -53,6 +53,16 @@ object Strings {
         "storage.safHint" to a("On newer Android, apps can't write into another app's Android/data folder directly. Pick that emulator's folder once so the app may write there.", "Auf neueren Android-Versionen dürfen Apps nicht direkt in den Android/data-Ordner einer anderen App schreiben. Wähle den Emulator-Ordner einmal aus, damit die App dorthin schreiben darf.", "En Android más nuevo, las apps no pueden escribir directamente en la carpeta Android/data de otra app. Elige esa carpeta del emulador una vez para permitir la escritura.", "Sur Android récent, les apps ne peuvent pas écrire directement dans le dossier Android/data d'une autre app. Choisis ce dossier de l'émulateur une fois pour autoriser l'écriture.", "新しい Android では、アプリは他アプリの Android/data フォルダに直接書き込めません。書き込みを許可するために、そのエミュレーターのフォルダを一度選択してください。", ),
         "storage.folderReady" to a("Folder access granted.", "Ordnerzugriff erteilt.", "Acceso a la carpeta concedido.", "Accès au dossier accordé.", "Accesso alla cartella concesso.", "フォルダへのアクセスを許可しました。"),
         "storage.exportInstead" to a("Or export to a folder and copy it yourself", "Oder in einen Ordner exportieren und selbst kopieren", "O exportar a una carpeta y copiarlo tú mismo", "Ou exporter vers un dossier et copier soi-même", "Oppure esporta in una cartella e copiala tu", "またはフォルダにエクスポートして自分でコピー"),
+        // Startup permission onboarding (shown once when a grant is still missing).
+        "perm.title" to a("Storage access needed", "Speicherzugriff erforderlich", "Se necesita acceso al almacenamiento", "Accès au stockage requis", "Serve l'accesso all'archiviazione", "ストレージアクセスが必要です"),
+        "perm.body" to a(
+            "To save the cheats into your emulator's folder, this app needs permission to write to your device storage. It only writes cheat files — nothing else is read, collected or uploaded.",
+            "Um die Cheats in den Ordner deines Emulators zu schreiben, braucht die App die Berechtigung, auf den Gerätespeicher zu schreiben. Sie schreibt nur Cheat-Dateien — nichts anderes wird gelesen, gesammelt oder hochgeladen.",
+            "Para guardar los cheats en la carpeta de tu emulador, la app necesita permiso para escribir en el almacenamiento del dispositivo. Solo escribe archivos de cheats — no se lee, recopila ni sube nada más.",
+            "Pour enregistrer les cheats dans le dossier de ton émulateur, l'app a besoin de l'autorisation d'écrire dans le stockage de l'appareil. Elle n'écrit que des fichiers de cheats — rien d'autre n'est lu, collecté ou envoyé.",
+            "Per salvare i cheat nella cartella del tuo emulatore, l'app ha bisogno del permesso di scrivere nell'archiviazione del dispositivo. Scrive solo i file dei cheat — nient'altro viene letto, raccolto o caricato.",
+            "チートをエミュレーターのフォルダに保存するには、デバイスのストレージへの書き込み許可が必要です。書き込むのはチートファイルだけで、それ以外は読み取り・収集・アップロードは行いません。"),
+        "perm.later" to a("Not now", "Später", "Ahora no", "Plus tard", "Non ora", "後で"),
 
         // ---- Info ----
         "info.title" to a("Info", "Info", "Información", "Infos", "Informazioni", "情報"),

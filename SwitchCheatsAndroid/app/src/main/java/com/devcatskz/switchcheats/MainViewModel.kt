@@ -39,6 +39,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var needAllFiles by mutableStateOf(false); private set
     var needFolderGrant by mutableStateOf(false); private set
 
+    // Startup permission onboarding: a prominent, explained request shown once
+    // per launch while a storage grant is still missing.
+    var showPermDialog by mutableStateOf(false); private set
+    private var permPromptShown = false
+
     var appUpdateText by mutableStateOf(""); private set
     var appUpdateReady by mutableStateOf<AssetInfo?>(null); private set
 
@@ -57,6 +62,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh() {
         refreshWriteNeeds()
+        // On first launch (or any launch where a grant is still missing) show the
+        // explained onboarding once, so new users learn WHY it's needed.
+        if (!permPromptShown && (needAllFiles || needFolderGrant)) {
+            permPromptShown = true
+            showPermDialog = true
+        }
         checkUpdate()
     }
 
@@ -64,18 +75,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val mode = Storage.resolveWriteMode(getApplication(), emulator, prefs)
         needAllFiles = mode is Storage.WriteMode.NeedsAllFiles
         needFolderGrant = mode is Storage.WriteMode.NeedsFolderGrant
+        // Grant satisfied → make sure the dialog is closed.
+        if (!needAllFiles && !needFolderGrant) showPermDialog = false
     }
+
+    fun openPermDialog() { showPermDialog = true }
+    fun dismissPermDialog() { showPermDialog = false }
 
     // ---- update check ----
     fun checkUpdate() {
         checkText = t("status.connecting")
         io.execute {
-            val on = Network.isOnline()
-            ui { online = on }
             val status = repo.checkUpdate(emulator)
             ui {
                 when (status) {
-                    is UpdateStatus.Offline -> { online = false; checkText = t("result.noInternet") }
+                    is UpdateStatus.Offline -> { checkText = "" }   // no longer produced
                     is UpdateStatus.Available -> {
                         online = true; updateAvailable = true; pendingAsset = status.asset
                         val last = prefs.lastInstalled(emulator)
@@ -87,7 +101,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         checkText = t("check.local") +
                             (prefs.lastInstalled(emulator)?.take(10) ?: "?") + "   " + t("check.uptodate")
                     }
-                    is UpdateStatus.Error -> { checkText = t("result.errorPrefix") + t("err.${status.code}") }
+                    is UpdateStatus.Error -> {
+                        // A network failure just means we couldn't reach GitHub now;
+                        // reflect it in the status dot, not as a scary popup line.
+                        if (status.code == "network") online = false
+                        checkText = t("result.errorPrefix") + t("err.${status.code}")
+                    }
                 }
             }
         }
@@ -113,11 +132,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (busy) return
         val mode = Storage.resolveWriteMode(getApplication(), emulator, prefs)
         val writer = Storage.writerFor(getApplication(), mode)
-        if (writer == null) { refreshWriteNeeds(); return }
+        if (writer == null) {
+            // Missing a storage grant — explain and offer to grant instead of failing.
+            refreshWriteNeeds()
+            showPermDialog = true
+            return
+        }
 
         busy = true; stopFlag.set(false)
         resultText = ""; downloadText = ""; extractText = ""; progress = -1f
-        statusText = t("status.checkInternet")
+        statusText = t("status.connecting")
 
         io.execute {
             val res = repo.install(emulator, writer, object : InstallProgress {
@@ -177,7 +201,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val writer = SafCheatWriter(getApplication(), treeUri)
         busy = true; stopFlag.set(false)
         resultText = ""; downloadText = ""; extractText = ""; progress = -1f
-        statusText = t("status.checkInternet")
+        statusText = t("status.connecting")
         io.execute {
             val res = repo.install(emulator, writer, object : InstallProgress {
                 override fun onPhase(phase: InstallProgress.Phase) = ui {

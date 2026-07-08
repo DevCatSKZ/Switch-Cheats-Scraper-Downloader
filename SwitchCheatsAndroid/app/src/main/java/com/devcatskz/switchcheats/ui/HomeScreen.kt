@@ -63,6 +63,36 @@ fun HomeScreen(
     onPickFolder: () -> Unit,
     onExport: () -> Unit,
 ) {
+    // Startup permission onboarding — explains WHY storage access is needed and
+    // requests the right grant for the selected emulator.
+    if (vm.showPermDialog) {
+        AlertDialog(
+            onDismissRequest = { vm.dismissPermDialog() },
+            icon = { Text("🔒", fontSize = 22.sp) },
+            title = { Text(vm.t("perm.title"), color = Prisma.Text, fontWeight = FontWeight.Bold) },
+            text = { Text(vm.t("perm.body"), color = Prisma.Muted, fontSize = 13.sp) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.dismissPermDialog()
+                    if (vm.needFolderGrant) onPickFolder() else onGrantAllFiles()
+                }) {
+                    Text(
+                        if (vm.needFolderGrant) vm.t("storage.pickFolder") else vm.t("storage.grantAllFiles"),
+                        color = Prisma.Accent, fontWeight = FontWeight.Bold,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { vm.dismissPermDialog() }) {
+                    Text(vm.t("perm.later"), color = Prisma.Muted)
+                }
+            },
+            containerColor = Prisma.Panel,
+            titleContentColor = Prisma.Text,
+            textContentColor = Prisma.Muted,
+        )
+    }
+
     Box(Modifier.fillMaxSize().background(Prisma.BgGradient)) {
         Column(
             Modifier
@@ -160,7 +190,7 @@ fun HomeScreen(
                     HoloButton(vm.t("btn.cancel")) { vm.cancel() }
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        HoloButton(vm.t("btn.start"), enabled = !vm.needAllFiles && !vm.needFolderGrant) {
+                        HoloButton(vm.t("btn.start")) {
                             vm.startInstall()
                         }
                         OutlinedButton(

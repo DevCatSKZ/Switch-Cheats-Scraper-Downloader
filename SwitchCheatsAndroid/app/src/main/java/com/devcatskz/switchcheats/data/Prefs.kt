@@ -8,8 +8,14 @@ class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("scd_prefs", Context.MODE_PRIVATE)
 
     var langCode: String
-        get() = sp.getString("lang", null) ?: Lang.EN.code
+        // Until the user picks one, follow the device language (if supported).
+        get() = sp.getString("lang", null) ?: deviceLang()
         set(v) = sp.edit().putString("lang", v).apply()
+
+    private fun deviceLang(): String {
+        val dev = java.util.Locale.getDefault().language.lowercase()
+        return Lang.entries.firstOrNull { it.code.lowercase() == dev }?.code ?: Lang.EN.code
+    }
 
     var lang: Lang
         get() = Lang.fromCode(langCode)
