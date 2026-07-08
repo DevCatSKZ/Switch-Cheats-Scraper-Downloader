@@ -23,6 +23,15 @@ All notable changes to this project are documented here.
 ### Fixed
 - Typing in the **Output** field no longer rebuilds the game table on every
   keystroke — it is debounced now, like the search box.
+- **All remaining dialogs and status messages are now translated** in all
+  6 languages (EN/DE/ES/FR/IT/JA): the "Scrape all" confirmation, SD/ZIP
+  export summaries, database import/export/merge dialogs, update-check
+  messages, cheat-file check results, maintenance-tool confirmations
+  (fix 0-cheat, recount, scan empty, clean invalid, sync titles, fix ID
+  names) and more — previously these always appeared in English.
+- **Prisma theme:** disabled buttons no longer vanish into the background
+  while a scrape/download is running — they keep their glass fill with
+  dimmed text.
 
 ## v1.2 — 2026-07-06
 

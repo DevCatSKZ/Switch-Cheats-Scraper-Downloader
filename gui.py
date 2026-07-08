@@ -691,8 +691,8 @@ class ExportSDDialog:
         if not self._validate(p):
             if not messagebox.askyesno(
                 "Export to SD",
-                f"'{p}' does not look like a Switch SD card (no atmosphere/ or switch/ "
-                "folder).\n\nExport there anyway?", parent=self.top):
+                t("'{p}' does not look like a Switch SD card (no atmosphere/ or "
+                  "switch/ folder).\n\nExport there anyway?", p=p), parent=self.top):
                 return
         self.result = {"sd_root": p, "mode": self.mode_var.get(),
                        "scope": self.scope_var.get()}
@@ -1575,8 +1575,11 @@ class ScraperGUI:
         BTN_HOV = t.get("btn_hover", HOV)
         st.configure("TButton", background=BTN_BG, foreground=FG, bordercolor=BTN_BORDER,
                      focuscolor=BTN_BG, relief="flat", padding=(11, 5), anchor="center")
+        # Disabled buttons keep their glass fill (only the text is dimmed);
+        # with "disabled -> BG" they vanished into the canvas while a
+        # process was running (Prisma theme).
         st.map("TButton",
-               background=[("pressed", BTN_HOV), ("active", BTN_HOV), ("disabled", BG)],
+               background=[("pressed", BTN_HOV), ("active", BTN_HOV), ("disabled", BTN_BG)],
                foreground=[("disabled", MUT)],
                bordercolor=[("active", ACCENT), ("focus", ACCENT)])
         st.configure("TMenubutton", background=BTN_BG, foreground=FG, bordercolor=BTN_BORDER,
@@ -1640,12 +1643,12 @@ class ScraperGUI:
                      padding=(12, 6))
         st.map("Accent.TButton",
                background=[("pressed", t["accent_press"]), ("active", t["accent_hover"]),
-                           ("disabled", SURF)],
+                           ("disabled", BTN_BG)],
                foreground=[("disabled", MUT)])
         st.configure("FeaturedSec.TButton", background=BTN_BG, foreground=FG,
                      bordercolor=BTN_BORDER, focuscolor=panel, padding=(10, 6))
         st.map("FeaturedSec.TButton",
-               background=[("pressed", BTN_HOV), ("active", BTN_HOV), ("disabled", panel)],
+               background=[("pressed", BTN_HOV), ("active", BTN_HOV), ("disabled", BTN_BG)],
                foreground=[("disabled", MUT)])
 
         # Combobox dropdown list is a classic Tk listbox styled via the option DB.
@@ -3113,19 +3116,22 @@ class ScraperGUI:
             self.refresh_table()
         if n == 1:
             tid, bid, path, names, verdict = reports[0]
-            detail = f"{tid} / {bid}\n\nResult: {verdict}\nFile: {path if path else '— not downloaded —'}"
+            detail = f"{tid} / {bid}\n\n" + t("Result: {verdict}\nFile: {path}",
+                verdict=verdict, path=path if path else t("— not downloaded —"))
             if names:
                 shown = "\n".join(f"  • {nm}" for nm in names[:20])
-                more = f"\n  … and {len(names) - 20} more" if len(names) > 20 else ""
-                detail += f"\n\nCheats found:\n{shown}{more}"
+                more = ("\n" + t("  … and {n} more", n=len(names) - 20)
+                        if len(names) > 20 else "")
+                detail += "\n\n" + t("Cheats found:") + f"\n{shown}{more}"
             else:
-                detail += ("\n\nNo usable cheats: the file contains no line with "
-                           "real cheat codes.\nSuch stub files come from aggregated "
-                           "databases (names/ads only)\nand correctly count as "
-                           "'not downloaded' / 0 cheats.")
+                detail += "\n\n" + t(
+                    "No usable cheats: the file contains no line with "
+                    "real cheat codes.\nSuch stub files come from aggregated "
+                    "databases (names/ads only)\nand correctly count as "
+                    "'not downloaded' / 0 cheats.")
             body = detail
         else:
-            body = (f"Checked {n} build(s):\n\n" + "\n\n".join(lines[:12])
+            body = (t("Checked {n} build(s):", n=n) + "\n\n" + "\n\n".join(lines[:12])
                     + ("\n\n…" if len(lines) > 12 else ""))
         # Show the result dialog on top of the main window. Passing parent and
         # forcing the window forward avoids the dialog opening BEHIND the app
@@ -3154,14 +3160,14 @@ class ScraperGUI:
         mode_label = {"atmosphere": "Atmosphère", "breeze": "Breeze",
                       "edizon": "EdiZon SE"}.get(r["mode"], r["mode"])
         scope_tids = selected if r["scope"] == "selected" else None
-        scope_txt = (f"{len(selected)} selected game(s)" if scope_tids
-                     else "ALL downloaded cheats")
+        scope_txt = (t("{n} selected game(s)", n=len(selected)) if scope_tids
+                     else t("ALL downloaded cheats"))
         if not messagebox.askyesno(
             "Export to SD",
-            f"Export {scope_txt} to:\n{r['sd_root']}\n\n"
-            f"Target: {mode_label}\n\n"
-            "Only files with real cheats are copied; existing SD cheats are merged. "
-            "Proceed?"):
+            t("Export {scope} to:\n{root}\n\nTarget: {mode}\n\n"
+              "Only files with real cheats are copied; existing SD cheats are "
+              "merged. Proceed?", scope=scope_txt, root=r["sd_root"],
+              mode=mode_label)):
             return
         self._stop_event.clear()
         self._set_busy(True)
@@ -3206,21 +3212,24 @@ class ScraperGUI:
             return
         mode_label = {"atmosphere": "Atmosphère", "breeze": "Breeze",
                       "edizon": "EdiZon SE"}.get(mode, mode)
-        self.status_var.set(
-            f"SD export ({mode_label}): {stats['exported']} file(s) for "
-            f"{stats['games']} game(s).")
+        self.status_var.set(t("SD export ({mode}): {exported} file(s) for "
+                              "{games} game(s).", mode=mode_label,
+                              exported=stats['exported'], games=stats['games']))
         try:
             self.root.lift(); self.root.focus_force()
         except Exception:
             pass
         self.root.after(10, lambda: messagebox.showinfo(
             "Export to SD",
-            f"Export finished ({mode_label}):\n\n"
-            f"  • {stats['exported']} cheat file(s) for {stats['games']} game(s)\n"
-            f"  • {stats['skipped_stub']} empty/stub file(s) skipped\n"
-            f"  • {stats['missing']} build(s) not downloaded (nothing to copy)\n"
-            f"  • {stats['errors']} error(s)\n\n"
-            "You can now safely eject the card and start your games.",
+            t("Export finished ({mode}):\n\n"
+              "  • {exported} cheat file(s) for {games} game(s)\n"
+              "  • {stubs} empty/stub file(s) skipped\n"
+              "  • {missing} build(s) not downloaded (nothing to copy)\n"
+              "  • {errors} error(s)\n\n"
+              "You can now safely eject the card and start your games.",
+              mode=mode_label, exported=stats['exported'], games=stats['games'],
+              stubs=stats['skipped_stub'], missing=stats['missing'],
+              errors=stats['errors']),
             parent=self.root))
 
     # ------------------------------------------------------- export to ZIP
@@ -3305,21 +3314,25 @@ class ScraperGUI:
                 "Nothing was exported — none of the selected builds have a "
                 "downloaded cheat file with real codes yet.", parent=self.root))
             return
-        self.status_var.set(
-            f"ZIP export ({mode_label}): {stats['exported']} file(s) for "
-            f"{stats['games']} game(s) → {zip_path}")
+        self.status_var.set(t("ZIP export ({mode}): {exported} file(s) for "
+                              "{games} game(s) → {path}", mode=mode_label,
+                              exported=stats['exported'], games=stats['games'],
+                              path=zip_path))
         try:
             self.root.lift(); self.root.focus_force()
         except Exception:
             pass
         self.root.after(10, lambda: messagebox.showinfo(
             "Export to ZIP",
-            f"ZIP created ({mode_label}):\n{zip_path}\n\n"
-            f"  • {stats['exported']} cheat file(s) for {stats['games']} game(s)\n"
-            f"  • {stats['skipped_stub']} empty/stub file(s) skipped\n"
-            f"  • {stats['missing']} build(s) not downloaded (nothing to copy)\n"
-            f"  • {stats['errors']} error(s)\n\n"
-            "Unzip the archive onto your SD-card root to install the cheats.",
+            t("ZIP created ({mode}):\n{path}\n\n"
+              "  • {exported} cheat file(s) for {games} game(s)\n"
+              "  • {stubs} empty/stub file(s) skipped\n"
+              "  • {missing} build(s) not downloaded (nothing to copy)\n"
+              "  • {errors} error(s)\n\n"
+              "Unzip the archive onto your SD-card root to install the cheats.",
+              mode=mode_label, path=zip_path, exported=stats['exported'],
+              games=stats['games'], stubs=stats['skipped_stub'],
+              missing=stats['missing'], errors=stats['errors']),
             parent=self.root))
 
     def _finish_import_db(self, summary):
@@ -3329,21 +3342,26 @@ class ScraperGUI:
             self.status_var.set("Import database failed — see log.")
             return
         if summary["mode"] == "replace":
-            self.status_var.set(
-                f"Database replaced — {summary['after']} build(s).")
-            msg = (f"Database replaced with the imported one.\n\n"
-                   f"  • {summary['after']} build(s) now in the database\n")
+            self.status_var.set(t("Database replaced — {n} build(s).",
+                                  n=summary['after']))
+            msg = t("Database replaced with the imported one.\n\n"
+                    "  • {n} build(s) now in the database\n", n=summary['after'])
             if summary.get("backup"):
-                msg += f"\nA backup of the previous database was saved to:\n{summary['backup']}"
+                msg += "\n" + t("A backup of the previous database was saved "
+                                "to:\n{path}", path=summary['backup'])
         else:
-            self.status_var.set(
-                f"Database merged — {summary['added']} added, "
-                f"{summary['updated']} updated ({summary['after']} total).")
-            msg = (f"Imported {summary['total_imported']} build(s):\n\n"
-                   f"  • {summary['added']} new build(s) added\n"
-                   f"  • {summary['updated']} existing build(s) updated\n"
-                   f"  • {summary['after']} build(s) now in the database\n\n"
-                   "Nothing was removed; existing entries kept their data.")
+            self.status_var.set(t("Database merged — {added} added, "
+                                  "{updated} updated ({total} total).",
+                                  added=summary['added'],
+                                  updated=summary['updated'],
+                                  total=summary['after']))
+            msg = t("Imported {total} build(s):\n\n"
+                    "  • {added} new build(s) added\n"
+                    "  • {updated} existing build(s) updated\n"
+                    "  • {after} build(s) now in the database\n\n"
+                    "Nothing was removed; existing entries kept their data.",
+                    total=summary['total_imported'], added=summary['added'],
+                    updated=summary['updated'], after=summary['after'])
         try:
             self.root.lift(); self.root.focus_force()
         except Exception:
@@ -3671,8 +3689,8 @@ class ScraperGUI:
         if not startup:
             messagebox.showwarning(
                 "Check Updates",
-                "Could not check for updates:\n\n" + msg +
-                "\n\nCheck your internet connection and try again.")
+                t("Could not check for updates:\n\n{msg}\n\n"
+                  "Check your internet connection and try again.", msg=msg))
 
     def _show_update_dialog(self, info: dict):
         prog = info.get("program")
@@ -3681,8 +3699,9 @@ class ScraperGUI:
         if not (prog or cheats or db):
             messagebox.showinfo(
                 "Check Updates",
-                f"You are up to date.\n\nInstalled version: v{APP_VERSION}\n"
-                "Program, cheats and database are all current.")
+                t("You are up to date.\n\nInstalled version: v{ver}\n"
+                  "Program, cheats and database are all current.",
+                  ver=APP_VERSION))
             return
         UpdateDialog(self.root, self, info)
 
@@ -3907,7 +3926,7 @@ class ScraperGUI:
             subprocess.Popen(["cmd", "/c", str(bat)], creationflags=0x00000010,  # NEW_CONSOLE
                              cwd=str(work), close_fds=True)
         except Exception as exc:
-            self._update_failed(f"Could not start the updater:\n{exc}")
+            self._update_failed(t("Could not start the updater:\n{err}", err=exc))
             return
         self._advance_program_baseline(prog)
         self.status_var.set("Updating — the app will close and reopen…")
@@ -4110,10 +4129,12 @@ class ScraperGUI:
                     subprocess.Popen(["open", str(folder)])
                 else:
                     subprocess.Popen(["xdg-open", str(folder)])
-                self.status_var.set(
-                    f"No cheat file on disk for {tid}/{bid} — opened {folder}.")
+                self.status_var.set(t("No cheat file on disk for {tid}/{bid} — "
+                                      "opened {folder}.", tid=tid, bid=bid,
+                                      folder=folder))
         except Exception as exc:
-            messagebox.showerror("Open in Explorer", f"Could not open:\n\n{exc}")
+            messagebox.showerror("Open in Explorer",
+                                 t("Could not open:\n\n{err}", err=exc))
 
     def _reset_api_limit_worker(self, cfg):
         old_stdout = sys.stdout
@@ -5055,10 +5076,11 @@ class ScraperGUI:
             pages = 5
         if not messagebox.askyesno(
             "Update recent cheats",
-            f"Scan the {pages} most recent 'latest cheat codes' page(s) on cheatslips.com\n"
-            "and add any new builds - this also re-checks games already in the database\n"
-            "that show up there, since that means cheatslips just updated them.\n\n"
-            "Much faster than a full rescan since only the recent pages are fetched.",
+            t("Scan the {pages} most recent 'latest cheat codes' page(s) on "
+              "cheatslips.com\nand add any new builds - this also re-checks "
+              "games already in the database\nthat show up there, since that "
+              "means cheatslips just updated them.\n\nMuch faster than a full "
+              "rescan since only the recent pages are fetched.", pages=pages),
         ):
             return
         self._stop_event.clear()
@@ -5480,8 +5502,9 @@ class ScraperGUI:
             return
         if not messagebox.askyesno(
             "Fix 0-cheat",
-            f"{len(tids)} game(s) have entries with 0 cheats.\n"
-            "Refresh them from the API and download their cheat codes?",
+            t("{n} game(s) have entries with 0 cheats.\n"
+              "Refresh them from the API and download their cheat codes?",
+              n=len(tids)),
         ):
             return
         self._save_settings()
@@ -6213,7 +6236,9 @@ class ScraperGUI:
                 opener = "open" if _sys.platform == "darwin" else "xdg-open"
                 subprocess.Popen([opener, str(path)])
         except Exception as exc:
-            messagebox.showerror("Open folder", f"Could not open:\n{path}\n\n{exc}")
+            messagebox.showerror("Open folder",
+                                 t("Could not open:\n{path}\n\n{err}",
+                                   path=path, err=exc))
 
     def _on_closing(self):
         if self._busy:
@@ -6247,18 +6272,17 @@ class ScraperGUI:
             db.close()
             n = export_rows_csv(rows, Path(dest))
         except Exception as exc:
-            messagebox.showerror("Export CSV", f"Failed: {exc}")
+            messagebox.showerror("Export CSV", t("Failed: {err}", err=exc))
             return
         self.status_var.set(t("Exported {n} row(s) to {dest}", n=n, dest=dest))
-        messagebox.showinfo("Export CSV", f"""Exported {n} row(s) to:
-{dest}
-
-Columns included:
-• Game Title, Title/Build ID, Version, Upload Date
-• Cheat Count & Names, Credits, Description
-• Cover/Banner URLs, Source (GBatemp/titledb/cheatslips)
-• Publisher, Developer, Genre, Release Date
-• Player Count, Size, Rating, and more""")
+        messagebox.showinfo("Export CSV", t(
+            "Exported {n} row(s) to:\n{dest}\n\n"
+            "Columns included:\n"
+            "• Game Title, Title/Build ID, Version, Upload Date\n"
+            "• Cheat Count & Names, Credits, Description\n"
+            "• Cover/Banner URLs, Source (GBatemp/titledb/cheatslips)\n"
+            "• Publisher, Developer, Genre, Release Date\n"
+            "• Player Count, Size, Rating, and more", n=n, dest=dest))
 
     def on_export_db(self):
         """Export a full copy of the entire SQLite database (cheats.db)."""
@@ -6291,7 +6315,7 @@ Columns included:
             dstcon = _sqlite3.connect(dest)
             srccon.backup(dstcon)
         except Exception as exc:
-            messagebox.showerror("Export database", f"Failed: {exc}")
+            messagebox.showerror("Export database", t("Failed: {err}", err=exc))
             return
         finally:
             for con in (dstcon, srccon):
@@ -6337,7 +6361,7 @@ Columns included:
             con.close()
         except Exception as exc:
             messagebox.showerror("Import database",
-                                 f"Not a valid database file:\n{exc}")
+                                 t("Not a valid database file:\n{err}", err=exc))
             return
         if not has:
             messagebox.showerror("Import database",
@@ -7029,7 +7053,7 @@ Columns included:
                 self.status_var.set(t("{name} ready.", name=target.capitalize()))
             else:
                 self.browser_choice.set("Built-in")   # revert to the built-in browser
-                self.status_var.set("Browser download cancelled/failed — using Built-in.")
+                self.status_var.set(t("Browser download cancelled/failed — using Built-in."))
         elif kind == "refresh_done":
             self._set_busy(False)
             self.refresh_table(force_scan=True)
@@ -7038,7 +7062,7 @@ Columns included:
             self._set_busy(False)
             self._update_downloaded_cache_incremental()
             self.refresh_table()
-            self.status_var.set("Scrape & Download Everything finished.")
+            self.status_var.set(t("Scrape & Download Everything finished."))
         elif kind == "update_done":
             new_builds = msg[1] if len(msg) > 1 else 0
             self.update_btn.config(text="Update Recent")

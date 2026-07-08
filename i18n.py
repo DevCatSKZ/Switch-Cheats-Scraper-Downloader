@@ -3686,6 +3686,529 @@ _merge({
               "Homebrew メニューから起動してください。"},
 })
 
+# ---- Restliche Dialoge/Status: vollstaendige Abdeckung (Audit 2026-07-08) --
+_merge({
+    "Scrape all": {
+        "de": "Alles scrapen", "es": "Extraer todo", "fr": "Tout extraire",
+        "it": "Estrai tutto", "ja": "すべてスクレイプ"},
+    "Scrape metadata for ALL games from cheatslips.com?\n"
+    "This can take several minutes (no login required).": {
+        "de": "Metadaten für ALLE Spiele von cheatslips.com scrapen?\n"
+              "Das kann mehrere Minuten dauern (kein Login erforderlich).",
+        "es": "¿Extraer metadatos de TODOS los juegos de cheatslips.com?\n"
+              "Puede tardar varios minutos (no requiere inicio de sesión).",
+        "fr": "Extraire les métadonnées de TOUS les jeux depuis cheatslips.com ?\n"
+              "Cela peut prendre plusieurs minutes (aucune connexion requise).",
+        "it": "Estrarre i metadati di TUTTI i giochi da cheatslips.com?\n"
+              "Può richiedere diversi minuti (nessun accesso necessario).",
+        "ja": "cheatslips.com からすべてのゲームのメタデータを取得しますか？\n"
+              "数分かかることがあります（ログイン不要）。"},
+    "Update recent cheats": {
+        "de": "Neueste Cheats aktualisieren", "es": "Actualizar cheats recientes",
+        "fr": "Mettre à jour les cheats récents", "it": "Aggiorna cheat recenti",
+        "ja": "最近のチートを更新"},
+    "Scan the {pages} most recent 'latest cheat codes' page(s) on "
+    "cheatslips.com\nand add any new builds - this also re-checks "
+    "games already in the database\nthat show up there, since that "
+    "means cheatslips just updated them.\n\nMuch faster than a full "
+    "rescan since only the recent pages are fetched.": {
+        "de": "Die {pages} neuesten 'latest cheat codes'-Seiten auf cheatslips.com "
+              "durchsuchen\nund neue Builds hinzufügen - dort auftauchende, bereits "
+              "bekannte Spiele werden ebenfalls\nneu geprüft, denn das heißt, "
+              "cheatslips hat sie gerade aktualisiert.\n\nViel schneller als ein "
+              "kompletter Rescan, da nur die neuesten Seiten geladen werden.",
+        "es": "Analizar las {pages} páginas más recientes de 'latest cheat codes' en "
+              "cheatslips.com\ny añadir builds nuevas; también se recomprueban los "
+              "juegos ya existentes\nque aparezcan ahí, pues significa que cheatslips "
+              "los acaba de actualizar.\n\nMucho más rápido que un reescaneo completo.",
+        "fr": "Analyser les {pages} pages les plus récentes de 'latest cheat codes' "
+              "sur cheatslips.com\net ajouter les nouvelles builds ; les jeux déjà "
+              "connus qui y figurent sont\naussi revérifiés, car cheatslips vient de "
+              "les mettre à jour.\n\nBien plus rapide qu'un rescan complet.",
+        "it": "Analizza le {pages} pagine più recenti di 'latest cheat codes' su "
+              "cheatslips.com\ne aggiungi le nuove build; i giochi già in database "
+              "che vi compaiono vengono\nricontrollati, perché cheatslips li ha "
+              "appena aggiornati.\n\nMolto più veloce di una nuova scansione completa.",
+        "ja": "cheatslips.com の最新 'latest cheat codes' ページ {pages} 件をスキャンして\n"
+              "新しいビルドを追加します。そこに表示される既存のゲームも再チェックされます\n"
+              "（cheatslips が更新したばかりだからです）。\n\n"
+              "最新ページのみ取得するため、完全な再スキャンよりずっと高速です。"},
+    "Scraping/downloading in progress. Really quit?": {
+        "de": "Scraping/Download läuft noch. Wirklich beenden?",
+        "es": "Extracción/descarga en curso. ¿Salir de todos modos?",
+        "fr": "Extraction/téléchargement en cours. Vraiment quitter ?",
+        "it": "Estrazione/download in corso. Uscire davvero?",
+        "ja": "スクレイプ／ダウンロードが進行中です。本当に終了しますか？"},
+    "Browser download cancelled/failed — using Built-in.": {
+        "de": "Browser-Download abgebrochen/fehlgeschlagen — Built-in wird verwendet.",
+        "es": "Descarga del navegador cancelada/fallida — se usa el integrado.",
+        "fr": "Téléchargement du navigateur annulé/échoué — utilisation de l'intégré.",
+        "it": "Download del browser annullato/non riuscito — si usa quello integrato.",
+        "ja": "ブラウザのダウンロードが中止/失敗 — 内蔵ブラウザを使用します。"},
+    "Scrape & Download Everything finished.": {
+        "de": "Alles scrapen & herunterladen abgeschlossen.",
+        "es": "Extraer y descargar todo: finalizado.",
+        "fr": "Tout extraire et télécharger : terminé.",
+        "it": "Estrai e scarica tutto: completato.",
+        "ja": "すべてスクレイプ＆ダウンロードが完了しました。"},
+    "Nothing was exported — none of the selected builds have a "
+    "downloaded cheat file with real codes yet.": {
+        "de": "Nichts exportiert — keiner der ausgewählten Builds hat bisher eine "
+              "heruntergeladene Cheat-Datei mit echten Codes.",
+        "es": "No se exportó nada: ninguna de las builds seleccionadas tiene aún un "
+              "archivo de cheats descargado con códigos reales.",
+        "fr": "Rien n'a été exporté — aucune des builds sélectionnées n'a encore de "
+              "fichier de cheats téléchargé avec de vrais codes.",
+        "it": "Nulla è stato esportato — nessuna delle build selezionate ha ancora un "
+              "file di cheat scaricato con codici reali.",
+        "ja": "何もエクスポートされませんでした — 選択したビルドには、実際のコードを含む"
+              "ダウンロード済みチートファイルがまだありません。"},
+    "Search for rows where the game name is the raw title id and replace it\n"
+    "with a real name (known names or derived from the base game).\n\n"
+    "Proceed?": {
+        "de": "Zeilen suchen, deren Spielname nur die rohe Title-ID ist, und sie\n"
+              "durch echte Namen ersetzen (bekannte Namen oder vom Basisspiel "
+              "abgeleitet).\n\nFortfahren?",
+        "es": "¿Buscar filas cuyo nombre de juego es el title id en bruto y "
+              "reemplazarlo\npor un nombre real (nombres conocidos o derivados del "
+              "juego base)?\n\n¿Continuar?",
+        "fr": "Rechercher les lignes dont le nom de jeu est le title id brut et le\n"
+              "remplacer par un vrai nom (noms connus ou dérivés du jeu de base).\n\n"
+              "Continuer ?",
+        "it": "Cerca le righe il cui nome gioco è il title id grezzo e sostituiscilo\n"
+              "con un nome reale (nomi noti o derivati dal gioco base).\n\n"
+              "Procedere?",
+        "ja": "ゲーム名が生のタイトル ID になっている行を検索し、実名（既知の名前または\n"
+              "ベースゲームから導出）に置き換えます。\n\n続行しますか？"},
+    "Remove every title_id folder (and any cheat files) that is not in the database, "
+    "so the titles folder matches the database exactly?": {
+        "de": "Jeden title_id-Ordner (samt Cheat-Dateien) entfernen, der nicht in der "
+              "Datenbank ist, damit der titles-Ordner exakt der Datenbank entspricht?",
+        "es": "¿Eliminar cada carpeta title_id (y sus archivos de cheats) que no esté "
+              "en la base de datos, para que la carpeta titles coincida exactamente?",
+        "fr": "Supprimer chaque dossier title_id (et ses fichiers de cheats) absent de "
+              "la base, pour que le dossier titles corresponde exactement à la base ?",
+        "it": "Rimuovere ogni cartella title_id (e i relativi file di cheat) non "
+              "presente nel database, così che la cartella titles vi corrisponda "
+              "esattamente?",
+        "ja": "データベースにない title_id フォルダ（およびチートファイル）をすべて削除して、"
+              "titles フォルダをデータベースと完全に一致させますか？"},
+    "Scan every downloaded cheat file on disk and update the cheat count "
+    "in the database to match the actual file contents?\n\n"
+    "This corrects builds that show 0 cheats even though the .txt file "
+    "contains codes. It does not delete anything.": {
+        "de": "Alle heruntergeladenen Cheat-Dateien auf der Festplatte scannen und "
+              "die Cheat-Anzahl in der Datenbank an den tatsächlichen Inhalt "
+              "anpassen?\n\nDas korrigiert Builds, die 0 Cheats anzeigen, obwohl die "
+              ".txt-Datei Codes enthält. Es wird nichts gelöscht.",
+        "es": "¿Escanear todos los archivos de cheats descargados y actualizar el "
+              "recuento en la base de datos según el contenido real?\n\nCorrige "
+              "builds que muestran 0 cheats aunque el .txt contenga códigos. No se "
+              "elimina nada.",
+        "fr": "Analyser tous les fichiers de cheats téléchargés et mettre à jour le "
+              "compte dans la base selon le contenu réel ?\n\nCorrige les builds "
+              "affichant 0 cheat alors que le .txt contient des codes. Rien n'est "
+              "supprimé.",
+        "it": "Scansionare tutti i file di cheat scaricati e aggiornare il conteggio "
+              "nel database in base al contenuto reale?\n\nCorregge le build che "
+              "mostrano 0 cheat anche se il .txt contiene codici. Non viene "
+              "eliminato nulla.",
+        "ja": "ダウンロード済みのチートファイルをすべてスキャンし、実際の内容に合わせて"
+              "データベースのチート数を更新しますか？\n\n.txt にコードがあるのに 0 と"
+              "表示されるビルドを修正します。何も削除されません。"},
+    "Scan every downloaded cheat file and find the ones that contain NO "
+    "usable cheats — empty, a quota/placeholder message, or only names "
+    "without any codes.\n\n"
+    "They are listed in the log and their cheat count is reset to 0 so "
+    "they appear under 'Not downloaded'. No files are deleted.": {
+        "de": "Alle heruntergeladenen Cheat-Dateien scannen und diejenigen OHNE "
+              "nutzbare Cheats finden — leer, Quota-/Platzhalter-Meldung oder nur "
+              "Namen ohne Codes.\n\nSie werden im Log gelistet und ihre Cheat-Anzahl "
+              "auf 0 gesetzt, sodass sie unter 'Nicht heruntergeladen' erscheinen. "
+              "Es werden keine Dateien gelöscht.",
+        "es": "Escanear todos los archivos de cheats y encontrar los que NO tienen "
+              "cheats utilizables: vacíos, mensaje de cuota/marcador o solo nombres "
+              "sin códigos.\n\nSe listan en el registro y su recuento se pone a 0 "
+              "para que aparezcan en 'No descargado'. No se eliminan archivos.",
+        "fr": "Analyser tous les fichiers de cheats et trouver ceux SANS cheats "
+              "utilisables — vides, message de quota/placeholder ou seulement des "
+              "noms sans codes.\n\nIls sont listés dans le journal et leur compte "
+              "remis à 0 pour apparaître sous « Non téléchargé ». Aucun fichier "
+              "n'est supprimé.",
+        "it": "Scansiona tutti i file di cheat e trova quelli SENZA cheat "
+              "utilizzabili — vuoti, con messaggio quota/segnaposto o solo nomi "
+              "senza codici.\n\nVengono elencati nel log e il conteggio azzerato, "
+              "così appaiono in 'Non scaricato'. Nessun file viene eliminato.",
+        "ja": "ダウンロード済みのチートファイルをすべてスキャンし、使えるチートが"
+              "ないもの（空、クォータ/プレースホルダー、コードなしの名前のみ）を"
+              "見つけます。\n\nログに一覧表示され、チート数が 0 にリセットされて"
+              "『未ダウンロード』に表示されます。ファイルは削除されません。"},
+    "Scan all downloaded cheat files and delete the ones that only contain "
+    "a quota message or placeholder?\n\n"
+    "The database entries will be reset to 0 cheats so they can be re-downloaded "
+    "once the quota resets.": {
+        "de": "Alle heruntergeladenen Cheat-Dateien scannen und diejenigen löschen, "
+              "die nur eine Quota-Meldung oder einen Platzhalter enthalten?\n\nDie "
+              "Datenbankeinträge werden auf 0 Cheats zurückgesetzt, damit sie nach "
+              "dem Quota-Reset erneut geladen werden können.",
+        "es": "¿Escanear todos los archivos descargados y eliminar los que solo "
+              "contienen un mensaje de cuota o un marcador?\n\nLas entradas se "
+              "pondrán a 0 cheats para poder redescargarlas cuando se restablezca "
+              "la cuota.",
+        "fr": "Analyser tous les fichiers téléchargés et supprimer ceux qui ne "
+              "contiennent qu'un message de quota ou un placeholder ?\n\nLes entrées "
+              "seront remises à 0 cheat pour être retéléchargées après le reset du "
+              "quota.",
+        "it": "Scansionare tutti i file scaricati ed eliminare quelli che contengono "
+              "solo un messaggio di quota o un segnaposto?\n\nLe voci saranno "
+              "azzerate per poterle riscaricare al reset della quota.",
+        "ja": "ダウンロード済みファイルをすべてスキャンし、クォータメッセージや"
+              "プレースホルダーのみのものを削除しますか？\n\nデータベースの項目は "
+              "0 チートにリセットされ、クォータ復活後に再ダウンロードできます。"},
+    "'{p}' does not look like a Switch SD card (no atmosphere/ or "
+    "switch/ folder).\n\nExport there anyway?": {
+        "de": "'{p}' sieht nicht nach einer Switch-SD-Karte aus (kein atmosphere/- "
+              "oder switch/-Ordner).\n\nTrotzdem dorthin exportieren?",
+        "es": "'{p}' no parece una tarjeta SD de Switch (sin carpeta atmosphere/ o "
+              "switch/).\n\n¿Exportar ahí de todos modos?",
+        "fr": "'{p}' ne ressemble pas à une carte SD Switch (pas de dossier "
+              "atmosphere/ ou switch/).\n\nY exporter quand même ?",
+        "it": "'{p}' non sembra una scheda SD della Switch (nessuna cartella "
+              "atmosphere/ o switch/).\n\nEsportare comunque lì?",
+        "ja": "'{p}' は Switch の SD カードではないようです（atmosphere/ や switch/ "
+              "フォルダなし）。\n\nそれでもここへエクスポートしますか？"},
+    "Result: {verdict}\nFile: {path}": {
+        "de": "Ergebnis: {verdict}\nDatei: {path}",
+        "es": "Resultado: {verdict}\nArchivo: {path}",
+        "fr": "Résultat : {verdict}\nFichier : {path}",
+        "it": "Risultato: {verdict}\nFile: {path}",
+        "ja": "結果: {verdict}\nファイル: {path}"},
+    "— not downloaded —": {
+        "de": "— nicht heruntergeladen —", "es": "— no descargado —",
+        "fr": "— non téléchargé —", "it": "— non scaricato —",
+        "ja": "— 未ダウンロード —"},
+    "  … and {n} more": {
+        "de": "  … und {n} weitere", "es": "  … y {n} más",
+        "fr": "  … et {n} de plus", "it": "  … e altri {n}",
+        "ja": "  … 他 {n} 件"},
+    "Cheats found:": {
+        "de": "Gefundene Cheats:", "es": "Cheats encontrados:",
+        "fr": "Cheats trouvés :", "it": "Cheat trovati:",
+        "ja": "見つかったチート:"},
+    "No usable cheats: the file contains no line with "
+    "real cheat codes.\nSuch stub files come from aggregated "
+    "databases (names/ads only)\nand correctly count as "
+    "'not downloaded' / 0 cheats.": {
+        "de": "Keine nutzbaren Cheats: Die Datei enthält keine Zeile mit echten "
+              "Cheat-Codes.\nSolche Stub-Dateien stammen aus aggregierten "
+              "Datenbanken (nur Namen/Werbung)\nund zählen korrekt als 'nicht "
+              "heruntergeladen' / 0 Cheats.",
+        "es": "Sin cheats utilizables: el archivo no contiene ninguna línea con "
+              "códigos reales.\nEstos archivos stub provienen de bases agregadas "
+              "(solo nombres/anuncios)\ny cuentan correctamente como 'no "
+              "descargado' / 0 cheats.",
+        "fr": "Aucun cheat utilisable : le fichier ne contient aucune ligne avec de "
+              "vrais codes.\nCes fichiers stub proviennent de bases agrégées (noms/"
+              "pubs seulement)\net comptent à juste titre comme « non téléchargé » / "
+              "0 cheat.",
+        "it": "Nessun cheat utilizzabile: il file non contiene righe con codici "
+              "reali.\nQuesti file stub provengono da database aggregati (solo nomi/"
+              "annunci)\ne contano correttamente come 'non scaricato' / 0 cheat.",
+        "ja": "使用可能なチートなし: このファイルには実際のチートコードの行が"
+              "ありません。\nこうしたスタブは集約データベース由来（名前/広告のみ）で、\n"
+              "正しく『未ダウンロード』/ 0 チートと数えられます。"},
+    "Checked {n} build(s):": {
+        "de": "{n} Build(s) geprüft:", "es": "{n} build(s) comprobada(s):",
+        "fr": "{n} build(s) vérifiée(s) :", "it": "{n} build controllate:",
+        "ja": "{n} 件のビルドを確認:"},
+    "{n} selected game(s)": {
+        "de": "{n} ausgewählte(s) Spiel(e)", "es": "{n} juego(s) seleccionado(s)",
+        "fr": "{n} jeu(x) sélectionné(s)", "it": "{n} gioco/giochi selezionati",
+        "ja": "選択した {n} 件のゲーム"},
+    "ALL downloaded cheats": {
+        "de": "ALLE heruntergeladenen Cheats", "es": "TODOS los cheats descargados",
+        "fr": "TOUS les cheats téléchargés", "it": "TUTTI i cheat scaricati",
+        "ja": "すべてのダウンロード済みチート"},
+    "Export {scope} to:\n{root}\n\nTarget: {mode}\n\n"
+    "Only files with real cheats are copied; existing SD cheats are "
+    "merged. Proceed?": {
+        "de": "{scope} exportieren nach:\n{root}\n\nZiel: {mode}\n\nNur Dateien mit "
+              "echten Cheats werden kopiert; vorhandene SD-Cheats werden "
+              "zusammengeführt. Fortfahren?",
+        "es": "Exportar {scope} a:\n{root}\n\nDestino: {mode}\n\nSolo se copian "
+              "archivos con cheats reales; los cheats existentes en la SD se "
+              "combinan. ¿Continuar?",
+        "fr": "Exporter {scope} vers :\n{root}\n\nCible : {mode}\n\nSeuls les "
+              "fichiers avec de vrais cheats sont copiés ; les cheats existants de "
+              "la SD sont fusionnés. Continuer ?",
+        "it": "Esporta {scope} in:\n{root}\n\nDestinazione: {mode}\n\nVengono "
+              "copiati solo i file con cheat reali; i cheat già sulla SD vengono "
+              "uniti. Procedere?",
+        "ja": "{scope} を次へエクスポート:\n{root}\n\nターゲット: {mode}\n\n"
+              "実際のチートを含むファイルのみコピーされ、SD 上の既存チートは統合"
+              "されます。続行しますか？"},
+    "SD export ({mode}): {exported} file(s) for {games} game(s).": {
+        "de": "SD-Export ({mode}): {exported} Datei(en) für {games} Spiel(e).",
+        "es": "Exportación a SD ({mode}): {exported} archivo(s) para {games} juego(s).",
+        "fr": "Export SD ({mode}) : {exported} fichier(s) pour {games} jeu(x).",
+        "it": "Esportazione SD ({mode}): {exported} file per {games} giochi.",
+        "ja": "SD エクスポート ({mode}): {games} 件のゲームに {exported} ファイル。"},
+    "Export finished ({mode}):\n\n"
+    "  • {exported} cheat file(s) for {games} game(s)\n"
+    "  • {stubs} empty/stub file(s) skipped\n"
+    "  • {missing} build(s) not downloaded (nothing to copy)\n"
+    "  • {errors} error(s)\n\n"
+    "You can now safely eject the card and start your games.": {
+        "de": "Export abgeschlossen ({mode}):\n\n"
+              "  • {exported} Cheat-Datei(en) für {games} Spiel(e)\n"
+              "  • {stubs} leere/Stub-Datei(en) übersprungen\n"
+              "  • {missing} Build(s) nicht heruntergeladen (nichts zu kopieren)\n"
+              "  • {errors} Fehler\n\n"
+              "Du kannst die Karte jetzt sicher auswerfen und deine Spiele starten.",
+        "es": "Exportación finalizada ({mode}):\n\n"
+              "  • {exported} archivo(s) de cheats para {games} juego(s)\n"
+              "  • {stubs} archivo(s) vacío(s)/stub omitido(s)\n"
+              "  • {missing} build(s) sin descargar (nada que copiar)\n"
+              "  • {errors} error(es)\n\n"
+              "Ya puedes expulsar la tarjeta con seguridad e iniciar tus juegos.",
+        "fr": "Export terminé ({mode}) :\n\n"
+              "  • {exported} fichier(s) de cheats pour {games} jeu(x)\n"
+              "  • {stubs} fichier(s) vide(s)/stub ignoré(s)\n"
+              "  • {missing} build(s) non téléchargée(s) (rien à copier)\n"
+              "  • {errors} erreur(s)\n\n"
+              "Vous pouvez maintenant éjecter la carte en toute sécurité et lancer "
+              "vos jeux.",
+        "it": "Esportazione completata ({mode}):\n\n"
+              "  • {exported} file di cheat per {games} giochi\n"
+              "  • {stubs} file vuoti/stub saltati\n"
+              "  • {missing} build non scaricate (nulla da copiare)\n"
+              "  • {errors} errori\n\n"
+              "Ora puoi espellere la scheda in sicurezza e avviare i tuoi giochi.",
+        "ja": "エクスポート完了 ({mode}):\n\n"
+              "  • {games} 件のゲームに {exported} 件のチートファイル\n"
+              "  • 空/スタブ {stubs} 件をスキップ\n"
+              "  • 未ダウンロード {missing} 件（コピー対象なし）\n"
+              "  • エラー {errors} 件\n\n"
+              "カードを安全に取り外してゲームを起動できます。"},
+    "ZIP export ({mode}): {exported} file(s) for {games} game(s) → {path}": {
+        "de": "ZIP-Export ({mode}): {exported} Datei(en) für {games} Spiel(e) → {path}",
+        "es": "Exportación ZIP ({mode}): {exported} archivo(s) para {games} juego(s) → {path}",
+        "fr": "Export ZIP ({mode}) : {exported} fichier(s) pour {games} jeu(x) → {path}",
+        "it": "Esportazione ZIP ({mode}): {exported} file per {games} giochi → {path}",
+        "ja": "ZIP エクスポート ({mode}): {games} 件のゲームに {exported} ファイル → {path}"},
+    "ZIP created ({mode}):\n{path}\n\n"
+    "  • {exported} cheat file(s) for {games} game(s)\n"
+    "  • {stubs} empty/stub file(s) skipped\n"
+    "  • {missing} build(s) not downloaded (nothing to copy)\n"
+    "  • {errors} error(s)\n\n"
+    "Unzip the archive onto your SD-card root to install the cheats.": {
+        "de": "ZIP erstellt ({mode}):\n{path}\n\n"
+              "  • {exported} Cheat-Datei(en) für {games} Spiel(e)\n"
+              "  • {stubs} leere/Stub-Datei(en) übersprungen\n"
+              "  • {missing} Build(s) nicht heruntergeladen (nichts zu kopieren)\n"
+              "  • {errors} Fehler\n\n"
+              "Entpacke das Archiv ins Wurzelverzeichnis deiner SD-Karte, um die "
+              "Cheats zu installieren.",
+        "es": "ZIP creado ({mode}):\n{path}\n\n"
+              "  • {exported} archivo(s) de cheats para {games} juego(s)\n"
+              "  • {stubs} archivo(s) vacío(s)/stub omitido(s)\n"
+              "  • {missing} build(s) sin descargar (nada que copiar)\n"
+              "  • {errors} error(es)\n\n"
+              "Descomprime el archivo en la raíz de tu tarjeta SD para instalar los "
+              "cheats.",
+        "fr": "ZIP créé ({mode}) :\n{path}\n\n"
+              "  • {exported} fichier(s) de cheats pour {games} jeu(x)\n"
+              "  • {stubs} fichier(s) vide(s)/stub ignoré(s)\n"
+              "  • {missing} build(s) non téléchargée(s) (rien à copier)\n"
+              "  • {errors} erreur(s)\n\n"
+              "Décompressez l'archive à la racine de votre carte SD pour installer "
+              "les cheats.",
+        "it": "ZIP creato ({mode}):\n{path}\n\n"
+              "  • {exported} file di cheat per {games} giochi\n"
+              "  • {stubs} file vuoti/stub saltati\n"
+              "  • {missing} build non scaricate (nulla da copiare)\n"
+              "  • {errors} errori\n\n"
+              "Estrai l'archivio nella radice della scheda SD per installare i cheat.",
+        "ja": "ZIP を作成しました ({mode}):\n{path}\n\n"
+              "  • {games} 件のゲームに {exported} 件のチートファイル\n"
+              "  • 空/スタブ {stubs} 件をスキップ\n"
+              "  • 未ダウンロード {missing} 件（コピー対象なし）\n"
+              "  • エラー {errors} 件\n\n"
+              "アーカイブを SD カードのルートに展開するとチートがインストールされます。"},
+    "Database replaced — {n} build(s).": {
+        "de": "Datenbank ersetzt — {n} Build(s).",
+        "es": "Base de datos reemplazada: {n} build(s).",
+        "fr": "Base de données remplacée — {n} build(s).",
+        "it": "Database sostituito — {n} build.",
+        "ja": "データベースを置き換えました — {n} 件のビルド。"},
+    "Database replaced with the imported one.\n\n"
+    "  • {n} build(s) now in the database\n": {
+        "de": "Datenbank durch die importierte ersetzt.\n\n"
+              "  • {n} Build(s) jetzt in der Datenbank\n",
+        "es": "Base de datos reemplazada por la importada.\n\n"
+              "  • {n} build(s) ahora en la base de datos\n",
+        "fr": "Base remplacée par celle importée.\n\n"
+              "  • {n} build(s) désormais dans la base\n",
+        "it": "Database sostituito con quello importato.\n\n"
+              "  • {n} build ora nel database\n",
+        "ja": "データベースをインポートしたものに置き換えました。\n\n"
+              "  • 現在のビルド数: {n} 件\n"},
+    "A backup of the previous database was saved to:\n{path}": {
+        "de": "Ein Backup der vorherigen Datenbank wurde gespeichert unter:\n{path}",
+        "es": "Se guardó una copia de la base anterior en:\n{path}",
+        "fr": "Une sauvegarde de l'ancienne base a été enregistrée dans :\n{path}",
+        "it": "Un backup del database precedente è stato salvato in:\n{path}",
+        "ja": "以前のデータベースのバックアップを保存しました:\n{path}"},
+    "Database merged — {added} added, {updated} updated ({total} total).": {
+        "de": "Datenbank zusammengeführt — {added} neu, {updated} aktualisiert "
+              "({total} gesamt).",
+        "es": "Base combinada: {added} añadidas, {updated} actualizadas ({total} en total).",
+        "fr": "Base fusionnée — {added} ajoutées, {updated} mises à jour ({total} au total).",
+        "it": "Database unito — {added} aggiunte, {updated} aggiornate ({total} totali).",
+        "ja": "データベースを統合 — 追加 {added}、更新 {updated}（合計 {total}）。"},
+    "Imported {total} build(s):\n\n"
+    "  • {added} new build(s) added\n"
+    "  • {updated} existing build(s) updated\n"
+    "  • {after} build(s) now in the database\n\n"
+    "Nothing was removed; existing entries kept their data.": {
+        "de": "{total} Build(s) importiert:\n\n"
+              "  • {added} neue Build(s) hinzugefügt\n"
+              "  • {updated} vorhandene Build(s) aktualisiert\n"
+              "  • {after} Build(s) jetzt in der Datenbank\n\n"
+              "Nichts wurde entfernt; bestehende Einträge behielten ihre Daten.",
+        "es": "{total} build(s) importada(s):\n\n"
+              "  • {added} nueva(s) añadida(s)\n"
+              "  • {updated} existente(s) actualizada(s)\n"
+              "  • {after} build(s) ahora en la base de datos\n\n"
+              "No se eliminó nada; las entradas existentes conservaron sus datos.",
+        "fr": "{total} build(s) importée(s) :\n\n"
+              "  • {added} nouvelle(s) ajoutée(s)\n"
+              "  • {updated} existante(s) mise(s) à jour\n"
+              "  • {after} build(s) désormais dans la base\n\n"
+              "Rien n'a été supprimé ; les entrées existantes ont gardé leurs "
+              "données.",
+        "it": "{total} build importate:\n\n"
+              "  • {added} nuove aggiunte\n"
+              "  • {updated} esistenti aggiornate\n"
+              "  • {after} build ora nel database\n\n"
+              "Nulla è stato rimosso; le voci esistenti hanno mantenuto i dati.",
+        "ja": "{total} 件のビルドをインポート:\n\n"
+              "  • 新規追加 {added} 件\n"
+              "  • 既存更新 {updated} 件\n"
+              "  • 現在のビルド数 {after} 件\n\n"
+              "何も削除されていません。既存の項目はデータを保持しています。"},
+    "Could not check for updates:\n\n{msg}\n\n"
+    "Check your internet connection and try again.": {
+        "de": "Update-Prüfung nicht möglich:\n\n{msg}\n\n"
+              "Prüfe deine Internetverbindung und versuche es erneut.",
+        "es": "No se pudo comprobar actualizaciones:\n\n{msg}\n\n"
+              "Comprueba tu conexión a Internet e inténtalo de nuevo.",
+        "fr": "Impossible de vérifier les mises à jour :\n\n{msg}\n\n"
+              "Vérifiez votre connexion Internet et réessayez.",
+        "it": "Impossibile verificare gli aggiornamenti:\n\n{msg}\n\n"
+              "Controlla la connessione a Internet e riprova.",
+        "ja": "更新を確認できませんでした:\n\n{msg}\n\n"
+              "インターネット接続を確認してもう一度お試しください。"},
+    "You are up to date.\n\nInstalled version: v{ver}\n"
+    "Program, cheats and database are all current.": {
+        "de": "Du bist auf dem neuesten Stand.\n\nInstallierte Version: v{ver}\n"
+              "Programm, Cheats und Datenbank sind aktuell.",
+        "es": "Estás al día.\n\nVersión instalada: v{ver}\n"
+              "El programa, los cheats y la base de datos están actualizados.",
+        "fr": "Vous êtes à jour.\n\nVersion installée : v{ver}\n"
+              "Programme, cheats et base de données sont à jour.",
+        "it": "Sei aggiornato.\n\nVersione installata: v{ver}\n"
+              "Programma, cheat e database sono aggiornati.",
+        "ja": "最新の状態です。\n\nインストール済みバージョン: v{ver}\n"
+              "プログラム、チート、データベースはすべて最新です。"},
+    "Could not open:\n\n{err}": {
+        "de": "Konnte nicht öffnen:\n\n{err}", "es": "No se pudo abrir:\n\n{err}",
+        "fr": "Impossible d'ouvrir :\n\n{err}", "it": "Impossibile aprire:\n\n{err}",
+        "ja": "開けませんでした:\n\n{err}"},
+    "Could not open:\n{path}\n\n{err}": {
+        "de": "Konnte nicht öffnen:\n{path}\n\n{err}",
+        "es": "No se pudo abrir:\n{path}\n\n{err}",
+        "fr": "Impossible d'ouvrir :\n{path}\n\n{err}",
+        "it": "Impossibile aprire:\n{path}\n\n{err}",
+        "ja": "開けませんでした:\n{path}\n\n{err}"},
+    "No cheat file on disk for {tid}/{bid} — opened {folder}.": {
+        "de": "Keine Cheat-Datei auf der Festplatte für {tid}/{bid} — {folder} geöffnet.",
+        "es": "No hay archivo de cheats en disco para {tid}/{bid}; se abrió {folder}.",
+        "fr": "Aucun fichier de cheats sur le disque pour {tid}/{bid} — {folder} ouvert.",
+        "it": "Nessun file di cheat su disco per {tid}/{bid} — aperto {folder}.",
+        "ja": "{tid}/{bid} のチートファイルがディスクにありません — {folder} を開きました。"},
+    "{n} game(s) have entries with 0 cheats.\n"
+    "Refresh them from the API and download their cheat codes?": {
+        "de": "{n} Spiel(e) haben Einträge mit 0 Cheats.\n"
+              "Über die API auffrischen und ihre Cheat-Codes herunterladen?",
+        "es": "{n} juego(s) tienen entradas con 0 cheats.\n"
+              "¿Actualizarlos desde la API y descargar sus códigos?",
+        "fr": "{n} jeu(x) ont des entrées avec 0 cheat.\n"
+              "Les rafraîchir via l'API et télécharger leurs codes ?",
+        "it": "{n} gioco/giochi hanno voci con 0 cheat.\n"
+              "Aggiornarli dall'API e scaricare i loro codici?",
+        "ja": "{n} 件のゲームに 0 チートの項目があります。\n"
+              "API から更新してチートコードをダウンロードしますか？"},
+    "Failed: {err}": {
+        "de": "Fehlgeschlagen: {err}", "es": "Falló: {err}",
+        "fr": "Échec : {err}", "it": "Non riuscito: {err}",
+        "ja": "失敗しました: {err}"},
+    "Could not start the updater:\n{err}": {
+        "de": "Updater konnte nicht gestartet werden:\n{err}",
+        "es": "No se pudo iniciar el actualizador:\n{err}",
+        "fr": "Impossible de lancer le programme de mise à jour :\n{err}",
+        "it": "Impossibile avviare l'updater:\n{err}",
+        "ja": "アップデーターを起動できませんでした:\n{err}"},
+    "Not a valid database file:\n{err}": {
+        "de": "Keine gültige Datenbankdatei:\n{err}",
+        "es": "No es un archivo de base de datos válido:\n{err}",
+        "fr": "Fichier de base de données non valide :\n{err}",
+        "it": "File di database non valido:\n{err}",
+        "ja": "有効なデータベースファイルではありません:\n{err}"},
+    "Exported {n} row(s) to:\n{dest}\n\n"
+    "Columns included:\n"
+    "• Game Title, Title/Build ID, Version, Upload Date\n"
+    "• Cheat Count & Names, Credits, Description\n"
+    "• Cover/Banner URLs, Source (GBatemp/titledb/cheatslips)\n"
+    "• Publisher, Developer, Genre, Release Date\n"
+    "• Player Count, Size, Rating, and more": {
+        "de": "{n} Zeile(n) exportiert nach:\n{dest}\n\n"
+              "Enthaltene Spalten:\n"
+              "• Spieltitel, Title/Build-ID, Version, Upload-Datum\n"
+              "• Cheat-Anzahl & -Namen, Credits, Beschreibung\n"
+              "• Cover-/Banner-URLs, Quelle (GBatemp/titledb/cheatslips)\n"
+              "• Publisher, Entwickler, Genre, Erscheinungsdatum\n"
+              "• Spieleranzahl, Größe, Bewertung und mehr",
+        "es": "{n} fila(s) exportada(s) a:\n{dest}\n\n"
+              "Columnas incluidas:\n"
+              "• Título del juego, Title/Build ID, versión, fecha de subida\n"
+              "• Número y nombres de cheats, créditos, descripción\n"
+              "• URLs de carátula/banner, fuente (GBatemp/titledb/cheatslips)\n"
+              "• Editor, desarrollador, género, fecha de lanzamiento\n"
+              "• Número de jugadores, tamaño, valoración y más",
+        "fr": "{n} ligne(s) exportée(s) vers :\n{dest}\n\n"
+              "Colonnes incluses :\n"
+              "• Titre du jeu, Title/Build ID, version, date d'envoi\n"
+              "• Nombre et noms des cheats, crédits, description\n"
+              "• URLs de jaquette/bannière, source (GBatemp/titledb/cheatslips)\n"
+              "• Éditeur, développeur, genre, date de sortie\n"
+              "• Nombre de joueurs, taille, note et plus",
+        "it": "{n} riga/righe esportate in:\n{dest}\n\n"
+              "Colonne incluse:\n"
+              "• Titolo del gioco, Title/Build ID, versione, data di caricamento\n"
+              "• Numero e nomi dei cheat, crediti, descrizione\n"
+              "• URL copertina/banner, fonte (GBatemp/titledb/cheatslips)\n"
+              "• Editore, sviluppatore, genere, data di uscita\n"
+              "• Numero di giocatori, dimensioni, valutazione e altro",
+        "ja": "{n} 行を次へエクスポート:\n{dest}\n\n"
+              "含まれる列:\n"
+              "• ゲームタイトル、Title/Build ID、バージョン、アップロード日\n"
+              "• チート数と名前、クレジット、説明\n"
+              "• カバー/バナー URL、ソース (GBatemp/titledb/cheatslips)\n"
+              "• パブリッシャー、開発元、ジャンル、発売日\n"
+              "• プレイ人数、サイズ、評価など"},
+})
+
 # --------------------------------------------------------------------------
 _build()
 
