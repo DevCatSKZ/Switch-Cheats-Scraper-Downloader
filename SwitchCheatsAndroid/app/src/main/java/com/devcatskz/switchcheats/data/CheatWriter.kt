@@ -38,12 +38,15 @@ class FileCheatWriter(private val loadBase: File) : CheatWriter {
 }
 
 /**
- * SAF writer for a granted tree (the emulator's `load` folder, or a parent).
- * DocumentFile directory creation is slow, so every folder is cached and reused.
+ * SAF writer for a granted tree. [prefix] are the folders from the granted tree
+ * DOWN to the emulator's `load` folder — so the user may grant `load`, its
+ * parent, the emulator/package folder or Android/data, and the app still writes
+ * to the right place. DocumentFile creation is slow, so folders are cached.
  */
 class SafCheatWriter(
     private val context: Context,
     treeUri: Uri,
+    private val prefix: List<String> = emptyList(),
 ) : CheatWriter {
     private val root: DocumentFile =
         DocumentFile.fromTreeUri(context, treeUri)
@@ -72,7 +75,8 @@ class SafCheatWriter(
     }
 
     override fun write(target: CheatLayout.Target, modName: String, bytes: ByteArray) {
-        val dir = dirFor(target.titleId, modName, "cheats")
+        val segments = (prefix + listOf(target.titleId, modName, "cheats")).toTypedArray()
+        val dir = dirFor(*segments)
         val fileName = "${target.buildId}.txt"
         val file = dir.findFile(fileName) ?: dir.createFile("text/plain", fileName)
         ?: throw java.io.IOException("create failed: $fileName")

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.DocumentsContract
 import androidx.core.content.ContextCompat
 import java.io.File
 
@@ -37,50 +38,71 @@ object Storage {
 
     /** How the app can write to this emulator right now. */
     sealed class WriteMode {
-        data class Direct(val loadDir: File) : WriteMode()          // java.io.File
-        data class Saf(val treeUri: Uri) : WriteMode()              // granted folder
-        object NeedsAllFiles : WriteMode()                          // ask for MANAGE_EXTERNAL_STORAGE
-        object NeedsFolderGrant : WriteMode()                       // ask for SAF folder
+        data class Direct(val loadDir: File) : WriteMode()                 // java.io.File
+        /** A granted SAF tree plus the segments from that tree down to `load`. */
+        data class Saf(val treeUri: Uri, val prefix: List<String>) : WriteMode()
+        object NeedsAllFiles : WriteMode()                                // ask for MANAGE_EXTERNAL_STORAGE
+        object NeedsFolderGrant : WriteMode()                             // ask for a SAF folder
     }
 
     /**
-     * Decide the write strategy. The goal: after the one startup permission, copy
-     * straight to the emulator's folder — no manual path picking required unless
-     * the OS forces it.
+     * Decide the write strategy. The goal: the user picks *any* folder on the
+     * emulator's path and the app sorts the rest — no way to get it wrong.
      *
-     *  1. A previously granted SAF folder always wins.
+     *  1. Any persisted SAF grant that *covers* this emulator's load path wins
+     *     (so a single Android/data grant can serve every emulator).
      *  2. Otherwise the app needs broad storage access ("All files"); ask if missing.
-     *  3. With it granted, try a direct File write — this covers Suyu and any
-     *     public path, and Android/data on Android ≤ 10, needing no folder pick.
+     *  3. With it granted, try a direct File write (Suyu / public paths / Android ≤ 10).
      *  4. Only when the OS blocks the direct write (another app's Android/data on
-     *     Android 11+) do we fall back to a one-time folder grant — the manual
-     *     alternative.
+     *     Android 11+) do we ask for a folder — resolved back to `load` for the user.
      */
-    fun resolveWriteMode(context: Context, emu: Emulator, prefs: Prefs): WriteMode {
-        val dir = loadDir(emu)
-
-        // 1. A persisted SAF grant always wins if present and still valid.
-        prefs.safUri(emu)?.let { s ->
-            val uri = Uri.parse(s)
-            val ok = context.contentResolver.persistedUriPermissions.any {
-                it.uri == uri && it.isWritePermission
-            }
-            if (ok) return WriteMode.Saf(uri)
-        }
-
-        // 2. Broad storage access is the baseline.
+    fun resolveWriteMode(context: Context, emu: Emulator, @Suppress("UNUSED_PARAMETER") prefs: Prefs): WriteMode {
+        findSaf(context, emu)?.let { return it }
         if (!hasAllFilesAccess(context)) return WriteMode.NeedsAllFiles
-
-        // 3. Prefer a direct write — no folder pick needed when it works.
-        if (FileCheatWriter.canWrite(dir)) return WriteMode.Direct(dir)
-
-        // 4. OS blocked it (Android/data on 11+) — ask for the folder once.
+        if (FileCheatWriter.canWrite(loadDir(emu))) return WriteMode.Direct(loadDir(emu))
         return WriteMode.NeedsFolderGrant
+    }
+
+    /** A persisted, writable SAF grant that covers [emu]'s load path, if any. */
+    private fun findSaf(context: Context, emu: Emulator): WriteMode.Saf? {
+        for (p in context.contentResolver.persistedUriPermissions) {
+            if (!p.isWritePermission) continue
+            val prefix = safPrefixFor(p.uri, emu) ?: continue
+            return WriteMode.Saf(p.uri, prefix)
+        }
+        return null
+    }
+
+    /** The path a SAF tree URI points at, relative to primary shared storage,
+     *  or null if it's not on the primary (internal) volume. */
+    private fun treePath(uri: Uri): String? {
+        val docId = try { DocumentsContract.getTreeDocumentId(uri) } catch (_: Exception) { return null }
+        val parts = docId.split(":", limit = 2)
+        if (parts.size < 2 || parts[0] != "primary") return null
+        return parts[1].trim('/')
+    }
+
+    /**
+     * Segments from the granted [uri] tree DOWN to the emulator's `load` folder,
+     * or null when the tree is not on the emulator's path (a wrong pick).
+     *   - grant = load            → []
+     *   - grant = storage root    → all of loadRelPath
+     *   - grant = a parent (files, the emulator/package folder, Android/data) → the rest
+     */
+    fun safPrefixFor(uri: Uri, emu: Emulator): List<String>? {
+        val tree = treePath(uri) ?: return null
+        val load = emu.loadRelPath.trim('/')
+        return when {
+            tree == load -> emptyList()
+            tree.isEmpty() -> load.split("/")
+            load.startsWith("$tree/") -> load.removePrefix("$tree/").split("/")
+            else -> null
+        }
     }
 
     fun writerFor(context: Context, mode: WriteMode): CheatWriter? = when (mode) {
         is WriteMode.Direct -> FileCheatWriter(mode.loadDir)
-        is WriteMode.Saf -> SafCheatWriter(context, mode.treeUri)
+        is WriteMode.Saf -> SafCheatWriter(context, mode.treeUri, mode.prefix)
         else -> null
     }
 }

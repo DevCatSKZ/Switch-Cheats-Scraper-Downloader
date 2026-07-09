@@ -38,6 +38,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     var needAllFiles by mutableStateOf(false); private set
     var needFolderGrant by mutableStateOf(false); private set
+    // Set when the user picked a folder that isn't on the emulator's path.
+    var folderError by mutableStateOf(""); private set
 
     // Startup permission onboarding: a prominent, explained request shown once
     // per install (persisted) while the general storage grant is missing.
@@ -54,7 +56,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun changeLang(l: Lang) { lang = l; prefs.lang = l }
     fun changeEmulator(e: Emulator) {
         emulator = e; prefs.emulator = e
-        needAllFiles = false; needFolderGrant = false; resultText = ""
+        needAllFiles = false; needFolderGrant = false; resultText = ""; folderError = ""
         refreshWriteNeeds()
         checkUpdate()
     }
@@ -145,14 +147,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun onFolderGranted(uri: Uri) {
+        // Foolproof: the folder just has to be somewhere on the emulator's path
+        // (the emulator/package folder, files, load, or even Android/data). If it
+        // isn't, don't keep it — tell the user and let them pick again.
+        if (Storage.safPrefixFor(uri, emulator) == null) {
+            autoInstallAfterGrant = false
+            folderError = t("storage.wrongFolder")
+            return
+        }
         try {
             getApplication<Application>().contentResolver.takePersistableUriPermission(
                 uri,
                 android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
-            prefs.setSafUri(emulator, uri.toString())
         } catch (_: Exception) {}
+        folderError = ""
         refreshWriteNeeds()
         if (autoInstallAfterGrant) {
             autoInstallAfterGrant = false

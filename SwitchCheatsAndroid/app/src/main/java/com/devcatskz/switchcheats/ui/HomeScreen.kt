@@ -167,6 +167,11 @@ fun HomeScreen(
                 } else if (vm.needFolderGrant) {
                     Spacer(Modifier.height(10.dp))
                     Text(vm.t("storage.safHint"), color = Prisma.Muted, fontSize = 12.sp)
+                    if (vm.folderError.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(vm.folderError, color = Prisma.Error, fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold)
+                    }
                     Spacer(Modifier.height(8.dp))
                     HoloButton(vm.t("storage.pickFolder")) { vm.armAutoInstall(); onPickFolder() }
                 }
