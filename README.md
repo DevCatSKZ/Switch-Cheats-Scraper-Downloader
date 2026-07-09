@@ -70,6 +70,7 @@ You don't have to scrape anything yourself: a **continuously updated** cheats ar
 | Asset | What it is | Direct link |
 |---|---|---|
 | `switch-cheats.zip` | All cheat files (Atmosphère layout) | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip) |
+| `switch-cheats-emulator.zip` | All cheat files in the **emulator load layout** (`<TitleID>/<GameName>/cheats/<BuildID>.txt`) — drop the contents into an emulator's `load` folder (Yuzu · Suyu · Sudachi · Torzu · Eden) or Ryujinx's `mods` | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats-emulator.zip) |
 | `database.db` | Complete GUI database (names, regions, versions, descriptions, cover **URLs**) | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/database.db) |
 | `names.json` | Title ID → game name (names the Android app's cheat folders) | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/names.json) |
 

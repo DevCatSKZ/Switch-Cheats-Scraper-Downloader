@@ -443,9 +443,9 @@
 <span class="p">atmosphere/contents/</span><span class="k">&lt;TitleID&gt;</span><span class="p">/cheats/</span>
     <span class="v">&lt;BuildID&gt;</span>.txt
 
-<span class="c"># Android emulator (load dir)</span>
+<span class="c"># Emulator (load / mods folder)</span>
 <span class="p">…/load/</span><span class="k">&lt;TitleID&gt;</span><span class="p">/</span>
-  SwitchCheatsDownloader<span class="p">/cheats/</span>
+  <span class="k">&lt;GameName&gt;</span><span class="p">/cheats/</span>
     <span class="v">&lt;BuildID&gt;</span>.txt
 </pre>
       </div>
@@ -467,6 +467,9 @@
         <a href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip">
           <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l4-4m-4 4l-4-4M4 21h16"/></svg>
           <div><div class="fn">switch-cheats.zip</div><div class="d" data-i18n="data_a1">All cheat files · Atmosphère layout</div></div></a>
+        <a href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats-emulator.zip">
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+          <div><div class="fn">switch-cheats-emulator.zip</div><div class="d" data-i18n="data_a3">All cheat files · emulator load/mods layout (Yuzu-family · Ryujinx · Eden)</div></div></a>
         <a href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/database.db">
           <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
           <div><div class="fn">database.db</div><div class="d" data-i18n="data_a2">Complete GUI database · names, regions, versions</div></div></a>
@@ -594,7 +597,7 @@ const I18N = {
     paths_bar:`Struktur auf dem Gerät`,
     data_eyebrow:`Kein Scrapen nötig`, data_h3:`Hol dir den ganzen Datenbestand mit einem Klick.`,
     data_p:`Ein laufend aktualisiertes Cheat-Archiv und die komplette Datenbank liegen im <b style="color:var(--text)">Data-Release</b> des Repos. Jede App holt sie direkt — und importiert sie bei einer Aktualisierung neu. Vorhandene Einträge werden zusammengeführt und ergänzt, nie gelöscht.`,
-    data_a1:`Alle Cheat-Dateien · Atmosphère-Format`, data_a2:`Komplette GUI-Datenbank · Namen, Regionen, Versionen`,
+    data_a1:`Alle Cheat-Dateien · Atmosphère-Format`, data_a3:`Alle Cheat-Dateien · Emulator-load/mods-Format (Yuzu-Familie · Ryujinx · Eden)`, data_a2:`Komplette GUI-Datenbank · Namen, Regionen, Versionen`,
     src_eyebrow:`Cheat-Quellen`, src_h2:`Alles an einem Ort.`, src_scrape:`Scrape + API`,
     foot_repo:`Repository`, foot_releases:`Releases`, foot_data:`Daten`, foot_privacy:`Datenschutz`,
     priv_eyebrow:`Datenschutz`, priv_h2:`Deine Daten bleiben deine.`,
@@ -649,7 +652,7 @@ const I18N = {
     paths_bar:`estructura en el dispositivo`,
     data_eyebrow:`Sin necesidad de scraping`, data_h3:`Consigue todo el conjunto con un clic.`,
     data_p:`Un archivo de trucos en constante actualización y la base de datos completa viven en el <b style="color:var(--text)">data release</b> del repo. Cada app puede obtenerlos directamente — y reimportarlos cuando se actualizan. Las entradas existentes se combinan y enriquecen, nunca se eliminan.`,
-    data_a1:`Todos los archivos de trucos · formato Atmosphère`, data_a2:`Base de datos completa de la GUI · nombres, regiones, versiones`,
+    data_a1:`Todos los archivos de trucos · formato Atmosphère`, data_a3:`Todos los archivos de trucos · formato load/mods de emulador (familia Yuzu · Ryujinx · Eden)`, data_a2:`Base de datos completa de la GUI · nombres, regiones, versiones`,
     src_eyebrow:`Fuentes de trucos`, src_h2:`Todo en un solo lugar.`, src_scrape:`scrape + API`,
     foot_repo:`Repositorio`, foot_releases:`Versiones`, foot_data:`Datos`, foot_privacy:`Privacidad`,
     priv_eyebrow:`Privacidad`, priv_h2:`Tus datos siguen siendo tuyos.`,
@@ -704,7 +707,7 @@ const I18N = {
     paths_bar:`structure sur l'appareil`,
     data_eyebrow:`Aucun scraping requis`, data_h3:`Récupérez tout le jeu de données en un clic.`,
     data_p:`Une archive de codes continuellement mise à jour et la base complète vivent dans le <b style="color:var(--text)">data release</b> du dépôt. Chaque app peut les récupérer directement — et les réimporter à chaque actualisation. Les entrées existantes sont fusionnées et enrichies, jamais supprimées.`,
-    data_a1:`Tous les fichiers de codes · format Atmosphère`, data_a2:`Base de données complète · noms, régions, versions`,
+    data_a1:`Tous les fichiers de codes · format Atmosphère`, data_a3:`Tous les fichiers de codes · format load/mods d'émulateur (famille Yuzu · Ryujinx · Eden)`, data_a2:`Base de données complète · noms, régions, versions`,
     src_eyebrow:`Sources de codes`, src_h2:`Tout au même endroit.`, src_scrape:`scrape + API`,
     foot_repo:`Dépôt`, foot_releases:`Versions`, foot_data:`Données`, foot_privacy:`Confidentialité`,
     priv_eyebrow:`Confidentialité`, priv_h2:`Vos données restent les vôtres.`,
@@ -759,7 +762,7 @@ const I18N = {
     paths_bar:`struttura sul dispositivo`,
     data_eyebrow:`Nessuno scraping necessario`, data_h3:`Prendi tutto il set di dati con un clic.`,
     data_p:`Un archivio di trucchi in continuo aggiornamento e il database completo vivono nel <b style="color:var(--text)">data release</b> del repo. Ogni app può prenderli direttamente — e reimportarli quando vengono aggiornati. Le voci esistenti vengono unite e arricchite, mai rimosse.`,
-    data_a1:`Tutti i file di trucchi · formato Atmosphère`, data_a2:`Database completo della GUI · nomi, regioni, versioni`,
+    data_a1:`Tutti i file di trucchi · formato Atmosphère`, data_a3:`Tutti i file di trucchi · formato load/mods per emulatori (famiglia Yuzu · Ryujinx · Eden)`, data_a2:`Database completo della GUI · nomi, regioni, versioni`,
     src_eyebrow:`Fonti di trucchi`, src_h2:`Tutto in un unico posto.`, src_scrape:`scrape + API`,
     foot_repo:`Repository`, foot_releases:`Versioni`, foot_data:`Dati`, foot_privacy:`Privacy`,
     priv_eyebrow:`Privacy`, priv_h2:`I tuoi dati restano tuoi.`,
@@ -814,7 +817,7 @@ const I18N = {
     paths_bar:`デバイス上の構成`,
     data_eyebrow:`スクレイプ不要`, data_h3:`データ一式をワンクリックで。`,
     data_p:`継続的に更新されるチートアーカイブと完全なデータベースは、リポジトリの<b style="color:var(--text)">data release</b>にあります。各アプリはそれらを直接取得でき、更新されれば再取り込みします。既存のエントリは統合・拡充され、削除されることはありません。`,
-    data_a1:`すべてのチートファイル · Atmosphèreレイアウト`, data_a2:`完全なGUIデータベース · 名前、地域、バージョン`,
+    data_a1:`すべてのチートファイル · Atmosphèreレイアウト`, data_a3:`すべてのチートファイル · エミュレーターの load/mods レイアウト（Yuzu系 · Ryujinx · Eden）`, data_a2:`完全なGUIデータベース · 名前、地域、バージョン`,
     src_eyebrow:`チートソース`, src_h2:`すべてを一か所に。`, src_scrape:`スクレイプ + API`,
     foot_repo:`リポジトリ`, foot_releases:`リリース`, foot_data:`データ`, foot_privacy:`プライバシー`,
     priv_eyebrow:`プライバシー`, priv_h2:`あなたのデータはあなたのもの。`,
