@@ -33,6 +33,9 @@
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  /* Anchor targets must land BELOW the sticky nav (~63px), not underneath it —
+     otherwise every #jump hides the section heading behind the bar. */
+  [id]{scroll-margin-top:84px}
   body{
     margin:0; color:var(--text); font-family:var(--sans);
     background:var(--ground); line-height:1.6;
