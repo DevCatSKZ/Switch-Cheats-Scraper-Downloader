@@ -4016,21 +4016,23 @@ class ScraperGUI:
         else:
             label, colour = f"v{APP_VERSION} — up to date", t["ok"]
         self.update_status_lbl.config(text=label, foreground=colour)
-        # --- Auto-update: silently install a found PROGRAM update (no dialog, no
-        #     clicks) when enabled AND we can do it without a UAC prompt — i.e. the
-        #     app folder is writable (a per-user install or a portable build). The
-        #     app downloads, installs and restarts itself. ---
+        # --- Auto-update runs ONLY on the automatic startup check: a found program
+        #     update installs itself silently (no dialog, no clicks) when enabled
+        #     AND doable without a UAC prompt (a writable app folder — per-user
+        #     install or portable). A MANUAL "Check Updates" click always opens the
+        #     dialog instead, so the user reviews the notes, presses Update &
+        #     Restart and WATCHES the download + install progress. ---
         can_silent = (getattr(sys, "frozen", False) and not self._busy
                       and self._app_dir_writable())
-        if prog and self.auto_update.get() and can_silent:
-            self.update_status_lbl.config(text="installing update…",
-                                          foreground=theme()["checking"])
-            self.start_program_update(info)
-            return
-        # Data-only update: with auto-update on, merge it silently (non-destructive).
-        if has_data and not prog and self.auto_update.get() and not self._busy:
-            self.start_data_update(info)
-            return
+        if startup and self.auto_update.get() and can_silent:
+            if prog:
+                self.update_status_lbl.config(text="installing update…",
+                                              foreground=theme()["checking"])
+                self.start_program_update(info)
+                return
+            if has_data:                       # non-destructive merge, silent
+                self.start_data_update(info)
+                return
         # Startup checks stay quiet unless something is actually new.
         if startup and not (prog or has_data):
             return
