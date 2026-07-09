@@ -107,7 +107,10 @@
   .lede b{color:var(--text); font-weight:600}
   .cta{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:38px; max-width:640px}
   .cta .btn{justify-content:center}
-  @media (max-width:560px){ .cta{grid-template-columns:1fr} }
+  /* Single column on phones: the "All platforms" nav link goes LAST, below the
+     three real downloads (in the 2-col grid it sits at (2,1) so Switch stays
+     under Android). */
+  @media (max-width:560px){ .cta{grid-template-columns:1fr} .cta .btn-link{order:9} }
   .btn{display:inline-flex; align-items:center; gap:10px; font-weight:650; font-size:15px;
     padding:14px 22px; border-radius:12px; border:1px solid transparent; transition:.18s; cursor:pointer}
   .btn svg{width:18px; height:18px; flex:none}
