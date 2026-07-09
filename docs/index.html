@@ -252,8 +252,8 @@
     <p class="eyebrow" data-i18n="hero_eyebrow">Scrape · Download · Manage</p>
     <h1 data-i18n="hero_title">Every Switch cheat, <span class="g">on every device.</span></h1>
     <p class="lede" data-i18n="hero_lede">One toolkit that pulls cheat codes from <b>9+ sources</b>, keeps them in a
-      searchable database, and writes them straight into the right layout — on
-      <b>Windows</b>, on the <b>Switch</b> itself, and on <b>Android</b> emulators.</p>
+      searchable database you manage — add, edit and enrich entries — and writes them straight into the right
+      layout, on <b>Windows</b>, on the <b>Switch</b> itself, and on <b>Android</b> emulators.</p>
 
     <div class="cta">
       <a class="btn btn-primary" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/latest/download/SwitchCheatsScraper-Setup.exe">
@@ -293,9 +293,9 @@
         <div class="role" data-i18n="plat_win_role">Windows 10 / 11</div>
         <h3 data-i18n="plat_win_h3">Scraper + Downloader + Manager</h3>
         <div class="os" data-i18n="plat_win_os">The full toolkit · no Python needed</div>
-        <p data-i18n="plat_win_p">Scrape CheatSlips and import 9+ community sources into a searchable SQLite database —
-          names, covers, regions, versions, descriptions. Download full cheat files via the official
-          API and export straight to your SD card or a ZIP.</p>
+        <p data-i18n="plat_win_p">Scrape CheatSlips and import 9+ community sources into a searchable SQLite database — then
+          manage it: add your own entries, edit existing ones, and fetch names, covers, regions, versions and
+          descriptions on demand. Download full cheat files via the official API and export straight to your SD card or a ZIP.</p>
         <div class="dl">
           <a class="main" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/latest/download/SwitchCheatsScraper-Setup.exe">
             <span data-i18n="dl_win_1">Installer (.exe)</span><span class="sz" data-i18n="dl_win_1s">Setup</span></a>
@@ -395,7 +395,7 @@
           <h4 data-i18n="step1_h">Collect</h4><p data-i18n="step1_p">Scrape CheatSlips and import the community sources into your local
           SQLite database — game names, covers, regions, versions and descriptions.</p></div></div>
         <div class="step"><div class="n"></div><div>
-          <h4 data-i18n="step2_h">Browse</h4><p data-i18n="step2_p">Search and filter everything in the GUI. See what's downloaded, what's
+          <h4 data-i18n="step2_h">Browse &amp; manage</h4><p data-i18n="step2_p">Search and filter everything in the GUI, and manage the database itself: add new entries, edit existing ones and fetch names, covers, regions, versions or descriptions afterwards. You always see what's downloaded, what's
           missing, and where each build's cheats came from.</p></div></div>
         <div class="step"><div class="n"></div><div>
           <h4 data-i18n="step3_h">Export</h4><p data-i18n="step3_p">One click to the SD card or a ZIP — in exactly the layout the CFW
@@ -519,7 +519,7 @@ const I18N = {
     nav_platforms:`Plattformen`, nav_features:`Funktionen`, nav_data:`Cheat Database`,
     hero_eyebrow:`Scrapen · Herunterladen · Verwalten`,
     hero_title:`Jeder Switch-Cheat, <span class="g">auf jedem Gerät.</span>`,
-    hero_lede:`Ein Toolkit, das Cheat-Codes aus <b>9+ Quellen</b> zusammenträgt, in einer durchsuchbaren Datenbank pflegt und direkt im passenden Format ablegt — unter <b>Windows</b>, auf der <b>Switch</b> selbst und in <b>Android</b>-Emulatoren.`,
+    hero_lede:`Ein Toolkit, das Cheat-Codes aus <b>9+ Quellen</b> zusammenträgt, in einer durchsuchbaren Datenbank verwaltet — Einträge anlegen, bearbeiten und ergänzen — und direkt im passenden Format ablegt, unter <b>Windows</b>, auf der <b>Switch</b> selbst und in <b>Android</b>-Emulatoren.`,
     cta_win:`Für Windows herunterladen`, cta_all:`Alle Plattformen & Portable`,
     meta_mit:`MIT-Lizenz`, meta_langs:`6 Sprachen`, meta_noacct:`Zum Stöbern kein Konto nötig`,
     emb_win_s:`Scraper · Downloader · Manager`, emb_sw_s:`Cheats für die Nintendo Switch laden`,
@@ -528,7 +528,7 @@ const I18N = {
     plats_lede:`Das Desktop-Tool kann alles; die Switch- und Android-Apps sind schlanke Downloader, die dieselben, stets aktuellen Cheats direkt auf dem Gerät holen — ganz ohne PC.`,
     plat_win_role:`Windows 10 / 11`, plat_win_h3:`Scraper + Downloader + Manager`,
     plat_win_os:`Das komplette Toolkit · kein Python nötig`,
-    plat_win_p:`Durchsucht CheatSlips und führt 9+ Community-Quellen in einer durchsuchbaren SQLite-Datenbank zusammen — mit Namen, Covern, Regionen, Versionen und Beschreibungen. Lädt vollständige Cheat-Dateien über die offizielle API und exportiert direkt auf die SD-Karte oder als ZIP.`,
+    plat_win_p:`Durchsucht CheatSlips und führt 9+ Community-Quellen in einer durchsuchbaren SQLite-Datenbank zusammen — und verwaltet sie: eigene Einträge anlegen, vorhandene bearbeiten und Namen, Cover, Regionen, Versionen und Beschreibungen nachträglich laden. Lädt vollständige Cheat-Dateien über die offizielle API und exportiert direkt auf die SD-Karte oder als ZIP.`,
     dl_win_1:`Installer (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`ohne Installation`, dl_win_3:`Quellcode`,
     plat_sw_role:`Nintendo Switch - Homebrew`, plat_sw_h3:`Downloader auf der Konsole`,
     plat_sw_os:`Läuft auf der Switch selbst · braucht WLAN`,
@@ -552,7 +552,7 @@ const I18N = {
     f6_p:`Builds, die die API als leer meldet, verschwinden nicht einfach — sie landen im Filter <b>„Nicht heruntergeladen“</b>. Cover, Regionen und Versionen werden bei Bedarf nachgeladen.`,
     how_eyebrow:`So funktioniert's`, how_h2:`Sammeln, durchsuchen, exportieren.`,
     step1_h:`Sammeln`, step1_p:`Durchsucht CheatSlips und holt die Community-Quellen in deine lokale SQLite-Datenbank — Spielnamen, Cover, Regionen, Versionen und Beschreibungen.`,
-    step2_h:`Durchsuchen`, step2_p:`Alles in der Oberfläche suchen und filtern. Du siehst, was geladen ist, was fehlt und woher die Cheats jedes Builds stammen.`,
+    step2_h:`Durchsuchen & verwalten`, step2_p:`Alles in der Oberfläche suchen und filtern — und die Datenbank selbst verwalten: neue Einträge anlegen, vorhandene bearbeiten und Namen, Cover, Regionen, Versionen oder Beschreibungen nachträglich laden. Du siehst jederzeit, was geladen ist, was fehlt und woher die Cheats jedes Builds stammen.`,
     step3_h:`Exportieren`, step3_p:`Ein Klick auf die SD-Karte oder in ein ZIP — genau in dem Format, das die CFW erwartet. In den Switch- und Android-Apps geschieht dasselbe direkt auf dem Gerät.`,
     paths_bar:`Struktur auf dem Gerät`,
     data_eyebrow:`Kein Scrapen nötig`, data_h3:`Hol dir den ganzen Datenbestand mit einem Klick.`,
@@ -573,7 +573,7 @@ const I18N = {
     nav_platforms:`Plataformas`, nav_features:`Funciones`, nav_data:`Cheat Database`,
     hero_eyebrow:`Extraer · Descargar · Gestionar`,
     hero_title:`Cada truco de Switch, <span class="g">en cada dispositivo.</span>`,
-    hero_lede:`Un kit que reúne códigos de trucos de <b>9+ fuentes</b>, los guarda en una base de datos con búsqueda y los escribe en el formato correcto — en <b>Windows</b>, en la propia <b>Switch</b> y en emuladores de <b>Android</b>.`,
+    hero_lede:`Un kit que reúne códigos de trucos de <b>9+ fuentes</b>, los gestiona en una base de datos con búsqueda — crear, editar y enriquecer entradas — y los escribe en el formato correcto, en <b>Windows</b>, en la propia <b>Switch</b> y en emuladores de <b>Android</b>.`,
     cta_win:`Descargar para Windows`, cta_all:`Todas las plataformas y portable`,
     meta_mit:`Licencia MIT`, meta_langs:`6 idiomas`, meta_noacct:`No hace falta cuenta para explorar`,
     emb_win_s:`Scraper · Descargador · Gestor`, emb_sw_s:`Descargar trucos para Nintendo Switch`,
@@ -582,7 +582,7 @@ const I18N = {
     plats_lede:`La herramienta de escritorio lo hace todo; las apps de Switch y Android son descargadores centrados que obtienen los mismos trucos siempre actualizados directamente en el dispositivo — sin PC de por medio.`,
     plat_win_role:`Windows 10 / 11`, plat_win_h3:`Scraper + Descargador + Gestor`,
     plat_win_os:`El kit completo · sin Python`,
-    plat_win_p:`Extrae de CheatSlips e importa 9+ fuentes de la comunidad a una base de datos SQLite con búsqueda — nombres, carátulas, regiones, versiones, descripciones. Descarga los archivos completos de trucos por la API oficial y exporta directamente a la tarjeta SD o a un ZIP.`,
+    plat_win_p:`Extrae de CheatSlips e importa 9+ fuentes de la comunidad a una base de datos SQLite con búsqueda — y la gestiona: crea tus propias entradas, edita las existentes y añade nombres, carátulas, regiones, versiones y descripciones cuando quieras. Descarga los archivos completos por la API oficial y exporta directamente a la tarjeta SD o a un ZIP.`,
     dl_win_1:`Instalador (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`sin instalar`, dl_win_3:`Código fuente`,
     plat_sw_role:`Nintendo Switch - Homebrew`, plat_sw_h3:`Descargador en la consola`,
     plat_sw_os:`Se ejecuta en la propia Switch · necesita Wi-Fi`,
@@ -606,7 +606,7 @@ const I18N = {
     f6_p:`Los builds que la API informa como vacíos no se descartan en silencio — quedan bajo el filtro <b>«No descargado»</b>. Carátulas, regiones y versiones se enriquecen a demanda.`,
     how_eyebrow:`Cómo funciona`, how_h2:`Reunir, explorar, exportar.`,
     step1_h:`Reunir`, step1_p:`Extrae de CheatSlips e importa las fuentes de la comunidad a tu base de datos SQLite local — nombres de juegos, carátulas, regiones, versiones y descripciones.`,
-    step2_h:`Explorar`, step2_p:`Busca y filtra todo en la interfaz. Ve qué está descargado, qué falta y de dónde vienen los trucos de cada build.`,
+    step2_h:`Explorar y gestionar`, step2_p:`Busca y filtra todo en la interfaz, y gestiona la propia base de datos: crea nuevas entradas, edita las existentes y añade después nombres, carátulas, regiones, versiones o descripciones. Ves en todo momento qué está descargado, qué falta y de dónde vienen los trucos de cada build.`,
     step3_h:`Exportar`, step3_p:`Un clic a la tarjeta SD o a un ZIP — exactamente en el formato que espera el CFW. En las apps de Switch y Android, esa misma escritura ocurre en el dispositivo.`,
     paths_bar:`estructura en el dispositivo`,
     data_eyebrow:`Sin necesidad de scraping`, data_h3:`Consigue todo el conjunto con un clic.`,
@@ -627,7 +627,7 @@ const I18N = {
     nav_platforms:`Plateformes`, nav_features:`Fonctions`, nav_data:`Cheat Database`,
     hero_eyebrow:`Extraire · Télécharger · Gérer`,
     hero_title:`Chaque code Switch, <span class="g">sur chaque appareil.</span>`,
-    hero_lede:`Une boîte à outils qui récupère les codes de triche depuis <b>9+ sources</b>, les garde dans une base de données consultable et les écrit directement au bon format — sur <b>Windows</b>, sur la <b>Switch</b> elle-même et sur les émulateurs <b>Android</b>.`,
+    hero_lede:`Une boîte à outils qui récupère les codes de triche depuis <b>9+ sources</b>, les gère dans une base de données consultable — créer, modifier et enrichir des entrées — et les écrit directement au bon format, sur <b>Windows</b>, sur la <b>Switch</b> elle-même et sur les émulateurs <b>Android</b>.`,
     cta_win:`Télécharger pour Windows`, cta_all:`Toutes les plateformes & portable`,
     meta_mit:`Licence MIT`, meta_langs:`6 langues`, meta_noacct:`Aucun compte requis pour parcourir`,
     emb_win_s:`Scraper · Téléchargeur · Gestionnaire`, emb_sw_s:`Télécharger des codes pour Nintendo Switch`,
@@ -636,7 +636,7 @@ const I18N = {
     plats_lede:`L'outil de bureau fait tout ; les apps Switch et Android sont des téléchargeurs ciblés qui récupèrent les mêmes codes toujours à jour directement sur l'appareil — sans PC.`,
     plat_win_role:`Windows 10 / 11`, plat_win_h3:`Scraper + Téléchargeur + Gestionnaire`,
     plat_win_os:`La boîte à outils complète · sans Python`,
-    plat_win_p:`Extrayez CheatSlips et importez 9+ sources de la communauté dans une base SQLite consultable — noms, jaquettes, régions, versions, descriptions. Téléchargez les fichiers complets via l'API officielle et exportez directement vers la carte SD ou un ZIP.`,
+    plat_win_p:`Extrayez CheatSlips et importez 9+ sources de la communauté dans une base SQLite consultable — et gérez-la : créez vos propres entrées, modifiez celles qui existent et récupérez noms, jaquettes, régions, versions et descriptions à la demande. Téléchargez les fichiers complets via l'API officielle et exportez directement vers la carte SD ou un ZIP.`,
     dl_win_1:`Installateur (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`sans installation`, dl_win_3:`Code source`,
     plat_sw_role:`Nintendo Switch - Homebrew`, plat_sw_h3:`Téléchargeur sur la console`,
     plat_sw_os:`S'exécute sur la Switch elle-même · nécessite le Wi-Fi`,
@@ -660,7 +660,7 @@ const I18N = {
     f6_p:`Les builds que l'API signale comme vides ne sont pas silencieusement écartés — ils apparaissent sous le filtre <b>« Non téléchargé »</b>. Jaquettes, régions et versions sont enrichies à la demande.`,
     how_eyebrow:`Comment ça marche`, how_h2:`Collecter, parcourir, exporter.`,
     step1_h:`Collecter`, step1_p:`Extrayez CheatSlips et importez les sources de la communauté dans votre base SQLite locale — noms de jeux, jaquettes, régions, versions et descriptions.`,
-    step2_h:`Parcourir`, step2_p:`Cherchez et filtrez tout dans l'interface. Voyez ce qui est téléchargé, ce qui manque et d'où viennent les codes de chaque build.`,
+    step2_h:`Parcourir et gérer`, step2_p:`Cherchez et filtrez tout dans l'interface, et gérez la base elle-même : créez de nouvelles entrées, modifiez celles qui existent et récupérez ensuite noms, jaquettes, régions, versions ou descriptions. Vous voyez toujours ce qui est téléchargé, ce qui manque et d'où viennent les codes de chaque build.`,
     step3_h:`Exporter`, step3_p:`Un clic vers la carte SD ou un ZIP — exactement au format attendu par le CFW. Sur les apps Switch et Android, cette même écriture se fait sur l'appareil.`,
     paths_bar:`structure sur l'appareil`,
     data_eyebrow:`Aucun scraping requis`, data_h3:`Récupérez tout le jeu de données en un clic.`,
@@ -681,7 +681,7 @@ const I18N = {
     nav_platforms:`Piattaforme`, nav_features:`Funzioni`, nav_data:`Cheat Database`,
     hero_eyebrow:`Estrai · Scarica · Gestisci`,
     hero_title:`Ogni trucco per Switch, <span class="g">su ogni dispositivo.</span>`,
-    hero_lede:`Un toolkit che raccoglie i codici trucco da <b>9+ fonti</b>, li tiene in un database consultabile e li scrive nel formato giusto — su <b>Windows</b>, sulla <b>Switch</b> stessa e sugli emulatori <b>Android</b>.`,
+    hero_lede:`Un toolkit che raccoglie i codici trucco da <b>9+ fonti</b>, li gestisce in un database consultabile — creare, modificare e arricchire le voci — e li scrive nel formato giusto, su <b>Windows</b>, sulla <b>Switch</b> stessa e sugli emulatori <b>Android</b>.`,
     cta_win:`Scarica per Windows`, cta_all:`Tutte le piattaforme e portable`,
     meta_mit:`Licenza MIT`, meta_langs:`6 lingue`, meta_noacct:`Nessun account per sfogliare`,
     emb_win_s:`Scraper · Downloader · Gestore`, emb_sw_s:`Scarica trucchi per Nintendo Switch`,
@@ -690,7 +690,7 @@ const I18N = {
     plats_lede:`Lo strumento desktop fa tutto; le app Switch e Android sono downloader mirati che prendono gli stessi trucchi sempre aggiornati direttamente sul dispositivo — senza PC di mezzo.`,
     plat_win_role:`Windows 10 / 11`, plat_win_h3:`Scraper + Downloader + Gestore`,
     plat_win_os:`Il toolkit completo · niente Python`,
-    plat_win_p:`Estrai da CheatSlips e importa 9+ fonti della community in un database SQLite consultabile — nomi, copertine, regioni, versioni, descrizioni. Scarica i file completi tramite l'API ufficiale ed esporta direttamente sulla scheda SD o in uno ZIP.`,
+    plat_win_p:`Estrai da CheatSlips e importa 9+ fonti della community in un database SQLite consultabile — e gestiscilo: crea le tue voci, modifica quelle esistenti e aggiungi nomi, copertine, regioni, versioni e descrizioni quando vuoi. Scarica i file completi tramite l'API ufficiale ed esporta direttamente sulla scheda SD o in uno ZIP.`,
     dl_win_1:`Installer (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`senza installare`, dl_win_3:`Codice sorgente`,
     plat_sw_role:`Nintendo Switch - Homebrew`, plat_sw_h3:`Downloader sulla console`,
     plat_sw_os:`Gira sulla Switch stessa · richiede il Wi-Fi`,
@@ -714,7 +714,7 @@ const I18N = {
     f6_p:`Le build che l'API segnala come vuote non vengono scartate in silenzio — finiscono sotto il filtro <b>«Non scaricato»</b>. Copertine, regioni e versioni si arricchiscono su richiesta.`,
     how_eyebrow:`Come funziona`, how_h2:`Raccogli, sfoglia, esporta.`,
     step1_h:`Raccogli`, step1_p:`Estrai da CheatSlips e importa le fonti della community nel tuo database SQLite locale — nomi dei giochi, copertine, regioni, versioni e descrizioni.`,
-    step2_h:`Sfoglia`, step2_p:`Cerca e filtra tutto nell'interfaccia. Vedi cosa è scaricato, cosa manca e da dove vengono i trucchi di ogni build.`,
+    step2_h:`Sfoglia e gestisci`, step2_p:`Cerca e filtra tutto nell'interfaccia e gestisci il database stesso: crea nuove voci, modifica quelle esistenti e aggiungi in seguito nomi, copertine, regioni, versioni o descrizioni. Vedi sempre cosa è scaricato, cosa manca e da dove vengono i trucchi di ogni build.`,
     step3_h:`Esporta`, step3_p:`Un clic sulla scheda SD o in uno ZIP — esattamente nel formato che il CFW si aspetta. Nelle app Switch e Android la stessa scrittura avviene sul dispositivo.`,
     paths_bar:`struttura sul dispositivo`,
     data_eyebrow:`Nessuno scraping necessario`, data_h3:`Prendi tutto il set di dati con un clic.`,
@@ -735,7 +735,7 @@ const I18N = {
     nav_platforms:`対応環境`, nav_features:`機能`, nav_data:`Cheat Database`,
     hero_eyebrow:`収集 · ダウンロード · 管理`,
     hero_title:`すべてのSwitchチートを、<span class="g">あらゆるデバイスで。</span>`,
-    hero_lede:`<b>9つ以上のソース</b>からチートコードを集め、検索できるデータベースで管理し、正しいレイアウトで書き出すツールキット —— <b>Windows</b>、<b>Switch</b>本体、そして<b>Android</b>エミュレーターで。`,
+    hero_lede:`<b>9つ以上のソース</b>からチートコードを集め、検索できるデータベースで管理し（エントリの追加・編集・情報の補完）、正しいレイアウトで書き出すツールキット —— <b>Windows</b>、<b>Switch</b>本体、そして<b>Android</b>エミュレーターで。`,
     cta_win:`Windows版をダウンロード`, cta_all:`全プラットフォーム & ポータブル`,
     meta_mit:`MITライセンス`, meta_langs:`6言語対応`, meta_noacct:`閲覧にアカウント不要`,
     emb_win_s:`スクレイパー · ダウンローダー · マネージャー`, emb_sw_s:`Nintendo Switch用のチートをダウンロード`,
@@ -744,7 +744,7 @@ const I18N = {
     plats_lede:`デスクトップ版はすべてをこなします。SwitchとAndroidのアプリは、同じ常に最新のチートをデバイス上で直接取得する専用ダウンローダーです —— PCは不要。`,
     plat_win_role:`Windows 10 / 11`, plat_win_h3:`スクレイパー + ダウンローダー + マネージャー`,
     plat_win_os:`フル機能のツールキット · Python不要`,
-    plat_win_p:`CheatSlipsをスクレイプし、9つ以上のコミュニティソースを検索可能なSQLiteデータベースに取り込みます —— 名前、カバー、地域、バージョン、説明。公式APIで完全なチートファイルをダウンロードし、SDカードやZIPへ直接書き出せます。`,
+    plat_win_p:`CheatSlipsをスクレイプし、9つ以上のコミュニティソースを検索可能なSQLiteデータベースに取り込み、さらに管理できます：独自のエントリを追加、既存のものを編集し、名前・カバー・地域・バージョン・説明を後から取得。公式APIで完全なチートファイルをダウンロードし、SDカードやZIPへ直接書き出せます。`,
     dl_win_1:`インストーラー (.exe)`, dl_win_1s:`Setup`, dl_win_2:`ポータブル (.zip)`, dl_win_2s:`インストール不要`, dl_win_3:`ソースコード`,
     plat_sw_role:`Nintendo Switch - Homebrew`, plat_sw_h3:`本体で動くダウンローダー`,
     plat_sw_os:`Switch本体で動作 · Wi-Fiが必要`,
@@ -768,7 +768,7 @@ const I18N = {
     f6_p:`APIが空と報告したビルドも黙って捨てません —— <b>「未ダウンロード」</b>フィルターに残ります。カバー・地域・バージョンは必要に応じて補完されます。`,
     how_eyebrow:`使い方`, how_h2:`集める、見る、書き出す。`,
     step1_h:`集める`, step1_p:`CheatSlipsをスクレイプし、コミュニティソースをローカルのSQLiteデータベースに取り込みます —— ゲーム名、カバー、地域、バージョン、説明。`,
-    step2_h:`見る`, step2_p:`GUIですべてを検索・絞り込み。何がダウンロード済みか、何が欠けているか、各ビルドのチートの出所が分かります。`,
+    step2_h:`閲覧・管理`, step2_p:`GUIですべてを検索・絞り込みつつ、データベース自体も管理：新しいエントリを追加、既存のものを編集し、名前・カバー・地域・バージョン・説明を後から取得。何がダウンロード済みか、何が欠けているか、各ビルドのチートの出所が常に分かります。`,
     step3_h:`書き出す`, step3_p:`ワンクリックでSDカードやZIPへ —— CFWが期待する正確なレイアウトで。SwitchとAndroidのアプリでは、同じ書き込みがデバイス上で行われます。`,
     paths_bar:`デバイス上の構成`,
     data_eyebrow:`スクレイプ不要`, data_h3:`データ一式をワンクリックで。`,
