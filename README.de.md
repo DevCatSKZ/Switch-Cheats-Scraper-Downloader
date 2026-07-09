@@ -19,6 +19,8 @@ Ein Tool, um Nintendo-Switch-Cheatcodes von **[CheatSlips.com](https://www.cheat
 
 > Nutze das Tool nur mit deinem **eigenen** CheatSlips-Account. Alle Cheat-Codes gehören ihren ursprünglichen Autoren/Uploadern.
 
+<p align="center"><img src="screenshots/windows-tool.png" width="900" alt="Switch Cheats Scraper & Downloader (Windows)"></p>
+
 ## ⬇️ Download (Windows)
 
 Fertige Builds gibt es unter **[Releases](../../releases/latest)**:
@@ -45,6 +47,8 @@ Quellcode & Entwickler-Doku: [`SwitchCheatsNRO/`](SwitchCheatsNRO/) — mit devk
 ## 🤖 Android-App (Emulatoren)
 
 Derselbe Downloader läuft auch auf **Android**, für die Switch-Emulatoren **Eden, Suyu und Sudachi** (`SwitchCheatsDownloader-Android.apk`). Er holt das stets aktuelle [`data`-Release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) **auf dem Handy** und schreibt die Cheats direkt in die load-Struktur des Emulators — ganz ohne PC.
+
+<p align="center"><img src="screenshots/android-app.png" width="340" alt="Switch Cheats Downloader (Android)"></p>
 
 **Was sie macht:** Wähle deinen Emulator und tippe auf **Starten** — die App lädt alle Cheats und schreibt sie in den load-Ordner des Emulators als `.../load/<TitleID>/<Spielname>/cheats/<BuildID>.txt`. Jeder Ordner wird nach dem echten Spielnamen benannt (aus der `names.json` im `data`-Release; als Rückfall die Title-ID). Abgebrochene Downloads werden **fortgesetzt**, die App prüft dieses Repo auf **Updates** (eine neuere APK *und* frische Cheats, gleiche Erkennung wie im Desktop-Tool), zeigt den Online-Status live an und spricht dieselben **6 Sprachen** (EN/DE/ES/FR/IT/JA, automatisch erkannt). Gleicher **Holo-Glass**-Look wie die Windows- und Switch-App.
 

@@ -53,6 +53,8 @@ Source & developer docs: [`SwitchCheatsNRO/`](SwitchCheatsNRO/) — build with d
 
 The same downloader also runs on **Android**, for the Switch emulators **Eden, Suyu and Sudachi** (`SwitchCheatsDownloader-Android.apk`). It fetches the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) **on the phone** and writes the cheats straight into the emulator's load layout — no PC needed.
 
+<p align="center"><img src="screenshots/android-app.png" width="340" alt="Switch Cheats Downloader (Android)"></p>
+
 **What it does:** pick your emulator and tap **Start** — it downloads every cheat and writes it into the emulator's load folder as `.../load/<TitleID>/<GameName>/cheats/<BuildID>.txt`, naming each mod folder after the real game (resolved from the data release's `names.json`, falling back to the Title ID). Interrupted downloads **resume**, the app checks this repo for **updates** (a newer APK *and* refreshed cheats, same re-upload detection as the desktop tool), shows a live online status, and speaks the same **6 languages** (EN/DE/ES/FR/IT/JA, auto-detected from the device). Same **Holo-Glass** look as the Windows and Switch apps.
 
 **Storage:** on first launch the app asks once for **All files access** (`MANAGE_EXTERNAL_STORAGE`) so it can write into the emulator folders. Where the OS still blocks a direct write (another app's `Android/data/…` on Android 11+), it falls back to a **one-time folder pick** — pre-navigated to the emulator's folder — and then keeps working automatically. An **export to a folder of your choice** is always available.
