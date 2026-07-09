@@ -4312,6 +4312,106 @@ _merge({
               "• プレイ人数、サイズ、評価など"},
 })
 
+# ---- Export for emulators --------------------------------------------------
+_merge({
+    "Export for Emulators": {
+        "de": "Für Emulatoren exportieren", "es": "Exportar para emuladores",
+        "fr": "Exporter pour les émulateurs", "it": "Esporta per emulatori",
+        "ja": "エミュレーター用にエクスポート"},
+    "Export cheats for emulators": {
+        "de": "Cheats für Emulatoren exportieren", "es": "Exportar cheats para emuladores",
+        "fr": "Exporter les cheats pour émulateurs", "it": "Esporta i cheat per emulatori",
+        "ja": "エミュレーター用にチートをエクスポート"},
+    "Export cheats for emulators (ZIP)": {
+        "de": "Cheats für Emulatoren exportieren (ZIP)",
+        "es": "Exportar cheats para emuladores (ZIP)",
+        "fr": "Exporter les cheats pour émulateurs (ZIP)",
+        "it": "Esporta i cheat per emulatori (ZIP)",
+        "ja": "エミュレーター用にチートをエクスポート（ZIP）"},
+    "Export every downloaded cheat into the emulator \"load\" layout, named after the game.": {
+        "de": "Exportiert jeden heruntergeladenen Cheat in die „load\"-Struktur des Emulators, benannt nach dem Spiel.",
+        "es": "Exporta cada cheat descargado a la estructura «load» del emulador, con el nombre del juego.",
+        "fr": "Exporte chaque cheat téléchargé dans la structure « load » de l'émulateur, au nom du jeu.",
+        "it": "Esporta ogni cheat scaricato nella struttura «load» dell'emulatore, con il nome del gioco.",
+        "ja": "ダウンロード済みの各チートを、ゲーム名でエミュレーターの「load」構造に書き出します。"},
+    "Emulator:": {
+        "de": "Emulator:", "es": "Emulador:", "fr": "Émulateur :",
+        "it": "Emulatore:", "ja": "エミュレーター:"},
+    "Export as:": {
+        "de": "Exportieren als:", "es": "Exportar como:", "fr": "Exporter comme :",
+        "it": "Esporta come:", "ja": "エクスポート形式:"},
+    "Folder": {
+        "de": "Ordner", "es": "Carpeta", "fr": "Dossier", "it": "Cartella",
+        "ja": "フォルダー"},
+    "ZIP file": {
+        "de": "ZIP-Datei", "es": "Archivo ZIP", "fr": "Fichier ZIP",
+        "it": "File ZIP", "ja": "ZIPファイル"},
+    "Destination folder:": {
+        "de": "Zielordner:", "es": "Carpeta de destino:", "fr": "Dossier de destination :",
+        "it": "Cartella di destinazione:", "ja": "保存先フォルダー:"},
+    "All games in the database": {
+        "de": "Alle Spiele in der Datenbank", "es": "Todos los juegos de la base de datos",
+        "fr": "Tous les jeux de la base", "it": "Tutti i giochi nel database",
+        "ja": "データベース内のすべてのゲーム"},
+    "Choose the destination folder": {
+        "de": "Zielordner wählen", "es": "Elegir la carpeta de destino",
+        "fr": "Choisir le dossier de destination", "it": "Scegli la cartella di destinazione",
+        "ja": "保存先フォルダーを選択"},
+    "Please choose a destination.": {
+        "de": "Bitte ein Ziel wählen.", "es": "Elige un destino.",
+        "fr": "Choisis une destination.", "it": "Scegli una destinazione.",
+        "ja": "保存先を選択してください。"},
+    "Generic — a 'load' or 'mods' folder": {
+        "de": "Generisch — ein „load\"- oder „mods\"-Ordner",
+        "es": "Genérico — una carpeta «load» o «mods»",
+        "fr": "Générique — un dossier « load » ou « mods »",
+        "it": "Generico — una cartella «load» o «mods»",
+        "ja": "汎用 — 「load」または「mods」フォルダー"},
+    "Ryujinx (Windows) — mods folder": {
+        "de": "Ryujinx (Windows) — mods-Ordner",
+        "es": "Ryujinx (Windows) — carpeta mods",
+        "fr": "Ryujinx (Windows) — dossier mods",
+        "it": "Ryujinx (Windows) — cartella mods",
+        "ja": "Ryujinx (Windows) — mods フォルダー"},
+    "Folder names come from the database (special characters removed); the Title ID is used when a game has no name.\nOnly files with real cheats are written; empty/stub files are skipped.": {
+        "de": "Die Ordnernamen stammen aus der Datenbank (Sonderzeichen entfernt); fehlt ein Spielname, wird die Title-ID verwendet.\nEs werden nur Dateien mit echten Cheats geschrieben; leere/Stub-Dateien werden übersprungen.",
+        "es": "Los nombres de carpeta vienen de la base de datos (sin caracteres especiales); si un juego no tiene nombre, se usa el Title ID.\nSolo se escriben archivos con cheats reales; los vacíos/stub se omiten.",
+        "fr": "Les noms de dossier proviennent de la base (caractères spéciaux retirés) ; si un jeu n'a pas de nom, le Title ID est utilisé.\nSeuls les fichiers avec de vrais cheats sont écrits ; les fichiers vides/stub sont ignorés.",
+        "it": "I nomi delle cartelle provengono dal database (caratteri speciali rimossi); se un gioco non ha nome si usa il Title ID.\nVengono scritti solo i file con cheat reali; quelli vuoti/stub vengono saltati.",
+        "ja": "フォルダー名はデータベース由来です（特殊文字は除去）。名前がない場合は Title ID を使用します。\n実際のチートを含むファイルのみ書き込み、空/スタブファイルはスキップします。"},
+    "Build an emulator package: export the cheats into the <TitleID>/<GameName>/cheats/<BuildID>.txt layout that Eden, Suyu, Sudachi (and desktop yuzu/Ryujinx) read from their 'load' folder. Game names come from the database (special characters removed). Folder or ZIP; pick a specific emulator to prepend its load path.": {
+        "de": "Erstellt ein Emulator-Paket: exportiert die Cheats in die Struktur <TitleID>/<GameName>/cheats/<BuildID>.txt, die Eden, Suyu, Sudachi (und Desktop-yuzu/Ryujinx) aus ihrem „load\"-Ordner lesen. Spielnamen stammen aus der Datenbank (Sonderzeichen entfernt). Ordner oder ZIP; wähle einen Emulator, um dessen load-Pfad voranzustellen.",
+        "es": "Crea un paquete para emuladores: exporta los cheats a la estructura <TitleID>/<GameName>/cheats/<BuildID>.txt que Eden, Suyu, Sudachi (y yuzu/Ryujinx de escritorio) leen de su carpeta «load». Los nombres vienen de la base de datos (sin caracteres especiales). Carpeta o ZIP; elige un emulador para anteponer su ruta load.",
+        "fr": "Crée un paquet pour émulateurs : exporte les cheats dans la structure <TitleID>/<GameName>/cheats/<BuildID>.txt que Eden, Suyu, Sudachi (et yuzu/Ryujinx sur PC) lisent depuis leur dossier « load ». Les noms viennent de la base (caractères spéciaux retirés). Dossier ou ZIP ; choisis un émulateur pour préfixer son chemin load.",
+        "it": "Crea un pacchetto per emulatori: esporta i cheat nella struttura <TitleID>/<GameName>/cheats/<BuildID>.txt che Eden, Suyu, Sudachi (e yuzu/Ryujinx desktop) leggono dalla cartella «load». I nomi provengono dal database (caratteri speciali rimossi). Cartella o ZIP; scegli un emulatore per anteporre il suo percorso load.",
+        "ja": "エミュレーター用パッケージを作成：Eden・Suyu・Sudachi（およびデスクトップの yuzu/Ryujinx）が「load」フォルダーから読み込む <TitleID>/<GameName>/cheats/<BuildID>.txt 構造にチートを書き出します。ゲーム名はデータベース由来（特殊文字は除去）。フォルダーまたは ZIP。特定のエミュレーターを選ぶと、その load パスが先頭に付きます。"},
+    "Selected rows only ({n})": {
+        "de": "Nur ausgewählte Zeilen ({n})", "es": "Solo filas seleccionadas ({n})",
+        "fr": "Lignes sélectionnées uniquement ({n})", "it": "Solo righe selezionate ({n})",
+        "ja": "選択した行のみ（{n}）"},
+    "Exporting cheats for emulators ({label})...": {
+        "de": "Exportiere Cheats für Emulatoren ({label})...",
+        "es": "Exportando cheats para emuladores ({label})...",
+        "fr": "Exportation des cheats pour émulateurs ({label})...",
+        "it": "Esportazione cheat per emulatori ({label})...",
+        "ja": "エミュレーター用にチートをエクスポート中（{label}）..."},
+    "folder": {
+        "de": "Ordner", "es": "carpeta", "fr": "dossier", "it": "cartella",
+        "ja": "フォルダー"},
+    "Emulator export ({kind}): {exported} file(s) for {games} game(s) → {dest}": {
+        "de": "Emulator-Export ({kind}): {exported} Datei(en) für {games} Spiel(e) → {dest}",
+        "es": "Exportación para emulador ({kind}): {exported} archivo(s) para {games} juego(s) → {dest}",
+        "fr": "Export émulateur ({kind}) : {exported} fichier(s) pour {games} jeu(x) → {dest}",
+        "it": "Esportazione emulatore ({kind}): {exported} file per {games} gioco/i → {dest}",
+        "ja": "エミュレーターエクスポート（{kind}）：{games} ゲームの {exported} ファイル → {dest}"},
+    "Emulator export finished ({kind}):\n{dest}\n\n  • {exported} cheat file(s) for {games} game(s)\n  • {stubs} empty/stub file(s) skipped\n  • {missing} build(s) not downloaded (nothing to copy)\n  • {errors} error(s)\n\nCopy the <TitleID>/<GameName>/cheats/… structure into your emulator's load folder.": {
+        "de": "Emulator-Export fertig ({kind}):\n{dest}\n\n  • {exported} Cheat-Datei(en) für {games} Spiel(e)\n  • {stubs} leere/Stub-Datei(en) übersprungen\n  • {missing} Build(s) nicht heruntergeladen (nichts zu kopieren)\n  • {errors} Fehler\n\nKopiere die Struktur <TitleID>/<GameName>/cheats/… in den load-Ordner deines Emulators.",
+        "es": "Exportación para emulador finalizada ({kind}):\n{dest}\n\n  • {exported} archivo(s) de cheats para {games} juego(s)\n  • {stubs} archivo(s) vacío(s)/stub omitidos\n  • {missing} build(s) sin descargar (nada que copiar)\n  • {errors} error(es)\n\nCopia la estructura <TitleID>/<GameName>/cheats/… en la carpeta load de tu emulador.",
+        "fr": "Export émulateur terminé ({kind}) :\n{dest}\n\n  • {exported} fichier(s) de cheats pour {games} jeu(x)\n  • {stubs} fichier(s) vide(s)/stub ignorés\n  • {missing} build(s) non téléchargé(s) (rien à copier)\n  • {errors} erreur(s)\n\nCopie la structure <TitleID>/<GameName>/cheats/… dans le dossier load de ton émulateur.",
+        "it": "Esportazione emulatore completata ({kind}):\n{dest}\n\n  • {exported} file di cheat per {games} gioco/i\n  • {stubs} file vuoti/stub saltati\n  • {missing} build non scaricate (niente da copiare)\n  • {errors} errore/i\n\nCopia la struttura <TitleID>/<GameName>/cheats/… nella cartella load del tuo emulatore.",
+        "ja": "エミュレーターエクスポート完了（{kind}）：\n{dest}\n\n  • {games} ゲームの {exported} チートファイル\n  • {stubs} 個の空/スタブファイルをスキップ\n  • {missing} 個のビルドは未ダウンロード（コピー対象なし）\n  • {errors} 件のエラー\n\n<TitleID>/<GameName>/cheats/… 構造をエミュレーターの load フォルダーにコピーしてください。"},
+})
+
 # --------------------------------------------------------------------------
 _build()
 

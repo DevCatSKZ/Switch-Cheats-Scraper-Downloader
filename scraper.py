@@ -5097,6 +5097,166 @@ def export_cheats_to_zip(db: "GameDatabase", output_dir, zip_path, mode: str = "
     return stats
 
 
+# ---------------------------------------------------------------------------
+# Emulator export — the Yuzu-family "load" layout used by Eden / Suyu / Sudachi
+# (and desktop yuzu / Ryujinx). The generic structure the user places inside an
+# emulator's `load` folder is:
+#     <TitleID>/<GameName>/cheats/<BuildID>.txt
+# Picking a specific emulator just prepends that emulator's load path so the
+# package is drop-in.
+# ---------------------------------------------------------------------------
+# Every Yuzu-family emulator reads cheats from
+#     <base>/load/<TitleID>/<GameName>/cheats/<BuildID>.txt
+# Ryujinx is the exception: it uses a `mods` folder instead of `load`, but the
+# same <TitleID>/<GameName>/cheats/<BuildID>.txt tail. The prefix below is the
+# path from the emulator's config base (%APPDATA% on Windows, ~/.local/share on
+# Linux / Steam Deck, or the Android data path) down to that load/mods folder;
+# it is prepended so the exported package is drop-in.
+EMULATOR_TARGETS = {
+    # id:            (human label, prefix prepended to <TID>/<Name>/cheats/<BID>.txt)
+    # --- Desktop (Windows / Linux / Steam Deck) — Yuzu-family: <base>/load ---
+    "yuzu":         ("Yuzu (Windows)", "yuzu/load"),
+    "suyu":         ("Suyu (Windows / Android)", "suyu/load"),
+    "sudachi":      ("Sudachi (Windows / Linux / Steam Deck)", "sudachi/load"),
+    "torzu":        ("Torzu (Windows)", "torzu/load"),
+    # Ryujinx: uses `mods`, not `load`.
+    "ryujinx":      ("Ryujinx (Windows) — mods folder", "Ryujinx/mods"),
+    # --- Android emulators ---
+    "eden":         ("Eden (Android)", "Android/data/dev.eden.eden_emulator/files/load"),
+    "sudachi_and":  ("Sudachi (Android)", "Android/data/org.sudachi.sudachi/files/load"),
+    # --- Generic: the contents you drop into a 'load' (or Ryujinx 'mods') folder ---
+    "generic":      ("Generic — a 'load' or 'mods' folder", ""),
+}
+
+# Trademark / service marks / U+FFFD (as \u escapes so the source stays
+# encoding-safe), and characters a file system won't allow in a folder name.
+_MODNAME_SYMBOLS = re.compile("[™®©℗℠�]")
+_MODNAME_INVALID = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
+
+
+def sanitize_mod_name(name: str) -> str:
+    """A folder-safe game name for the emulator mod folder: strip trademark
+    symbols and filesystem-illegal characters, normalise en/em dashes to a
+    hyphen, collapse whitespace, drop trailing dots and cap the length."""
+    n = _MODNAME_SYMBOLS.sub("", name or "")
+    n = n.replace("–", "-").replace("—", "-")  # en/em dash -> hyphen
+    n = _MODNAME_INVALID.sub("", n)
+    n = re.sub(r"\s+", " ", n).strip().strip(".").strip()
+    return n[:60].strip()
+
+
+def build_title_name_map(conn) -> Dict[str, str]:
+    """Map each 16-hex Title ID to its cleaned, folder-safe game name.
+
+    For each Title ID the most common cleaned name across its builds is used
+    (ties broken by the shortest — the cleaner canonical title). This is the
+    same rule as the names.json export, so the folder names match the Android
+    app's. ``conn`` is a plain sqlite3 connection (``GameDatabase._conn``).
+    """
+    import collections
+    buckets = collections.defaultdict(collections.Counter)
+    for r in conn.execute(
+            "SELECT title_id, game_title FROM builds "
+            "WHERE game_title IS NOT NULL AND game_title <> ''"):
+        tid = (r[0] or "").strip().upper()
+        if len(tid) != 16:
+            continue
+        name = sanitize_mod_name(r[1])
+        if name:
+            buckets[tid][name] += 1
+    return {tid: sorted(ctr.items(), key=lambda kv: (-kv[1], len(kv[0])))[0][0]
+            for tid, ctr in buckets.items()}
+
+
+def export_cheats_for_emulator(db: "GameDatabase", output_dir, dest, name_map,
+                               prefix: str = "", as_zip: bool = False,
+                               title_ids: Optional[List[str]] = None,
+                               progress_cb=None, should_stop=None) -> Dict[str, int]:
+    """Export downloaded cheats into the emulator load layout:
+
+        [<prefix>/]<TitleID>/<GameName>/cheats/<BuildID>.txt
+
+    ``name_map`` maps Title ID -> already-sanitised game name (see
+    ``build_title_name_map``); a Title ID that's missing falls back to itself.
+    Only builds whose local file contains real cheat codes are written; empty /
+    stub files are skipped. Writes a folder tree (``as_zip=False``) or a single
+    ZIP archive (``as_zip=True``). Returns a stats dict with keys:
+    exported, skipped_stub, missing, games, errors.
+    """
+    out = Path(output_dir)
+    dest = Path(dest)
+    prefix = (prefix or "").strip("/\\")
+    rows = _export_build_rows(db, title_ids)
+    total = len(rows)
+    stats = {"exported": 0, "skipped_stub": 0, "missing": 0, "errors": 0, "games": 0}
+    games_done = set()
+
+    def rel_for(tid_u: str, bid_u: str) -> str:
+        mod = name_map.get(tid_u) or tid_u
+        parts = ([prefix] if prefix else []) + [tid_u, mod, "cheats", f"{bid_u}.txt"]
+        return "/".join(parts)
+
+    zf = None
+    if as_zip:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        zf = zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED)
+    print(f"Exporting for emulator ({'ZIP' if as_zip else 'folder'}): "
+          f"{total} build(s) to check -> {dest}")
+    try:
+        for i, (tid, bid) in enumerate(rows, 1):
+            if should_stop and should_stop():
+                print("Stopped by user.")
+                break
+            tid_u, bid_u = (tid or "").upper(), (bid or "").upper()
+            if not tid_u or not bid_u:
+                continue
+            src = _local_cheat_file(out, tid_u, bid_u)
+            if src is None:
+                stats["missing"] += 1
+                if progress_cb:
+                    progress_cb(i, total)
+                continue
+            try:
+                content = src.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                stats["errors"] += 1
+                if progress_cb:
+                    progress_cb(i, total)
+                continue
+            if cheat_file_is_empty(content):
+                stats["skipped_stub"] += 1
+                if progress_cb:
+                    progress_cb(i, total)
+                continue
+            rel = rel_for(tid_u, bid_u)
+            try:
+                if zf is not None:
+                    zf.writestr(rel, content)
+                else:
+                    save_cheat_merged(dest / rel, content)
+                stats["exported"] += 1
+                games_done.add(tid_u)
+            except Exception as exc:
+                stats["errors"] += 1
+                print(f"  ERROR {tid_u}/{bid_u}: {exc}")
+            if progress_cb:
+                progress_cb(i, total)
+    finally:
+        if zf is not None:
+            zf.close()
+            if stats["exported"] == 0:
+                try:
+                    dest.unlink()
+                except Exception:
+                    pass
+
+    stats["games"] = len(games_done)
+    print(f"Emulator export done: {stats['exported']} file(s) for {stats['games']} "
+          f"game(s), {stats['skipped_stub']} stub/empty skipped, "
+          f"{stats['missing']} not downloaded, {stats['errors']} error(s).")
+    return stats
+
+
 # Cheat paths inside an exported ZIP (any of the three SD layouts):
 #   atmosphere/contents/<TID>/cheats/<BID>.txt   -> tid, bid
 #   switch/breeze/cheats/<TID>/<BID>.txt         -> tid, bid

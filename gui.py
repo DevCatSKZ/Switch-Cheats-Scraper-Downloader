@@ -63,6 +63,9 @@ from scraper import (
     check_cheatslips_online,
     export_cheats_to_sd,
     export_cheats_to_zip,
+    export_cheats_for_emulator,
+    EMULATOR_TARGETS,
+    build_title_name_map,
     import_cheats_from_zip,
     import_database,
     detect_sd_roots,
@@ -791,6 +794,146 @@ class ExportZipDialog:
             self.zip_var.set(p)
         self.result = {"zip_path": p, "mode": self.mode_var.get(),
                        "scope": self.scope_var.get()}
+        self.top.destroy()
+
+
+class ExportEmulatorDialog:
+    """Modal dialog: export the database's cheats into the emulator 'load'
+    layout  <TitleID>/<GameName>/cheats/<BuildID>.txt  — as a folder tree or a
+    ZIP, optionally prefixed with a specific emulator's load path."""
+
+    def __init__(self, parent, dest_var, selected_count, default_scope="all"):
+        self.result = None
+        self.dest_var = dest_var
+        self.target_var = tk.StringVar(value="generic")
+        self.astype_var = tk.StringVar(value="folder")   # folder | zip
+        self.scope_var = tk.StringVar(
+            value="selected" if (default_scope == "selected" and selected_count) else "all")
+        self.selected_count = selected_count
+
+        self.top = tk.Toplevel(parent)
+        self.top.title("Export cheats for emulators")
+        self.top.transient(parent)
+        self.top.grab_set()
+        self.top.resizable(False, False)
+        self.top.configure(bg=theme()["bg"])
+        frm = ttk.Frame(self.top, padding=12)
+        frm.pack(fill="both", expand=True)
+
+        ttk.Label(frm, text="Export every downloaded cheat into the emulator "
+                            "\"load\" layout, named after the game.",
+                  foreground=theme()["fg_muted"], font=("Segoe UI", 8)).grid(
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
+        # --- emulator target (adds its load / mods path prefix) ---
+        ttk.Label(frm, text="Emulator:").grid(row=1, column=0, sticky="w")
+        self._emu_ids = list(EMULATOR_TARGETS.keys())
+        self.emu_combo = ttk.Combobox(
+            frm, state="readonly", width=52,
+            values=[t(EMULATOR_TARGETS[e][0]) for e in self._emu_ids])
+        default_id = "generic" if "generic" in self._emu_ids else self._emu_ids[0]
+        self.emu_combo.current(self._emu_ids.index(default_id))
+        self.target_var.set(default_id)
+        self.emu_combo.grid(row=2, column=0, columnspan=2, sticky="we", pady=(2, 8))
+        self.emu_combo.bind("<<ComboboxSelected>>", lambda _e: self._on_emu())
+
+        # --- export as folder or ZIP ---
+        ttk.Label(frm, text="Export as:").grid(row=3, column=0, sticky="w")
+        af = ttk.Frame(frm)
+        af.grid(row=4, column=0, columnspan=2, sticky="we", pady=(2, 8))
+        ttk.Radiobutton(af, text="Folder", value="folder", variable=self.astype_var,
+                        command=self._on_astype).pack(side="left")
+        ttk.Radiobutton(af, text="ZIP file", value="zip", variable=self.astype_var,
+                        command=self._on_astype).pack(side="left", padx=(12, 0))
+
+        # --- destination ---
+        self.dest_lbl = ttk.Label(frm, text="Destination folder:")
+        self.dest_lbl.grid(row=5, column=0, sticky="w")
+        drow = ttk.Frame(frm)
+        drow.grid(row=6, column=0, columnspan=2, sticky="we", pady=(2, 8))
+        ttk.Entry(drow, textvariable=self.dest_var, width=52).pack(
+            side="left", fill="x", expand=True)
+        ttk.Button(drow, text="Browse…", command=self._browse).pack(side="left", padx=(4, 0))
+
+        # --- scope ---
+        ttk.Label(frm, text="Scope:").grid(row=7, column=0, sticky="w")
+        sf = ttk.Frame(frm)
+        sf.grid(row=8, column=0, columnspan=2, sticky="we", pady=(2, 8))
+        ttk.Radiobutton(sf, text="All games in the database", value="all",
+                        variable=self.scope_var).pack(side="left")
+        state = "normal" if selected_count else "disabled"
+        ttk.Radiobutton(sf, text=t("Selected rows only ({n})", n=selected_count),
+                        value="selected", variable=self.scope_var,
+                        state=state).pack(side="left", padx=(12, 0))
+
+        # --- structure preview ---
+        self.preview = ttk.Label(frm, text="", foreground=theme()["accent"],
+                                 font=("Consolas", 8))
+        self.preview.grid(row=9, column=0, columnspan=2, sticky="w", pady=(2, 2))
+        ttk.Label(frm, text="Folder names come from the database (special characters "
+                            "removed); the Title ID is used when a game has no name.\n"
+                            "Only files with real cheats are written; empty/stub files "
+                            "are skipped.",
+                  foreground=theme()["fg_muted"], font=("Segoe UI", 8)).grid(
+            row=10, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
+        btns = ttk.Frame(frm)
+        btns.grid(row=11, column=0, columnspan=2, sticky="e")
+        ttk.Button(btns, text="Cancel", command=self.top.destroy).pack(side="right", padx=(6, 0))
+        ttk.Button(btns, text="Export", command=self._on_export).pack(side="right")
+        frm.columnconfigure(1, weight=1)
+        self.top.bind("<Escape>", lambda _e: self.top.destroy())
+        self._update_preview()
+        _center_dialog(self.top, parent)
+
+    def _on_astype(self):
+        is_zip = self.astype_var.get() == "zip"
+        self.dest_lbl.config(text="Save ZIP as:" if is_zip else "Destination folder:")
+
+    def _on_emu(self):
+        idx = self.emu_combo.current()
+        if idx >= 0:
+            self.target_var.set(self._emu_ids[idx])
+        self._update_preview()
+
+    def _update_preview(self):
+        prefix = EMULATOR_TARGETS.get(self.target_var.get(), ("", ""))[1]
+        p = (prefix + "/") if prefix else ""
+        try:
+            self.preview.config(text=p + "<TitleID>/<GameName>/cheats/<BuildID>.txt")
+        except Exception:
+            pass
+
+    def _browse(self):
+        from tkinter import filedialog
+        cur = self.dest_var.get().strip()
+        if self.astype_var.get() == "zip":
+            initialdir = (str(Path(cur).parent) if cur.lower().endswith(".zip")
+                          else (cur or str(DATA_DIR)))
+            path = filedialog.asksaveasfilename(
+                title="Export cheats for emulators (ZIP)", parent=self.top,
+                defaultextension=".zip", initialdir=initialdir,
+                initialfile="switch-cheats-emulator.zip",
+                filetypes=[("ZIP archive", "*.zip"), ("All files", "*.*")])
+        else:
+            path = filedialog.askdirectory(
+                title="Choose the destination folder", parent=self.top,
+                initialdir=cur or str(DATA_DIR))
+        if path:
+            self.dest_var.set(path)
+
+    def _on_export(self):
+        p = self.dest_var.get().strip()
+        is_zip = self.astype_var.get() == "zip"
+        if not p:
+            messagebox.showwarning("Export for Emulators",
+                                   "Please choose a destination.", parent=self.top)
+            return
+        if is_zip and not p.lower().endswith(".zip"):
+            p += ".zip"
+            self.dest_var.set(p)
+        self.result = {"target": self.target_var.get(), "as_zip": is_zip,
+                       "dest": p, "scope": self.scope_var.get()}
         self.top.destroy()
 
 
@@ -2381,6 +2524,9 @@ class ScraperGUI:
         self.exportsd_btn.pack(side="left", padx=(0, 4))
         self.exportzip_btn = ttk.Button(left, text="Export to ZIP", command=self.on_export_zip)
         self.exportzip_btn.pack(side="left", padx=(0, 4))
+        self.exportemu_btn = ttk.Button(left, text="Export for Emulators",
+                                        command=self.on_export_emulator)
+        self.exportemu_btn.pack(side="left", padx=(0, 4))
 
         # Rarely-used repairs tucked into a small dropdown menu.
         self.repair_btn = ttk.Menubutton(left, text="Repair ▾")
@@ -2419,6 +2565,7 @@ class ScraperGUI:
         self._action_buttons += [self.add_btn, self.csv_btn, self.exportdb_btn,
                                  self.exportnames_btn,
                                  self.importdb_btn, self.exportsd_btn, self.exportzip_btn,
+                                 self.exportemu_btn,
                                  self.repair_btn, self.clear_btn]
         _Tooltip(self.importdb_btn,
                  "Import a previously exported database (.db). Merge it into the "
@@ -2432,6 +2579,12 @@ class ScraperGUI:
                  "Export all downloaded cheats into a ZIP with the SD-card layout "
                  "(Atmosphère / Breeze / EdiZon). Unzip it onto the SD-card root "
                  "to install. Skips empty/stub files.")
+        _Tooltip(self.exportemu_btn,
+                 "Build an emulator package: export the cheats into the "
+                 "<TitleID>/<GameName>/cheats/<BuildID>.txt layout that Eden, Suyu, "
+                 "Sudachi (and desktop yuzu/Ryujinx) read from their 'load' folder. "
+                 "Game names come from the database (special characters removed). "
+                 "Folder or ZIP; pick a specific emulator to prepend its load path.")
         _Tooltip(self.refresh_btn,
                  "Reconcile every build's cheat count with the actual .txt files "
                  "on disk, then rescan downloaded status and redraw the table.")
@@ -3347,6 +3500,99 @@ class ScraperGUI:
               games=stats['games'], stubs=stats['skipped_stub'],
               missing=stats['missing'], errors=stats['errors']),
             parent=self.root))
+
+    # ------------------------------------------------- export for emulators
+    def on_export_emulator(self):
+        """Export the DB's cheats into the emulator load layout (folder or ZIP)."""
+        if self._busy:
+            return
+        if not Path(self.db_path.get()).exists():
+            messagebox.showwarning("Export for Emulators",
+                                   t("No database file yet. Scrape first."))
+            return
+        selected = self._selected_title_ids()
+        if not hasattr(self, "emu_export_path"):
+            self.emu_export_path = tk.StringVar(
+                value=str(Path(self.dl_output.get()) / "switch-cheats-emulator"))
+        dlg = ExportEmulatorDialog(self.root, self.emu_export_path, len(selected),
+                                   default_scope="selected" if selected else "all")
+        self.root.wait_window(dlg.top)
+        if not dlg.result:
+            return
+        r = dlg.result
+        scope_tids = selected if r["scope"] == "selected" else None
+        label = EMULATOR_TARGETS.get(r["target"], (r["target"], ""))[0]
+        self._stop_event.clear()
+        self._set_busy(True)
+        self.status_var.set(t("Exporting cheats for emulators ({label})...", label=label))
+        cfg = {"db_path": self.db_path.get(), "output": self.dl_output.get(),
+               "dest": r["dest"], "target": r["target"], "as_zip": r["as_zip"],
+               "title_ids": scope_tids}
+        threading.Thread(target=self._export_emulator_worker, args=(cfg,), daemon=True).start()
+
+    def _export_emulator_worker(self, cfg):
+        old_stdout = sys.stdout
+        sys.stdout = _QueueWriter(self._log_queue, mirror=self._log_writer)
+        stats = None
+        try:
+            db = GameDatabase(Path(cfg["db_path"]))
+            try:
+                name_map = build_title_name_map(db._conn)
+                prefix = EMULATOR_TARGETS.get(cfg["target"], ("", ""))[1]
+                tracker = ProgressTracker("emu-export")
+                def prog(done, total):
+                    tracker.update(done, total)
+                    self._log_queue.put(("progress", done, total,
+                        f"Exporting for emulators {done}/{total} ({tracker.pct()}%) | "
+                        f"{tracker.rate_str('items')} | ~{tracker.eta_str()} remaining"))
+                stats = export_cheats_for_emulator(
+                    db, Path(cfg["output"]), cfg["dest"], name_map, prefix=prefix,
+                    as_zip=cfg["as_zip"], title_ids=cfg["title_ids"],
+                    progress_cb=prog, should_stop=self._stop_event.is_set)
+            finally:
+                db.close()
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            print(f"FATAL: {exc}")
+            self._log_queue.put(("error", f"Emulator export failed:\n{exc}"))
+        finally:
+            sys.stdout.flush()
+            sys.stdout = old_stdout
+            self._log_queue.put(("emu_export_done", stats, cfg.get("as_zip"), cfg.get("dest")))
+
+    def _finish_emulator_export(self, stats, as_zip, dest):
+        self._set_busy(False)
+        if not stats:
+            self.status_var.set("Emulator export failed — see log.")
+            return
+        if stats["exported"] == 0:
+            self.status_var.set("Emulator export: nothing to export (no downloaded cheats).")
+            self.root.after(10, lambda: messagebox.showinfo(
+                "Export for Emulators",
+                "Nothing was exported — none of the selected builds have a "
+                "downloaded cheat file with real codes yet.", parent=self.root))
+            return
+        kind = "ZIP" if as_zip else t("folder")
+        self.status_var.set(t("Emulator export ({kind}): {exported} file(s) for "
+                              "{games} game(s) → {dest}", kind=kind,
+                              exported=stats['exported'], games=stats['games'], dest=dest))
+        try:
+            self.root.lift(); self.root.focus_force()
+        except Exception:
+            pass
+        self.root.after(10, lambda: messagebox.showinfo(
+            "Export for Emulators",
+            t("Emulator export finished ({kind}):\n{dest}\n\n"
+              "  • {exported} cheat file(s) for {games} game(s)\n"
+              "  • {stubs} empty/stub file(s) skipped\n"
+              "  • {missing} build(s) not downloaded (nothing to copy)\n"
+              "  • {errors} error(s)\n\n"
+              "Copy the <TitleID>/<GameName>/cheats/… structure into your "
+              "emulator's load folder.", kind=kind, dest=dest,
+              exported=stats['exported'], games=stats['games'],
+              stubs=stats['skipped_stub'], missing=stats['missing'],
+              errors=stats['errors']), parent=self.root))
 
     def _finish_import_db(self, summary):
         self._set_busy(False)
@@ -7080,6 +7326,8 @@ class ScraperGUI:
             self._finish_sd_export(msg[1], msg[2])
         elif kind == "zip_export_done":
             self._finish_zip_export(msg[1], msg[2], msg[3])
+        elif kind == "emu_export_done":
+            self._finish_emulator_export(msg[1], msg[2], msg[3])
         elif kind == "import_db_done":
             self._finish_import_db(msg[1])
         elif kind == "devcat_done":
