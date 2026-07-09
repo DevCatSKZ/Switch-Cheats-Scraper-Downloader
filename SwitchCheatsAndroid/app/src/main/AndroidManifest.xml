@@ -13,6 +13,17 @@
         android:maxSdkVersion="29" />
     <!-- Install the downloaded .apk when self-updating the app. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Keep a big download/extract alive while the app is backgrounded. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Show the download progress notification (Android 13+ runtime permission). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Detect / launch the selected emulator app. -->
+    <queries>
+        <package android:name="dev.eden.eden_emulator" />
+        <package android:name="org.sudachi.sudachi" />
+        <package android:name="org.suyu.suyu_emulator" />
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -43,5 +54,12 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Runs the cheat download/extract in the foreground so it survives the
+             screen locking or the app being minimised. -->
+        <service
+            android:name=".data.InstallService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 </manifest>

@@ -1,6 +1,7 @@
 package com.devcatskz.switchcheats
 
 import android.app.Application
+import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -10,14 +11,12 @@ import com.devcatskz.switchcheats.data.*
 import com.devcatskz.switchcheats.i18n.Lang
 import com.devcatskz.switchcheats.i18n.Strings
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = Prefs(app)
     private val repo = CheatsRepository(app, prefs)
     private val io = Executors.newSingleThreadExecutor()
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private val stopFlag = AtomicBoolean(false)
 
     // ---- observable UI state ----
     var lang by mutableStateOf(prefs.lang); private set
@@ -28,13 +27,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var updateAvailable by mutableStateOf(false); private set
     var pendingAsset by mutableStateOf<AssetInfo?>(null); private set
 
-    var busy by mutableStateOf(false); private set
-    var statusText by mutableStateOf(""); private set
-    var downloadText by mutableStateOf(""); private set
-    var extractText by mutableStateOf(""); private set
-    var progress by mutableStateOf(0f); private set   // 0..1, -1 = indeterminate
-    var resultText by mutableStateOf(""); private set
-    var resultIsError by mutableStateOf(false); private set
+    // Opt-in: only write cheats for games already set up in the emulator. Off by default.
+    var onlyInstalled by mutableStateOf(prefs.onlyInstalled); private set
 
     var needAllFiles by mutableStateOf(false); private set
     var needFolderGrant by mutableStateOf(false); private set
@@ -48,15 +42,59 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var appUpdateText by mutableStateOf(""); private set
     var appUpdateReady by mutableStateOf<AssetInfo?>(null); private set
 
+    // ---- install run state (lives in InstallBus so it survives backgrounding;
+    //      exposed here as localised strings so the language stays reactive) ----
+    val busy: Boolean get() = InstallBus.busy
+    val progress: Float get() = InstallBus.progress
+    val installResult: InstallBus.Result? get() = InstallBus.result
+
+    val statusText: String get() = when (InstallBus.phase) {
+        InstallBus.Phase.CHECK_INTERNET -> t("status.checkInternet")
+        InstallBus.Phase.CONNECTING -> t("status.connecting")
+        InstallBus.Phase.DOWNLOADING -> t("status.downloading")
+        InstallBus.Phase.EXTRACTING -> t("status.extracting")
+        null -> ""
+    }
+    val downloadText: String get() =
+        if (InstallBus.phase == InstallBus.Phase.DOWNLOADING && InstallBus.downloadDone > 0)
+            t("install.download") + " " + fmtMb(InstallBus.downloadDone) +
+                (if (InstallBus.downloadTotal > 0) " / " + fmtMb(InstallBus.downloadTotal) else "")
+        else ""
+    val extractText: String get() =
+        if (InstallBus.phase == InstallBus.Phase.EXTRACTING)
+            t("install.extract") + " ${InstallBus.extractDone} / ${InstallBus.extractTotal}" + t("install.filesSuffix")
+        else ""
+
+    val resultText: String get() = when (val r = InstallBus.result) {
+        null -> ""
+        is InstallBus.Result.Installed ->
+            if (r.wasExport) String.format(t("result.exportedSummary"), r.files, r.games)
+            else String.format(t("result.installedSummary"), r.files, r.games)
+        InstallBus.Result.Offline -> t("result.noInternet")
+        InstallBus.Result.CancelledResume -> t("result.cancelledResume")
+        InstallBus.Result.NoGames -> t("result.noGames")
+        is InstallBus.Result.Error -> t("result.errorPrefix") + t("err.${r.code}")
+    }
+    val resultIsError: Boolean get() = when (InstallBus.result) {
+        null, is InstallBus.Result.Installed, InstallBus.Result.CancelledResume -> false
+        else -> true
+    }
+
+    /** Show the "now enable cheats" hint only after a real install (not export). */
+    val showActivationHint: Boolean get() =
+        (InstallBus.result as? InstallBus.Result.Installed)?.let { !it.wasExport && it.files > 0 } ?: false
+
     fun t(key: String) = Strings.get(key, lang)
 
     private fun ui(block: () -> Unit) { mainHandler.post(block) }
 
     // ---- settings ----
     fun changeLang(l: Lang) { lang = l; prefs.lang = l }
+    fun changeOnlyInstalled(v: Boolean) { onlyInstalled = v; prefs.onlyInstalled = v }
     fun changeEmulator(e: Emulator) {
         emulator = e; prefs.emulator = e
-        needAllFiles = false; needFolderGrant = false; resultText = ""; folderError = ""
+        needAllFiles = false; needFolderGrant = false; folderError = ""
+        if (!InstallBus.busy) InstallBus.result = null   // clear last result + hint
         refreshWriteNeeds()
         checkUpdate()
     }
@@ -85,12 +123,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun openPermDialog() { showPermDialog = true }
     fun dismissPermDialog() { showPermDialog = false }
 
+    // ---- launch the selected emulator ----
+    fun emulatorInstalled(): Boolean =
+        getApplication<Application>().packageManager.getLaunchIntentForPackage(emulator.launchPackage) != null
+
+    fun openEmulator() {
+        val pm = getApplication<Application>().packageManager
+        val i = pm.getLaunchIntentForPackage(emulator.launchPackage) ?: return
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try { getApplication<Application>().startActivity(i) } catch (_: Exception) {}
+    }
+
     // ---- online indicator ----
     private var lastOnlineCheck = 0L
     /** Re-probe reachability when the app returns to the foreground so the online
-     *  dot recovers instead of staying stuck "offline" after a lock/minimise
-     *  (the first check right after unlock often hits a not-yet-ready network).
-     *  Debounced so transient resumes (dialogs, folder picker) don't re-probe. */
+     *  dot recovers instead of staying stuck "offline" after a lock/minimise. */
     fun recheckOnline() {
         val now = android.os.SystemClock.elapsedRealtime()
         if (now - lastOnlineCheck < 2500L) return
@@ -108,7 +155,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val status = repo.checkUpdate(emulator)
             ui {
                 when (status) {
-                    is UpdateStatus.Offline -> { checkText = "" }   // no longer produced
+                    is UpdateStatus.Offline -> { checkText = "" }
                     is UpdateStatus.Available -> {
                         online = true; updateAvailable = true; pendingAsset = status.asset
                         val last = prefs.lastInstalled(emulator)
@@ -121,8 +168,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                             (prefs.lastInstalled(emulator)?.take(10) ?: "?") + "   " + t("check.uptodate")
                     }
                     is UpdateStatus.Error -> {
-                        // A network failure just means we couldn't reach GitHub now;
-                        // reflect it in the status dot, not as a scary popup line.
                         if (status.code == "network") online = false
                         checkText = t("result.errorPrefix") + t("err.${status.code}")
                     }
@@ -133,8 +178,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- storage grants ----
     // When the user taps Start but a grant is still missing, we remember to
-    // continue the download automatically once the grant comes back — so the
-    // flow is "tap Start (→ grant once) → it just downloads".
+    // continue the download automatically once the grant comes back.
     private var autoInstallAfterGrant = false
     fun armAutoInstall() { autoInstallAfterGrant = true }
 
@@ -147,9 +191,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun onFolderGranted(uri: Uri) {
-        // Foolproof: the folder just has to be somewhere on the emulator's path
-        // (the emulator/package folder, files, load, or even Android/data). If it
-        // isn't, don't keep it — tell the user and let them pick again.
+        // Foolproof: the folder just has to be somewhere on the emulator's path.
         if (Storage.safPrefixFor(uri, emulator) == null) {
             autoInstallAfterGrant = false
             folderError = t("storage.wrongFolder")
@@ -158,8 +200,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         try {
             getApplication<Application>().contentResolver.takePersistableUriPermission(
                 uri,
-                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                    android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
         } catch (_: Exception) {}
         folderError = ""
@@ -170,117 +211,34 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---- install ----
+    // ---- install / export (run in the foreground service) ----
     fun startInstall() {
-        if (busy) return
+        if (InstallBus.busy) return
         val mode = Storage.resolveWriteMode(getApplication(), emulator, prefs)
-        val writer = Storage.writerFor(getApplication(), mode)
-        if (writer == null) {
-            // Missing storage access — for the general permission show the explained
-            // dialog; if only the per-emulator folder is missing the inline prompt
-            // already offers it, so don't pop the general dialog then.
+        if (Storage.writerFor(getApplication(), mode) == null) {
+            // Missing storage access — pop the explained dialog only for the general
+            // permission; the folder grant is offered inline.
             refreshWriteNeeds()
             if (needAllFiles) showPermDialog = true
             return
         }
-
-        busy = true; stopFlag.set(false)
-        resultText = ""; downloadText = ""; extractText = ""; progress = -1f
-        statusText = t("status.connecting")
-
-        io.execute {
-            val res = repo.install(emulator, writer, object : InstallProgress {
-                override fun onPhase(phase: InstallProgress.Phase) = ui {
-                    statusText = when (phase) {
-                        InstallProgress.Phase.CHECK_INTERNET -> t("status.checkInternet")
-                        InstallProgress.Phase.CONNECTING -> t("status.connecting")
-                        InstallProgress.Phase.DOWNLOADING -> t("status.downloading")
-                        InstallProgress.Phase.EXTRACTING -> t("status.extracting")
-                    }
-                    if (phase == InstallProgress.Phase.EXTRACTING) progress = 0f
-                }
-                override fun onDownload(done: Long, total: Long) = ui {
-                    downloadText = t("install.download") + " " + fmtMb(done) +
-                        (if (total > 0) " / " + fmtMb(total) else "")
-                    progress = if (total > 0) (done.toFloat() / total).coerceIn(0f, 1f) else -1f
-                }
-                override fun onExtract(done: Int, total: Int) = ui {
-                    extractText = t("install.extract") + " $done / $total" + t("install.filesSuffix")
-                    progress = if (total > 0) (done.toFloat() / total).coerceIn(0f, 1f) else -1f
-                }
-            }, stopFlag::get)
-
-            ui {
-                busy = false; progress = 0f
-                when (res) {
-                    is InstallResult.Installed -> {
-                        resultIsError = false
-                        resultText = t("result.doneInstalledPrefix") + res.files + t("result.doneInstalledSuffix")
-                        checkUpdate()
-                    }
-                    is InstallResult.Offline -> { resultIsError = true; resultText = t("result.noInternet"); online = false }
-                    is InstallResult.CancelledResume -> { resultIsError = false; resultText = t("result.cancelledResume") }
-                    is InstallResult.Error -> {
-                        resultIsError = true
-                        resultText = t("result.errorPrefix") + t("err.${res.code}")
-                    }
-                }
-            }
-        }
+        InstallBus.begin()   // flip the UI to busy at once
+        InstallService.install(getApplication(), emulator, onlyInstalled)
     }
 
-    fun cancel() { stopFlag.set(true) }
+    fun cancel() { InstallBus.stopFlag.set(true) }
 
-    /** Export the ready-to-copy layout into a user-picked folder (SAF), so the
-     *  user can move it into any emulator manually. Uses the same install path
-     *  with a SAF writer rooted at the chosen tree. */
+    /** Export the ready-to-copy layout into a user-picked folder (SAF). */
     fun exportTo(treeUri: Uri) {
-        if (busy) return
+        if (InstallBus.busy) return
         try {
             getApplication<Application>().contentResolver.takePersistableUriPermission(
                 treeUri,
-                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                    android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
         } catch (_: Exception) {}
-        val writer = SafCheatWriter(getApplication(), treeUri)
-        busy = true; stopFlag.set(false)
-        resultText = ""; downloadText = ""; extractText = ""; progress = -1f
-        statusText = t("status.connecting")
-        io.execute {
-            val res = repo.install(emulator, writer, object : InstallProgress {
-                override fun onPhase(phase: InstallProgress.Phase) = ui {
-                    statusText = when (phase) {
-                        InstallProgress.Phase.CHECK_INTERNET -> t("status.checkInternet")
-                        InstallProgress.Phase.CONNECTING -> t("status.connecting")
-                        InstallProgress.Phase.DOWNLOADING -> t("status.downloading")
-                        InstallProgress.Phase.EXTRACTING -> t("status.extracting")
-                    }
-                    if (phase == InstallProgress.Phase.EXTRACTING) progress = 0f
-                }
-                override fun onDownload(done: Long, total: Long) = ui {
-                    downloadText = t("install.download") + " " + fmtMb(done) +
-                        (if (total > 0) " / " + fmtMb(total) else "")
-                    progress = if (total > 0) (done.toFloat() / total).coerceIn(0f, 1f) else -1f
-                }
-                override fun onExtract(done: Int, total: Int) = ui {
-                    extractText = t("install.extract") + " $done / $total" + t("install.filesSuffix")
-                    progress = if (total > 0) (done.toFloat() / total).coerceIn(0f, 1f) else -1f
-                }
-            }, stopFlag::get)
-            ui {
-                busy = false; progress = 0f
-                when (res) {
-                    is InstallResult.Installed -> {
-                        resultIsError = false
-                        resultText = t("result.exportedPrefix") + res.files + t("result.exportedSuffix")
-                    }
-                    is InstallResult.Offline -> { resultIsError = true; resultText = t("result.noInternet") }
-                    is InstallResult.CancelledResume -> { resultIsError = false; resultText = t("result.cancelledResume") }
-                    is InstallResult.Error -> { resultIsError = true; resultText = t("result.errorPrefix") + t("err.${res.code}") }
-                }
-            }
-        }
+        InstallBus.begin()
+        InstallService.export(getApplication(), emulator, treeUri)
     }
 
     // ---- app self-update ----

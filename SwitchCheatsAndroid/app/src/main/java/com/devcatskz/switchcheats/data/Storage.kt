@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import java.io.File
 
 /** Resolves WHERE and HOW to write cheats for a given emulator, dealing with
@@ -15,6 +16,9 @@ import java.io.File
 object Storage {
 
     private val externalRoot: File get() = Environment.getExternalStorageDirectory()
+
+    /** A 16-hex-char Title ID (the folder name the emulator uses under `load`). */
+    private val TITLE_ID = Regex("^[0-9A-Fa-f]{16}$")
 
     /** Absolute `load` folder of an emulator on the primary shared storage. */
     fun loadDir(emu: Emulator): File = File(externalRoot, emu.loadRelPath)
@@ -105,4 +109,30 @@ object Storage {
         is WriteMode.Saf -> SafCheatWriter(context, mode.treeUri, mode.prefix)
         else -> null
     }
+
+    /**
+     * The Title IDs the emulator already has set up — i.e. the `<TitleID>` folders
+     * directly under its `load` folder. Used by the opt-in "only installed games"
+     * mode to write cheats just for these. Works for both the direct-File and the
+     * SAF backend. Returns UPPERCASE ids (matching CheatLayout.Target). Empty if
+     * the load folder can't be read or has no game folders yet.
+     */
+    fun installedTitleIds(context: Context, emu: Emulator, prefs: Prefs): Set<String> =
+        when (val mode = resolveWriteMode(context, emu, prefs)) {
+            is WriteMode.Direct -> mode.loadDir.listFiles()
+                ?.asSequence()
+                ?.filter { it.isDirectory && TITLE_ID.matches(it.name) }
+                ?.map { it.name.uppercase() }
+                ?.toSet() ?: emptySet()
+            is WriteMode.Saf -> {
+                var cur: DocumentFile? = DocumentFile.fromTreeUri(context, mode.treeUri)
+                for (seg in mode.prefix) { cur = cur?.findFile(seg); if (cur == null) break }
+                cur?.listFiles()
+                    ?.asSequence()
+                    ?.filter { it.isDirectory && it.name != null && TITLE_ID.matches(it.name!!) }
+                    ?.map { it.name!!.uppercase() }
+                    ?.toSet() ?: emptySet()
+            }
+            else -> emptySet()
+        }
 }

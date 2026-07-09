@@ -44,6 +44,14 @@ object Strings {
         "install.extract" to a("Installing:", "Installiere:", "Instalando:", "Installation :", "Installazione:", "インストール中:"),
         "install.filesSuffix" to a(" files", " Dateien", " archivos", " fichiers", " file", " ファイル"),
         "install.hint" to a("Tap Start to begin.", "Tippe auf Starten.", "Toca Iniciar para empezar.", "Appuie sur Démarrer.", "Tocca Avvia per iniziare.", "「スタート」で開始します。"),
+        "install.onlyInstalled" to a("Only installed games", "Nur installierte Spiele", "Solo juegos instalados", "Uniquement les jeux installés", "Solo giochi installati", "インストール済みのゲームのみ"),
+        "install.onlyInstalledHint" to a(
+            "Writes cheats only for games already set up in the emulator (folders in load).",
+            "Schreibt Cheats nur für Spiele, die im Emulator schon angelegt sind (Ordner in load).",
+            "Escribe cheats solo para juegos ya configurados en el emulador (carpetas en load).",
+            "N'écrit les cheats que pour les jeux déjà présents dans l'émulateur (dossiers dans load).",
+            "Scrive i cheat solo per i giochi già presenti nell'emulatore (cartelle in load).",
+            "エミュレーターに既に登録済みのゲーム（load 内のフォルダ）にのみチートを書き込みます。"),
 
         // ---- Storage / permissions ----
         "storage.title" to a("Storage access", "Speicherzugriff", "Acceso al almacenamiento", "Accès au stockage", "Accesso all'archiviazione", "ストレージアクセス"),
@@ -110,6 +118,38 @@ object Strings {
         "result.exportedPrefix" to a("Exported ", "Exportiert: ", "Exportado ", "Exporté ", "Esportati ", "エクスポート済み "),
         "result.exportedSuffix" to a(" files — copy the folder into your emulator.", " Dateien — kopiere den Ordner in deinen Emulator.", " archivos — copia la carpeta en tu emulador.", " fichiers — copie le dossier dans ton émulateur.", " file — copia la cartella nel tuo emulatore.", " ファイル — フォルダをエミュレーターにコピーしてください。"),
         "result.appUpdateDone" to a("App update downloaded — follow the installer prompt.", "App-Update geladen — folge dem Installations-Dialog.", "Actualización descargada — sigue el instalador.", "Mise à jour téléchargée — suivez l'installateur.", "Aggiornamento scaricato — segui l'installer.", "更新をダウンロードしました — インストーラーに従ってください。"),
+        "result.installedSummary" to a(
+            "Done! %1\$d files · %2\$d games installed.",
+            "Fertig! %1\$d Dateien · %2\$d Spiele installiert.",
+            "¡Listo! %1\$d archivos · %2\$d juegos instalados.",
+            "Terminé ! %1\$d fichiers · %2\$d jeux installés.",
+            "Fatto! %1\$d file · %2\$d giochi installati.",
+            "完了！ %1\$d ファイル・%2\$d ゲームをインストールしました。"),
+        "result.exportedSummary" to a(
+            "Exported %1\$d files · %2\$d games — copy the folder into your emulator.",
+            "%1\$d Dateien · %2\$d Spiele exportiert — kopiere den Ordner in deinen Emulator.",
+            "Exportados %1\$d archivos · %2\$d juegos — copia la carpeta en tu emulador.",
+            "%1\$d fichiers · %2\$d jeux exportés — copie le dossier dans ton émulateur.",
+            "Esportati %1\$d file · %2\$d giochi — copia la cartella nel tuo emulatore.",
+            "%1\$d ファイル・%2\$d ゲームをエクスポートしました — フォルダをエミュレーターにコピーしてください。"),
+        "result.noGames" to a(
+            "No games found in the emulator's load folder. Set up your games in the emulator first, or turn this option off.",
+            "Keine Spiele im load-Ordner des Emulators gefunden. Lege deine Spiele zuerst im Emulator an oder schalte diese Option aus.",
+            "No se encontraron juegos en la carpeta load del emulador. Configura tus juegos primero en el emulador o desactiva esta opción.",
+            "Aucun jeu trouvé dans le dossier load de l'émulateur. Configure d'abord tes jeux dans l'émulateur ou désactive cette option.",
+            "Nessun gioco trovato nella cartella load dell'emulatore. Configura prima i tuoi giochi nell'emulatore o disattiva questa opzione.",
+            "エミュレーターの load フォルダにゲームが見つかりません。先にエミュレーターでゲームを設定するか、このオプションをオフにしてください。"),
+
+        // ---- Activation hint (after a successful install) ----
+        "activate.title" to a("Almost done — enable the cheats", "Fast fertig — Cheats aktivieren", "Casi listo — activa los cheats", "Presque fini — active les cheats", "Quasi fatto — attiva i cheat", "あと一歩 — チートを有効化"),
+        "activate.body" to a(
+            "In %s, long-press your game → Properties → Cheats and turn on the ones you want. Then start the game.",
+            "In %s: lange auf dein Spiel tippen → Eigenschaften → Cheats, dann die gewünschten aktivieren. Danach das Spiel starten.",
+            "En %s, mantén pulsado tu juego → Propiedades → Cheats y activa los que quieras. Luego inicia el juego.",
+            "Dans %s, appuie longuement sur ton jeu → Propriétés → Cheats et active ceux que tu veux. Puis lance le jeu.",
+            "In %s, tieni premuto il gioco → Proprietà → Cheat e attiva quelli che vuoi. Poi avvia il gioco.",
+            "%s でゲームを長押し → プロパティ → チート で使いたいものを有効にします。その後ゲームを起動してください。"),
+        "activate.open" to a("Open %s", "%s öffnen", "Abrir %s", "Ouvrir %s", "Apri %s", "%s を開く"),
 
         // ---- Errors (mirror NRO) ----
         "err.network" to a("Network error: ", "Netzwerkfehler: ", "Error de red: ", "Erreur réseau : ", "Errore di rete: ", "ネットワークエラー: "),

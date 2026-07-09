@@ -24,6 +24,10 @@ enum class Emulator(
     /** The emulator's Android package (null for Suyu, whose data is not under
      *  Android/data). Used to detect an installed emulator. */
     val packageName: String?,
+    /** Package to launch the emulator app with. Usually == packageName; set
+     *  separately for Suyu (whose data folder doesn't reveal it). A wrong guess is
+     *  harmless — the launch intent just resolves to null and the button hides. */
+    val launchPackage: String,
     /** True when the load folder is under Android/data, which needs the
      *  Storage-Access-Framework grant on Android 11+ (direct File writes are
      *  blocked by the OS there). */
@@ -34,6 +38,7 @@ enum class Emulator(
         displayName = "Eden",
         loadRelPath = "Android/data/dev.eden.eden_emulator/files/load",
         packageName = "dev.eden.eden_emulator",
+        launchPackage = "dev.eden.eden_emulator",
         underAndroidData = true,
     ),
     SUYU(
@@ -41,6 +46,7 @@ enum class Emulator(
         displayName = "Suyu",
         loadRelPath = "suyu/load",
         packageName = null,
+        launchPackage = "org.suyu.suyu_emulator",
         underAndroidData = false,
     ),
     SUDACHI(
@@ -48,6 +54,7 @@ enum class Emulator(
         displayName = "Sudachi",
         loadRelPath = "Android/data/org.sudachi.sudachi/files/load",
         packageName = "org.sudachi.sudachi",
+        launchPackage = "org.sudachi.sudachi",
         underAndroidData = true,
     );
 

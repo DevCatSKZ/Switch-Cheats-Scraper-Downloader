@@ -21,7 +21,7 @@ object Config {
     const val APP_API_URL =
         "https://api.github.com/repos/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tags/android"
 
-    const val APP_VERSION = "1.0.0"
+    const val APP_VERSION = "1.1.0"
     const val USER_AGENT = "SwitchCheatsDownloaderAndroid/$APP_VERSION"
 
     // Connectivity probe (same host as the desktop/NRO online check).

@@ -31,6 +31,19 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("perm_prompted", false)
         set(v) = sp.edit().putBoolean("perm_prompted", v).apply()
 
+    /** Opt-in: write cheats only for games the emulator already has set up (a
+     *  <TitleID> folder under `load`), instead of all ~3000 games. Default off so
+     *  the app installs everything unless the user chooses to trim it. */
+    var onlyInstalled: Boolean
+        get() = sp.getBoolean("only_installed", false)
+        set(v) = sp.edit().putBoolean("only_installed", v).apply()
+
+    /** Whether the app already asked for the POST_NOTIFICATIONS runtime permission
+     *  (Android 13+), so the download progress notification can show. Asked once. */
+    var notifPrompted: Boolean
+        get() = sp.getBoolean("notif_prompted", false)
+        set(v) = sp.edit().putBoolean("notif_prompted", v).apply()
+
     var emulator: Emulator
         get() = Emulator.fromId(emulatorId)
         set(v) { emulatorId = v.id }

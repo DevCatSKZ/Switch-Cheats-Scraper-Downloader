@@ -24,7 +24,7 @@ interface InstallProgress {
 
 /** Outcome of an install run. */
 sealed class InstallResult {
-    data class Installed(val files: Int) : InstallResult()
+    data class Installed(val files: Int, val games: Int) : InstallResult()
     object Offline : InstallResult()
     object CancelledResume : InstallResult()
     data class Error(val code: String) : InstallResult()
@@ -51,11 +51,16 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
     }
 
     // ---- install (download + extract + relayout) ------------------------
+    /**
+     * @param allowedTitleIds when non-null, only cheats for these (UPPERCASE)
+     *        Title IDs are written — used by the "only installed games" mode.
+     */
     fun install(
         emu: Emulator,
         writer: CheatWriter,
         progress: InstallProgress,
         shouldStop: () -> Boolean,
+        allowedTitleIds: Set<String>? = null,
     ): InstallResult {
         progress.onPhase(InstallProgress.Phase.CONNECTING)
         val release = try {
@@ -103,10 +108,11 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
         Names.ensureLoaded(context)
         progress.onPhase(InstallProgress.Phase.EXTRACTING)
         var written = 0
+        val gameIds = HashSet<String>()
         try {
             // First pass: count cheat entries for the progress bar (cheap; reads
             // central directory only via a streamed scan of names).
-            val total = countEntries()
+            val total = countEntries(allowedTitleIds)
             ZipInputStream(tmpZip.inputStream().buffered()).use { zin ->
                 var entry = zin.nextEntry
                 val buf = ByteArray(64 * 1024)
@@ -114,10 +120,12 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
                     if (shouldStop()) return InstallResult.CancelledResume
                     if (!entry.isDirectory) {
                         val target = CheatLayout.targetFor(entry.name)
-                        if (target != null) {
+                        // Skip games the user doesn't have when "only installed" is on.
+                        if (target != null && (allowedTitleIds == null || target.titleId in allowedTitleIds)) {
                             val bytes = readAll(zin, buf)
                             writer.write(target, Names.modFolder(target.titleId), bytes)
                             written++
+                            gameIds.add(target.titleId)
                             progress.onExtract(written, total)
                         }
                     }
@@ -134,15 +142,18 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
         // Success: remember the release state and drop the temp file.
         prefs.setLastInstalled(emu, asset.updatedAt)
         tmpZip.delete(); tmpMeta.delete()
-        return InstallResult.Installed(written)
+        return InstallResult.Installed(written, gameIds.size)
     }
 
-    private fun countEntries(): Int {
+    private fun countEntries(allowedTitleIds: Set<String>?): Int {
         var n = 0
         ZipInputStream(tmpZip.inputStream().buffered()).use { zin ->
             var e = zin.nextEntry
             while (e != null) {
-                if (!e.isDirectory && CheatLayout.targetFor(e.name) != null) n++
+                if (!e.isDirectory) {
+                    val target = CheatLayout.targetFor(e.name)
+                    if (target != null && (allowedTitleIds == null || target.titleId in allowedTitleIds)) n++
+                }
                 zin.closeEntry(); e = zin.nextEntry
             }
         }

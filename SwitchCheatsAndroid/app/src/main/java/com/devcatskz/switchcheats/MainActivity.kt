@@ -1,6 +1,8 @@
 package com.devcatskz.switchcheats
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -10,13 +12,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import com.devcatskz.switchcheats.data.Prefs
+import com.devcatskz.switchcheats.data.Storage
 import com.devcatskz.switchcheats.ui.HomeScreen
 import com.devcatskz.switchcheats.ui.theme.SwitchCheatsTheme
 
 class MainActivity : ComponentActivity() {
 
     private val vm: MainViewModel by viewModels()
+    private val prefs by lazy { Prefs(this) }
+
+    // Android 13+: allow the download progress notification to show.
+    private val notifPermLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     // Returning from the "All files access" settings screen.
     private val allFilesLauncher =
@@ -55,12 +65,26 @@ class MainActivity : ComponentActivity() {
             }
         }
         vm.refresh()
+        maybeAskNotifications()
     }
 
     override fun onResume() {
         super.onResume()
         vm.onAllFilesGranted()   // re-evaluate after returning from settings
         vm.recheckOnline()       // refresh the online dot after lock/minimise/resume
+        maybeAskNotifications()  // ask once storage access is settled
+    }
+
+    /** Ask for POST_NOTIFICATIONS once (Android 13+), but only after broad storage
+     *  access is settled — so it never stacks on top of the first-run storage
+     *  onboarding the user sees on a fresh install. */
+    private fun maybeAskNotifications() {
+        if (Build.VERSION.SDK_INT < 33 || prefs.notifPrompted) return
+        if (!Storage.hasAllFilesAccess(this)) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            == PackageManager.PERMISSION_GRANTED) { prefs.notifPrompted = true; return }
+        prefs.notifPrompted = true
+        notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     /** Request broad storage write access: All-files-access settings on

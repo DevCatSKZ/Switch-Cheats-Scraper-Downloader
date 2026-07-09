@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.devcatskz.switchcheats.MainViewModel
 import com.devcatskz.switchcheats.data.Config
 import com.devcatskz.switchcheats.data.Emulator
+import com.devcatskz.switchcheats.data.InstallBus
 import com.devcatskz.switchcheats.data.Storage
 import com.devcatskz.switchcheats.i18n.Lang
 import com.devcatskz.switchcheats.ui.theme.Prisma
@@ -63,6 +65,11 @@ fun HomeScreen(
     onPickFolder: () -> Unit,
     onExport: () -> Unit,
 ) {
+    // When an install finishes, refresh the "locally installed" line once.
+    LaunchedEffect(vm.installResult) {
+        if (vm.installResult is InstallBus.Result.Installed) vm.checkUpdate()
+    }
+
     // Startup permission onboarding — explains WHY storage access is needed and
     // requests the right grant for the selected emulator.
     if (vm.showPermDialog) {
@@ -194,6 +201,8 @@ fun HomeScreen(
                     Spacer(Modifier.height(10.dp))
                     HoloButton(vm.t("btn.cancel")) { vm.cancel() }
                 } else {
+                    OnlyInstalledToggle(vm)
+                    Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         HoloButton(vm.t("btn.start")) {
                             when {
@@ -218,6 +227,13 @@ fun HomeScreen(
                         color = if (vm.resultIsError) Prisma.Error else Prisma.Ok,
                         fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     )
+                }
+
+                // Feature 2: after a successful install, explain how to turn the
+                // cheats on in the emulator and offer to open it.
+                if (vm.showActivationHint) {
+                    Spacer(Modifier.height(12.dp))
+                    ActivationHint(vm)
                 }
             }
 
@@ -268,6 +284,53 @@ fun HomeScreen(
                 Text("by DevCatSKZ", color = Prisma.Muted, fontSize = 11.sp)
             }
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun OnlyInstalledToggle(vm: MainViewModel) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { vm.changeOnlyInstalled(!vm.onlyInstalled) }
+            .padding(vertical = 2.dp),
+    ) {
+        Checkbox(
+            checked = vm.onlyInstalled,
+            onCheckedChange = { vm.changeOnlyInstalled(it) },
+            colors = CheckboxDefaults.colors(
+                checkedColor = Prisma.Accent,
+                uncheckedColor = Prisma.Muted,
+                checkmarkColor = Prisma.OnAccent,
+            ),
+        )
+        Spacer(Modifier.width(4.dp))
+        Column {
+            Text(vm.t("install.onlyInstalled"), color = Prisma.Text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text(vm.t("install.onlyInstalledHint"), color = Prisma.Muted, fontSize = 11.sp)
+        }
+    }
+}
+
+@Composable
+private fun ActivationHint(vm: MainViewModel) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Prisma.Accent.copy(alpha = 0.10f))
+            .border(BorderStroke(1.dp, Prisma.Accent.copy(alpha = 0.5f)), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text("✅ " + vm.t("activate.title"), color = Prisma.Accent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(String.format(vm.t("activate.body"), vm.emulator.displayName), color = Prisma.Text, fontSize = 12.sp)
+        if (vm.emulatorInstalled()) {
+            Spacer(Modifier.height(2.dp))
+            HoloButton(String.format(vm.t("activate.open"), vm.emulator.displayName)) { vm.openEmulator() }
         }
     }
 }
