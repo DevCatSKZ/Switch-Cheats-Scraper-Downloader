@@ -3290,6 +3290,52 @@ _merge({
               "posizione a tua scelta.",
         "ja": "cheats.db 全体の一貫したコピー（SQLite バックアップ）を、選んだ場所に"
               "保存します。"},
+    "Export names.json": {
+        "de": "names.json exportieren", "es": "Exportar names.json",
+        "fr": "Exporter names.json", "it": "Esporta names.json",
+        "ja": "names.json をエクスポート"},
+    "Export a small Title ID → game name map (names.json) from the "
+    "current database. The Android app uses it to name each game's "
+    "cheat folder; upload it to the 'data' release to keep names current.": {
+        "de": "Exportiert eine kleine Title-ID→Spielname-Zuordnung (names.json) aus der "
+              "aktuellen Datenbank. Die Android-App benennt damit den Cheat-Ordner jedes "
+              "Spiels; lade sie ins „data“-Release hoch, damit die Namen aktuell bleiben.",
+        "es": "Exporta un pequeño mapa Title ID→nombre de juego (names.json) desde la base de "
+              "datos actual. La app de Android lo usa para nombrar la carpeta de cheats de "
+              "cada juego; súbelo al release «data» para mantener los nombres al día.",
+        "fr": "Exporte une petite table Title ID→nom du jeu (names.json) depuis la base "
+              "actuelle. L'app Android l'utilise pour nommer le dossier de triche de chaque "
+              "jeu ; téléversez-la dans la release « data » pour garder les noms à jour.",
+        "it": "Esporta una piccola mappa Title ID→nome del gioco (names.json) dal database "
+              "attuale. L'app Android la usa per nominare la cartella dei trucchi di ogni "
+              "gioco; caricala nella release «data» per mantenere aggiornati i nomi.",
+        "ja": "現在のデータベースから小さな Title ID→ゲーム名の対応表（names.json）を書き出します。"
+              "Android アプリは各ゲームのチートフォルダー名に使います。名前を最新に保つには "
+              "「data」リリースへアップロードしてください。"},
+    "No database file yet. Scrape first.": {
+        "de": "Noch keine Datenbank. Zuerst scrapen.",
+        "es": "Aún no hay base de datos. Primero haz scraping.",
+        "fr": "Pas encore de base de données. Scrapez d'abord.",
+        "it": "Nessun database ancora. Prima fai lo scraping.",
+        "ja": "まだデータベースがありません。先にスクレイプしてください。"},
+    "names.json exported: {n} games": {
+        "de": "names.json exportiert: {n} Spiele",
+        "es": "names.json exportado: {n} juegos",
+        "fr": "names.json exporté : {n} jeux",
+        "it": "names.json esportato: {n} giochi",
+        "ja": "names.json をエクスポート：{n} 本のゲーム"},
+    "names.json exported to:\n{dest}\n\n{n} games\n\nUpload it to the "
+    "'data' release so the Android app always gets current game names.": {
+        "de": "names.json exportiert nach:\n{dest}\n\n{n} Spiele\n\nLade sie ins „data“-"
+              "Release hoch, damit die Android-App immer aktuelle Spielnamen bekommt.",
+        "es": "names.json exportado a:\n{dest}\n\n{n} juegos\n\nSúbelo al release «data» "
+              "para que la app de Android siempre tenga nombres de juego actuales.",
+        "fr": "names.json exporté vers :\n{dest}\n\n{n} jeux\n\nTéléversez-le dans la release "
+              "« data » pour que l'app Android ait toujours des noms de jeu à jour.",
+        "it": "names.json esportato in:\n{dest}\n\n{n} giochi\n\nCaricalo nella release «data» "
+              "così l'app Android ha sempre nomi di gioco aggiornati.",
+        "ja": "names.json をエクスポートしました：\n{dest}\n\n{n} 本のゲーム\n\nAndroid アプリが"
+              "常に最新のゲーム名を取得できるよう、「data」リリースへアップロードしてください。"},
     "Maintenance tools: clean invalid files, retry quota-skipped / "
     "'unavailable' builds, fix 0-cheat entries, recount from disk, "
     "scan for empty files, fix ID names, sync titles folder.": {

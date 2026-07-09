@@ -2372,6 +2372,9 @@ class ScraperGUI:
         self.csv_btn.pack(side="left", padx=(0, 4))
         self.exportdb_btn = ttk.Button(left, text="Export DB", command=self.on_export_db)
         self.exportdb_btn.pack(side="left", padx=(0, 4))
+        self.exportnames_btn = ttk.Button(left, text="Export names.json",
+                                          command=self.on_export_names)
+        self.exportnames_btn.pack(side="left", padx=(0, 4))
         self.importdb_btn = ttk.Button(left, text="Import DB", command=self.on_import_db)
         self.importdb_btn.pack(side="left", padx=(0, 4))
         self.exportsd_btn = ttk.Button(left, text="Export to SD", command=self.on_export_sd)
@@ -2414,6 +2417,7 @@ class ScraperGUI:
         ttk.Entry(right, textvariable=self.db_path).pack(side="left", fill="x", expand=True, padx=(4, 4))
 
         self._action_buttons += [self.add_btn, self.csv_btn, self.exportdb_btn,
+                                 self.exportnames_btn,
                                  self.importdb_btn, self.exportsd_btn, self.exportzip_btn,
                                  self.repair_btn, self.clear_btn]
         _Tooltip(self.importdb_btn,
@@ -2440,6 +2444,10 @@ class ScraperGUI:
         _Tooltip(self.exportdb_btn,
                  "Save a consistent copy of the whole cheats.db (SQLite backup) "
                  "to a location you choose.")
+        _Tooltip(self.exportnames_btn,
+                 "Export a small Title ID → game name map (names.json) from the "
+                 "current database. The Android app uses it to name each game's "
+                 "cheat folder; upload it to the 'data' release to keep names current.")
         _Tooltip(self.repair_btn,
                  "Maintenance tools: clean invalid files, retry quota-skipped / "
                  "'unavailable' builds, fix 0-cheat entries, recount from disk, "
@@ -6320,6 +6328,83 @@ class ScraperGUI:
         messagebox.showinfo("Export database",
                             t("Full database exported to:\n{dest}\n\n{size} MB",
                               dest=dest, size=f"{size_mb:.1f}"))
+
+    def on_export_names(self):
+        """Export a lightweight Title ID → game name map (names.json).
+
+        The Android downloader fetches this from the `data` release to name each
+        game's cheat folder (load/<TitleID>/<GameName>/cheats/<BuildID>.txt).
+        """
+        import collections as _collections
+        import json as _json
+        import re as _re
+        import sqlite3 as _sqlite3
+
+        src = Path(self.db_path.get())
+        if not src.exists():
+            messagebox.showwarning("Export names.json",
+                                   t("No database file yet. Scrape first."))
+            return
+        dest = filedialog.asksaveasfilename(
+            title="Export names.json",
+            defaultextension=".json",
+            initialfile="names.json",
+            initialdir=str(DATA_DIR),
+            filetypes=[("JSON file", "*.json"), ("All files", "*.*")],
+        )
+        if not dest:
+            return
+
+        _invalid = _re.compile(r'[\\/:*?"<>|\x00-\x1f]')
+        # Trademark / service marks / replacement char, as \u escapes so the
+        # source stays encoding-safe: (TM) (R) (C) (P) (SM) and U+FFFD.
+        _symbols = _re.compile("[™®©℗℠�]")
+
+        def _clean(name):
+            n = _symbols.sub("", name or "")
+            n = n.replace("–", "-").replace("—", "-")  # en/em dash -> hyphen
+            n = _invalid.sub("", n)
+            n = _re.sub(r"\s+", " ", n).strip().strip(".").strip()
+            return n[:60].strip()
+
+        best = {}
+        con = None
+        try:
+            con = _sqlite3.connect(str(src))
+            con.row_factory = _sqlite3.Row
+            # For each Title ID, count the cleaned names and keep the most common
+            # one (ties broken by the shortest — the cleaner canonical title).
+            buckets = _collections.defaultdict(_collections.Counter)
+            for r in con.execute(
+                    "SELECT title_id, game_title FROM builds "
+                    "WHERE game_title IS NOT NULL AND game_title <> ''"):
+                tid = (r["title_id"] or "").strip().upper()
+                if len(tid) != 16:
+                    continue
+                name = _clean(r["game_title"])
+                if name:
+                    buckets[tid][name] += 1
+            best = {tid: sorted(ctr.items(), key=lambda kv: (-kv[1], len(kv[0])))[0][0]
+                    for tid, ctr in buckets.items()}
+            with open(dest, "w", encoding="utf-8") as f:
+                _json.dump(best, f, ensure_ascii=False,
+                           separators=(",", ":"), sort_keys=True)
+        except Exception as exc:
+            messagebox.showerror("Export names.json", t("Failed: {err}", err=exc))
+            return
+        finally:
+            if con is not None:
+                try:
+                    con.close()
+                except Exception:
+                    pass
+
+        self.status_var.set(t("names.json exported: {n} games", n=len(best)))
+        messagebox.showinfo(
+            "Export names.json",
+            t("names.json exported to:\n{dest}\n\n{n} games\n\nUpload it to the "
+              "'data' release so the Android app always gets current game names.",
+              dest=dest, n=len(best)))
 
     def on_import_db(self):
         """Import a previously exported cheats.db (merge into or replace the current)."""
