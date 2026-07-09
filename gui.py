@@ -1010,8 +1010,48 @@ def _fmt_size(n) -> str:
     return f"{n:.1f} GB"
 
 
+def _render_release_notes(txt: "tk.Text", md: str, t: dict):
+    """Render simple GitHub-flavoured markdown (headings, **bold**, bullets and
+    `code`) into a Text widget with tags — far nicer than showing the raw
+    ## / ** / - markup as plain text."""
+    import re
+    txt.tag_configure("h", foreground=t["accent"], font=("Segoe UI Semibold", 10),
+                      spacing1=8, spacing3=3)
+    txt.tag_configure("b", font=("Segoe UI", 9, "bold"))
+    txt.tag_configure("code", font=("Consolas", 9), foreground=t["accent"])
+    txt.tag_configure("li", lmargin1=14, lmargin2=30, spacing3=3)
+    txt.tag_configure("p", foreground=t["fg"], spacing3=3)
+
+    def inline(line: str, tags: tuple):
+        i = 0
+        for m in re.finditer(r"\*\*(.+?)\*\*|`([^`]+)`", line):
+            if m.start() > i:
+                txt.insert("end", line[i:m.start()], tags)
+            if m.group(1) is not None:
+                txt.insert("end", m.group(1), tags + ("b",))
+            else:
+                txt.insert("end", m.group(2), tags + ("code",))
+            i = m.end()
+        if i < len(line):
+            txt.insert("end", line[i:], tags)
+
+    for raw in (md or "").splitlines():
+        s = raw.strip()
+        if not s:
+            txt.insert("end", "\n")
+        elif s.startswith("#"):
+            inline(s.lstrip("#").strip(), ("h",)); txt.insert("end", "\n")
+        elif s[:2] in ("- ", "* ") or s.startswith("• "):
+            body = s[2:].strip()
+            txt.insert("end", "•  ", ("li", "p"))
+            inline(body, ("li", "p")); txt.insert("end", "\n")
+        else:
+            inline(s, ("p",)); txt.insert("end", "\n")
+
+
 class UpdateDialog:
-    """Modal dialog summarising the available program / data updates.
+    """Modal dialog summarising the available program / data updates, with the
+    release notes rendered nicely instead of raw markdown.
 
     It only reports and dispatches: the actual work runs in the app's worker
     threads (program self-install, or data download+import).
@@ -1027,76 +1067,92 @@ class UpdateDialog:
         self.top.grab_set()
         self.top.resizable(False, False)
         self.top.configure(bg=t["bg"])
-        frm = ttk.Frame(self.top, padding=14)
+        frm = ttk.Frame(self.top, padding=18)
         frm.pack(fill="both", expand=True)
 
         prog = info.get("program")
         cheats = info.get("cheats")
         db = info.get("db")
+        something = bool(prog or cheats or db)
+        frozen = getattr(sys, "frozen", False)
 
-        ttk.Label(frm, text="Updates available" if (prog or cheats or db)
-                  else "You are up to date",
-                  font=("Segoe UI", 12, "bold")).pack(anchor="w")
-        ttk.Label(frm, text=f"Installed version: v{APP_VERSION}",
-                  foreground=t["fg_muted"], font=("Segoe UI", 8)).pack(
-                      anchor="w", pady=(0, 10))
+        # --- Header: prominent title + version transition ---
+        ttk.Label(frm, text="Updates available" if something else "You are up to date",
+                  foreground=(t["accent"] if something else t["ok"]),
+                  font=("Segoe UI Semibold", 15)).pack(anchor="w")
+        if prog and prog.get("newer_version"):
+            sub = f"v{APP_VERSION}  →  v{prog['version']}"
+        else:
+            sub = f"Installed version: v{APP_VERSION}"
+        ttk.Label(frm, text=sub, foreground=t["fg_muted"],
+                  font=("Segoe UI", 9)).pack(anchor="w", pady=(2, 0))
+        ttk.Separator(frm).pack(fill="x", pady=13)
 
-        # --- Program update block ---
+        # --- Program update ---
         if prog:
-            box = ttk.LabelFrame(frm, text="Program", padding=(10, 8))
-            box.pack(fill="x", pady=(0, 8))
-            if prog["newer_version"]:
-                head = f"New version v{prog['version']} is available."
-            else:
-                head = ("The current release was re-uploaded (a fix without a "
-                        "version bump).")
-            ttk.Label(box, text=head, font=("Segoe UI", 9, "bold"),
-                      wraplength=440, justify="left").pack(anchor="w")
+            head = (f"New version v{prog['version']}" if prog["newer_version"]
+                    else "Current release re-uploaded (a fix, no version bump)")
+            ttk.Label(frm, text=head, foreground=t["fg"],
+                      font=("Segoe UI Semibold", 11), wraplength=470,
+                      justify="left").pack(anchor="w")
             setup = prog.get("setup") or {}
+            meta = []
             if setup.get("size"):
-                ttk.Label(box, text=f"Installer: {_fmt_size(setup['size'])}",
-                          foreground=t["fg_muted"], font=("Segoe UI", 8)).pack(
-                              anchor="w", pady=(2, 0))
+                meta.append(f"Installer {_fmt_size(setup['size'])}")
+            if frozen:
+                meta.append("installs & restarts automatically")
+            if meta:
+                ttk.Label(frm, text="   ·   ".join(meta), foreground=t["fg_muted"],
+                          font=("Segoe UI", 8)).pack(anchor="w", pady=(2, 0))
+
             notes = (prog.get("notes") or "").strip()
             if notes:
-                ttk.Label(box, text="What's new:", font=("Segoe UI", 8, "bold")).pack(
-                    anchor="w", pady=(6, 0))
-                txt = tk.Text(box, height=5, width=58, wrap="word",
-                              font=("Segoe UI", 8), relief="flat",
-                              bg=t["field"], fg=t["fg"],
-                              highlightthickness=1, highlightbackground=t["border"])
-                txt.insert("1.0", notes)
+                ttk.Label(frm, text="What's new", foreground=t["fg_muted"],
+                          font=("Segoe UI Semibold", 9)).pack(anchor="w", pady=(11, 4))
+                nbox = ttk.Frame(frm)
+                nbox.pack(fill="both", expand=True)
+                txt = tk.Text(nbox, height=9, width=62, wrap="word", relief="flat",
+                              bg=t["field"], fg=t["fg"], padx=12, pady=10,
+                              highlightthickness=1, highlightbackground=t["border"],
+                              highlightcolor=t["border"], cursor="arrow",
+                              font=("Segoe UI", 9))
+                sb = ttk.Scrollbar(nbox, command=txt.yview)
+                txt.configure(yscrollcommand=sb.set)
+                txt.pack(side="left", fill="both", expand=True)
+                sb.pack(side="right", fill="y")
+                _render_release_notes(txt, notes, t)
                 txt.config(state="disabled")
-                txt.pack(fill="x", pady=(2, 0))
-            frozen = getattr(sys, "frozen", False)
+
             btn_text = "Update & Restart" if frozen else "Open download page"
-            ttk.Button(box, text=btn_text,
-                       command=self._on_program).pack(anchor="e", pady=(8, 0))
+            ttk.Button(frm, text=btn_text, style="Accent.TButton",
+                       command=self._on_program).pack(anchor="e", pady=(13, 0))
 
-        # --- Data update block ---
+        # --- Data update ---
         if cheats or db:
-            box = ttk.LabelFrame(frm, text="Data (from DevCatSKZ)", padding=(10, 8))
-            box.pack(fill="x", pady=(0, 8))
+            if prog:
+                ttk.Separator(frm).pack(fill="x", pady=13)
+            ttk.Label(frm, text="Cheat data (from DevCatSKZ)", foreground=t["fg"],
+                      font=("Segoe UI Semibold", 11)).pack(anchor="w")
+            bits = []
             if db:
-                ttk.Label(box, text=f"• Newer database  ({_fmt_size(db.get('size'))})",
-                          wraplength=440, justify="left").pack(anchor="w")
+                bits.append(f"database {_fmt_size(db.get('size'))}")
             if cheats:
-                ttk.Label(box, text=f"• Newer cheats archive  ({_fmt_size(cheats.get('size'))})",
-                          wraplength=440, justify="left").pack(anchor="w")
-            ttk.Label(box, text="Downloaded and merged into your database "
-                                "(nothing is removed).",
-                      foreground=t["fg_muted"], font=("Segoe UI", 8)).pack(
-                          anchor="w", pady=(2, 0))
-            ttk.Button(box, text="Download data update",
-                       command=self._on_data).pack(anchor="e", pady=(8, 0))
+                bits.append(f"cheats {_fmt_size(cheats.get('size'))}")
+            ttk.Label(frm, text="Newer " + " + ".join(bits) + " available — "
+                      "merged into your database (nothing is removed).",
+                      foreground=t["fg_muted"], font=("Segoe UI", 9),
+                      wraplength=470, justify="left").pack(anchor="w", pady=(3, 0))
+            ttk.Button(frm, text="Download data update",
+                       command=self._on_data).pack(anchor="e", pady=(11, 0))
 
-        if not (prog or cheats or db):
+        if not something:
             ttk.Label(frm, text="Program, cheats and database are all current.",
                       foreground=t["fg_muted"]).pack(anchor="w")
 
         # --- Footer ---
+        ttk.Separator(frm).pack(fill="x", pady=(15, 11))
         foot = ttk.Frame(frm)
-        foot.pack(fill="x", pady=(6, 0))
+        foot.pack(fill="x")
         rel = info.get("release") or {}
         if rel.get("html_url"):
             ttk.Button(foot, text="Open GitHub release",
@@ -1264,6 +1320,10 @@ class ScraperGUI:
         self.nroapp_copy_sd = tk.BooleanVar(value=False)
         # Check GitHub for a newer program build / data package at every start.
         self.update_check_startup = tk.BooleanVar(value=True)
+        # Auto-install a found program update at startup (no dialog, no clicks) —
+        # only ever done silently when the app folder is writable (per-user install
+        # or portable), so it never triggers a UAC prompt.
+        self.auto_update = tk.BooleanVar(value=True)
         # SD-card export (remembered between runs).
         self.sd_export_root = tk.StringVar(value="")
         self.sd_export_mode = tk.StringVar(value="atmosphere")
@@ -1564,6 +1624,7 @@ class ScraperGUI:
         self.devcat_covers.set(bool(data.get("devcat_covers", False)))
         self.nroapp_copy_sd.set(bool(data.get("nroapp_copy_sd", False)))
         self.update_check_startup.set(bool(data.get("update_check_startup", True)))
+        self.auto_update.set(bool(data.get("auto_update", True)))
         self.sd_export_root.set(data.get("sd_export_root", ""))
         self.sd_export_mode.set(data.get("sd_export_mode", "atmosphere"))
         self.export_zip_path.set(data.get("export_zip_path", ""))
@@ -1602,6 +1663,7 @@ class ScraperGUI:
             "devcat_covers": self.devcat_covers.get(),
             "nroapp_copy_sd": self.nroapp_copy_sd.get(),
             "update_check_startup": self.update_check_startup.get(),
+            "auto_update": self.auto_update.get(),
             "sd_export_root": self.sd_export_root.get(),
             "sd_export_mode": self.sd_export_mode.get(),
             "export_zip_path": self.export_zip_path.get(),
@@ -2011,6 +2073,15 @@ class ScraperGUI:
             urow, text=f"v{APP_VERSION}", style="Featured.TLabel",
             font=("Segoe UI", 8))
         self.update_status_lbl.pack(side="left", padx=(8, 0))
+        autoupd_cb = ttk.Checkbutton(
+            urow, text="Update automatically", variable=self.auto_update,
+            style="Featured.TCheckbutton", command=self._save_settings)
+        autoupd_cb.pack(side="right")
+        _Tooltip(autoupd_cb,
+                 "ON (recommended): a found program update installs itself silently "
+                 "at startup and the app restarts — no clicks, no prompts. Works "
+                 "because the app is installed per-user (or run portable). OFF: "
+                 "updates are only offered in a dialog for you to confirm.")
         self._action_buttons += [self.check_updates_btn]
         # ---- Switch homebrew app: download the on-console counterpart --------
         srow = ttk.Frame(feat, style="Featured.TFrame")
@@ -3945,6 +4016,21 @@ class ScraperGUI:
         else:
             label, colour = f"v{APP_VERSION} — up to date", t["ok"]
         self.update_status_lbl.config(text=label, foreground=colour)
+        # --- Auto-update: silently install a found PROGRAM update (no dialog, no
+        #     clicks) when enabled AND we can do it without a UAC prompt — i.e. the
+        #     app folder is writable (a per-user install or a portable build). The
+        #     app downloads, installs and restarts itself. ---
+        can_silent = (getattr(sys, "frozen", False) and not self._busy
+                      and self._app_dir_writable())
+        if prog and self.auto_update.get() and can_silent:
+            self.update_status_lbl.config(text="installing update…",
+                                          foreground=theme()["checking"])
+            self.start_program_update(info)
+            return
+        # Data-only update: with auto-update on, merge it silently (non-destructive).
+        if has_data and not prog and self.auto_update.get() and not self._busy:
+            self.start_data_update(info)
+            return
         # Startup checks stay quiet unless something is actually new.
         if startup and not (prog or has_data):
             return
@@ -4128,10 +4214,11 @@ class ScraperGUI:
         messagebox.showwarning("Update", message)
 
     def _apply_installer_update(self, setup_path: str, prog: dict):
-        """Run the downloaded installer in place (elevated via UAC), then quit so
-        the running files are unlocked. /SILENT shows the installer's own progress
-        window so the user SEES the install; the postinstall [Run] entry relaunches
-        the app afterwards, de-elevated."""
+        """Run the downloaded installer in place, then quit so the running files are
+        unlocked. For a per-user install (writable app folder) this launches WITHOUT
+        elevation — no UAC prompt, fully silent. Only a legacy read-only Program
+        Files install still elevates via UAC. /SILENT shows the installer's own tiny
+        progress window; the postinstall [Run] entry relaunches the app afterwards."""
         app_dir = str(Path(sys.executable).resolve().parent)
         args = (f'/SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS '
                 f'/DIR="{app_dir}"')
@@ -4142,9 +4229,12 @@ class ScraperGUI:
         launched = False
         try:
             import ctypes
-            # ShellExecute respects the installer's admin manifest and shows the
-            # UAC prompt (subprocess/CreateProcess would fail with error 740).
-            rc = ctypes.windll.shell32.ShellExecuteW(None, "runas", setup_path, args, None, 1)
+            # No UAC when the folder is writable (per-user install): plain "open".
+            # A read-only Program Files install needs elevation → "runas" (the only
+            # case that still shows a UAC prompt). ShellExecute is used either way
+            # (subprocess/CreateProcess would fail with error 740 for "runas").
+            verb = "open" if self._app_dir_writable() else "runas"
+            rc = ctypes.windll.shell32.ShellExecuteW(None, verb, setup_path, args, None, 1)
             launched = int(rc) > 32
         except Exception as exc:
             self._append_log(f"Could not launch the installer: {exc}")

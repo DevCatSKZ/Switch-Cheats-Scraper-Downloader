@@ -17,24 +17,24 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}/releases
-VersionInfoVersion=1.2.0.0
+VersionInfoVersion=1.3.0.0
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription={#AppName} Setup
-; Default into 32-bit Program Files, as requested. {commonpf32} is always
-; C:\Program Files (x86). Writing there needs admin rights (UAC prompt).
-DefaultDirName={commonpf32}\{#AppName}
+; Per-user install (no admin, no UAC) so the app can update itself SILENTLY.
+; {autopf} resolves to %LOCALAPPDATA%\Programs when PrivilegesRequired=lowest
+; (the standard per-user location, like VS Code's user installer).
+DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 DisableWelcomePage=no
 ; Always show the "Select Destination Location" page so the user can browse to
 ; (or create) any folder — never auto-skip it based on a previous install.
 DisableDirPage=no
-; The app prefers to store its data NEXT TO the .exe (portable); when that folder
-; is read-only — as C:\Program Files (x86) is for a normal user — it transparently
-; falls back to %LOCALAPPDATA%\SwitchCheatsScraper (see _data_dir() in gui.py), so
-; a Program Files install works fine. Admin rights are required to install there;
-; the user may still pick a writable folder of their own in the wizard.
-PrivilegesRequired=admin
+; Install PER USER (lowest privileges) — no admin, NO UAC prompt. The app folder
+; is then writable, so updates install SILENTLY and the app restarts itself (see
+; _apply_installer_update in gui.py). The app stores its data next to the .exe.
+; PrivilegesRequiredOverridesAllowed still lets an admin pick an all-users folder.
+PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog commandline
 OutputDir=Output
 OutputBaseFilename=SwitchCheatsScraper-Setup

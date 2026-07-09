@@ -1057,6 +1057,29 @@ _merge({
         "de": "Update wird vorbereitet…", "es": "Preparando la actualización…",
         "fr": "Préparation de la mise à jour…", "it": "Preparazione dell'aggiornamento…",
         "ja": "アップデートを準備中…"},
+    "Update automatically": {
+        "de": "Automatisch aktualisieren", "es": "Actualizar automáticamente",
+        "fr": "Mettre à jour automatiquement", "it": "Aggiorna automaticamente",
+        "ja": "自動的に更新"},
+    "What's new": {
+        "de": "Was ist neu", "es": "Novedades", "fr": "Nouveautés",
+        "it": "Novità", "ja": "変更点"},
+    "Current release re-uploaded (a fix, no version bump)": {
+        "de": "Aktuelles Release neu hochgeladen (ein Fix, kein Versionssprung)",
+        "es": "Versión actual resubida (una corrección, sin cambio de versión)",
+        "fr": "Version actuelle re-téléversée (un correctif, sans changement de version)",
+        "it": "Release attuale ricaricata (una correzione, nessun cambio di versione)",
+        "ja": "現在のリリースを再アップロード（バージョンを上げない修正）"},
+    "installs & restarts automatically": {
+        "de": "installiert & startet automatisch neu",
+        "es": "se instala y se reinicia automáticamente",
+        "fr": "s'installe et redémarre automatiquement",
+        "it": "si installa e si riavvia automaticamente",
+        "ja": "自動でインストール・再起動します"},
+    "Cheat data (from DevCatSKZ)": {
+        "de": "Cheat-Daten (von DevCatSKZ)", "es": "Datos de cheats (de DevCatSKZ)",
+        "fr": "Données de cheats (de DevCatSKZ)", "it": "Dati dei cheat (da DevCatSKZ)",
+        "ja": "チートデータ（DevCatSKZ）"},
 })
 
 # ---- Messagebox titles -----------------------------------------------------
