@@ -889,6 +889,13 @@ class ExportEmulatorDialog:
     def _on_astype(self):
         is_zip = self.astype_var.get() == "zip"
         self.dest_lbl.config(text="Save ZIP as:" if is_zip else "Destination folder:")
+        # Keep the shown path in sync with the type so it's always obvious where
+        # the result lands — a folder path, or a visible .zip file.
+        p = self.dest_var.get().strip().rstrip("/\\")
+        if is_zip and p and not p.lower().endswith(".zip"):
+            self.dest_var.set(p + ".zip")
+        elif not is_zip and p.lower().endswith(".zip"):
+            self.dest_var.set(p[:-4])
 
     def _on_emu(self):
         idx = self.emu_combo.current()
@@ -908,17 +915,20 @@ class ExportEmulatorDialog:
         from tkinter import filedialog
         cur = self.dest_var.get().strip()
         if self.astype_var.get() == "zip":
-            initialdir = (str(Path(cur).parent) if cur.lower().endswith(".zip")
-                          else (cur or str(DATA_DIR)))
+            base = Path(cur).parent if cur else Path(str(DATA_DIR))
+            initialdir = str(base if base.exists() else DATA_DIR)
+            initialfile = (Path(cur).name if cur.lower().endswith(".zip")
+                           else "switch-cheats-emulator.zip")
             path = filedialog.asksaveasfilename(
                 title="Export cheats for emulators (ZIP)", parent=self.top,
-                defaultextension=".zip", initialdir=initialdir,
-                initialfile="switch-cheats-emulator.zip",
+                defaultextension=".zip", initialdir=initialdir, initialfile=initialfile,
                 filetypes=[("ZIP archive", "*.zip"), ("All files", "*.*")])
         else:
+            base = Path(cur) if cur else Path(str(DATA_DIR))
+            initialdir = str(base if base.exists()
+                             else (base.parent if base.parent.exists() else DATA_DIR))
             path = filedialog.askdirectory(
-                title="Choose the destination folder", parent=self.top,
-                initialdir=cur or str(DATA_DIR))
+                title="Choose the destination folder", parent=self.top, initialdir=initialdir)
         if path:
             self.dest_var.set(path)
 
