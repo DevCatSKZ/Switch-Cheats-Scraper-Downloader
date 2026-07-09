@@ -275,7 +275,7 @@
       <div class="emblem sw"><img src="icon-switch.png" alt="Switch icon">
         <div><div class="t">Nintendo Switch</div><div class="s" data-i18n="emb_sw_s">Download Cheats for Nintendo Switch</div></div></div>
       <div class="emblem and"><img src="icon-android.png" alt="Android icon">
-        <div><div class="t">Android</div><div class="s" data-i18n="emb_and_s">Download Cheats for Android Switch Emulators</div></div></div>
+        <div><div class="t">Android</div><div class="s" data-i18n="emb_and_s">Download Cheats for Nintendo Switch Emulators on Android</div></div></div>
     </div>
   </div>
 </header>
@@ -301,6 +301,8 @@
             <span data-i18n="dl_win_1">Installer (.exe)</span><span class="sz" data-i18n="dl_win_1s">Setup</span></a>
           <a class="alt" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/latest/download/SwitchCheatsScraper-portable.zip">
             <span data-i18n="dl_win_2">Portable (.zip)</span><span class="sz" data-i18n="dl_win_2s">no install</span></a>
+          <a class="alt" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader">
+            <span data-i18n="dl_win_3">Source code</span><span class="sz" data-i18n="dl_win_3s">GitHub</span></a>
         </div>
       </div>
 
@@ -424,9 +426,6 @@
         <p data-i18n="data_p">A continuously-updated cheats archive and the full database live in the repo's
           <b style="color:var(--text)">data release</b>. Every app can pull them directly — and
           re-import them when they're refreshed. Existing entries are merged and enriched, never removed.</p>
-        <div class="langs">
-          <span>English</span><span>Deutsch</span><span>Español</span><span>Français</span><span>Italiano</span><span>日本語</span>
-        </div>
       </div>
       <div class="assets">
         <a href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip">
@@ -524,13 +523,13 @@ const I18N = {
     cta_win:`Für Windows herunterladen`, cta_all:`Alle Plattformen & Portable`,
     meta_mit:`MIT-Lizenz`, meta_langs:`6 Sprachen`, meta_noacct:`Zum Stöbern kein Konto nötig`,
     emb_win_s:`Scraper · Downloader · Manager`, emb_sw_s:`Cheats für die Nintendo Switch laden`,
-    emb_and_s:`Cheats für Switch-Emulatoren auf Android laden`,
+    emb_and_s:`Cheats für Nintendo Switch-Emulatoren auf Android laden`,
     plats_eyebrow:`Drei Apps · ein Datenbestand`, plats_h2:`Wähle, wo du spielst.`,
     plats_lede:`Das Desktop-Tool kann alles; die Switch- und Android-Apps sind schlanke Downloader, die dieselben, stets aktuellen Cheats direkt auf dem Gerät holen — ganz ohne PC.`,
     plat_win_role:`Windows 10 / 11`, plat_win_h3:`Scraper + Downloader + Manager`,
     plat_win_os:`Das komplette Toolkit · kein Python nötig`,
     plat_win_p:`Durchsucht CheatSlips und führt 9+ Community-Quellen in einer durchsuchbaren SQLite-Datenbank zusammen — mit Namen, Covern, Regionen, Versionen und Beschreibungen. Lädt vollständige Cheat-Dateien über die offizielle API und exportiert direkt auf die SD-Karte oder als ZIP.`,
-    dl_win_1:`Installer (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`ohne Installation`,
+    dl_win_1:`Installer (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`ohne Installation`, dl_win_3:`Quellcode`,
     plat_sw_role:`Nintendo Switch - Homebrew`, plat_sw_h3:`Downloader auf der Konsole`,
     plat_sw_os:`Läuft auf der Switch selbst · braucht WLAN`,
     plat_sw_p:`Eine eigenständige <code>.nro</code>, die die neuesten Cheats direkt auf der Konsole lädt und im Atmosphère-Format auf die SD-Karte entpackt. Sie setzt abgebrochene Downloads fort, aktualisiert sich selbst und lässt sich per Joy-Con und Touch bedienen.`,
@@ -578,13 +577,13 @@ const I18N = {
     cta_win:`Descargar para Windows`, cta_all:`Todas las plataformas y portable`,
     meta_mit:`Licencia MIT`, meta_langs:`6 idiomas`, meta_noacct:`No hace falta cuenta para explorar`,
     emb_win_s:`Scraper · Descargador · Gestor`, emb_sw_s:`Descargar trucos para Nintendo Switch`,
-    emb_and_s:`Descargar trucos para emuladores de Switch en Android`,
+    emb_and_s:`Descargar trucos para emuladores de Nintendo Switch en Android`,
     plats_eyebrow:`Tres apps · un conjunto de datos`, plats_h2:`Elige dónde juegas.`,
     plats_lede:`La herramienta de escritorio lo hace todo; las apps de Switch y Android son descargadores centrados que obtienen los mismos trucos siempre actualizados directamente en el dispositivo — sin PC de por medio.`,
     plat_win_role:`Windows 10 / 11`, plat_win_h3:`Scraper + Descargador + Gestor`,
     plat_win_os:`El kit completo · sin Python`,
     plat_win_p:`Extrae de CheatSlips e importa 9+ fuentes de la comunidad a una base de datos SQLite con búsqueda — nombres, carátulas, regiones, versiones, descripciones. Descarga los archivos completos de trucos por la API oficial y exporta directamente a la tarjeta SD o a un ZIP.`,
-    dl_win_1:`Instalador (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`sin instalar`,
+    dl_win_1:`Instalador (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`sin instalar`, dl_win_3:`Código fuente`,
     plat_sw_role:`Nintendo Switch - Homebrew`, plat_sw_h3:`Descargador en la consola`,
     plat_sw_os:`Se ejecuta en la propia Switch · necesita Wi-Fi`,
     plat_sw_p:`Un <code>.nro</code> independiente que obtiene los últimos trucos en la consola y los extrae al formato de Atmosphère en la tarjeta SD. Reanuda descargas interrumpidas, se actualiza solo, control total con Joy-Con y táctil.`,
@@ -632,13 +631,13 @@ const I18N = {
     cta_win:`Télécharger pour Windows`, cta_all:`Toutes les plateformes & portable`,
     meta_mit:`Licence MIT`, meta_langs:`6 langues`, meta_noacct:`Aucun compte requis pour parcourir`,
     emb_win_s:`Scraper · Téléchargeur · Gestionnaire`, emb_sw_s:`Télécharger des codes pour Nintendo Switch`,
-    emb_and_s:`Télécharger des codes pour les émulateurs Switch Android`,
+    emb_and_s:`Télécharger des codes pour les émulateurs Nintendo Switch sur Android`,
     plats_eyebrow:`Trois apps · un jeu de données`, plats_h2:`Choisissez où vous jouez.`,
     plats_lede:`L'outil de bureau fait tout ; les apps Switch et Android sont des téléchargeurs ciblés qui récupèrent les mêmes codes toujours à jour directement sur l'appareil — sans PC.`,
     plat_win_role:`Windows 10 / 11`, plat_win_h3:`Scraper + Téléchargeur + Gestionnaire`,
     plat_win_os:`La boîte à outils complète · sans Python`,
     plat_win_p:`Extrayez CheatSlips et importez 9+ sources de la communauté dans une base SQLite consultable — noms, jaquettes, régions, versions, descriptions. Téléchargez les fichiers complets via l'API officielle et exportez directement vers la carte SD ou un ZIP.`,
-    dl_win_1:`Installateur (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`sans installation`,
+    dl_win_1:`Installateur (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`sans installation`, dl_win_3:`Code source`,
     plat_sw_role:`Nintendo Switch - Homebrew`, plat_sw_h3:`Téléchargeur sur la console`,
     plat_sw_os:`S'exécute sur la Switch elle-même · nécessite le Wi-Fi`,
     plat_sw_p:`Un <code>.nro</code> autonome qui récupère les derniers codes sur la console et les extrait au format Atmosphère sur la carte SD. Reprend les téléchargements interrompus, se met à jour, contrôle complet Joy-Con et tactile.`,
@@ -686,13 +685,13 @@ const I18N = {
     cta_win:`Scarica per Windows`, cta_all:`Tutte le piattaforme e portable`,
     meta_mit:`Licenza MIT`, meta_langs:`6 lingue`, meta_noacct:`Nessun account per sfogliare`,
     emb_win_s:`Scraper · Downloader · Gestore`, emb_sw_s:`Scarica trucchi per Nintendo Switch`,
-    emb_and_s:`Scarica trucchi per emulatori Switch Android`,
+    emb_and_s:`Scarica trucchi per emulatori Nintendo Switch su Android`,
     plats_eyebrow:`Tre app · un set di dati`, plats_h2:`Scegli dove giochi.`,
     plats_lede:`Lo strumento desktop fa tutto; le app Switch e Android sono downloader mirati che prendono gli stessi trucchi sempre aggiornati direttamente sul dispositivo — senza PC di mezzo.`,
     plat_win_role:`Windows 10 / 11`, plat_win_h3:`Scraper + Downloader + Gestore`,
     plat_win_os:`Il toolkit completo · niente Python`,
     plat_win_p:`Estrai da CheatSlips e importa 9+ fonti della community in un database SQLite consultabile — nomi, copertine, regioni, versioni, descrizioni. Scarica i file completi tramite l'API ufficiale ed esporta direttamente sulla scheda SD o in uno ZIP.`,
-    dl_win_1:`Installer (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`senza installare`,
+    dl_win_1:`Installer (.exe)`, dl_win_1s:`Setup`, dl_win_2:`Portable (.zip)`, dl_win_2s:`senza installare`, dl_win_3:`Codice sorgente`,
     plat_sw_role:`Nintendo Switch - Homebrew`, plat_sw_h3:`Downloader sulla console`,
     plat_sw_os:`Gira sulla Switch stessa · richiede il Wi-Fi`,
     plat_sw_p:`Un <code>.nro</code> autonomo che scarica gli ultimi trucchi sulla console e li estrae nel formato Atmosphère sulla scheda SD. Riprende i download interrotti, si aggiorna da solo, pieno controllo Joy-Con e touch.`,
@@ -740,13 +739,13 @@ const I18N = {
     cta_win:`Windows版をダウンロード`, cta_all:`全プラットフォーム & ポータブル`,
     meta_mit:`MITライセンス`, meta_langs:`6言語対応`, meta_noacct:`閲覧にアカウント不要`,
     emb_win_s:`スクレイパー · ダウンローダー · マネージャー`, emb_sw_s:`Nintendo Switch用のチートをダウンロード`,
-    emb_and_s:`Android版Switchエミュレーター用のチートをダウンロード`,
+    emb_and_s:`Android版 Nintendo Switch エミュレーター用のチートをダウンロード`,
     plats_eyebrow:`3つのアプリ · 1つのデータ`, plats_h2:`遊ぶ場所を選ぼう。`,
     plats_lede:`デスクトップ版はすべてをこなします。SwitchとAndroidのアプリは、同じ常に最新のチートをデバイス上で直接取得する専用ダウンローダーです —— PCは不要。`,
     plat_win_role:`Windows 10 / 11`, plat_win_h3:`スクレイパー + ダウンローダー + マネージャー`,
     plat_win_os:`フル機能のツールキット · Python不要`,
     plat_win_p:`CheatSlipsをスクレイプし、9つ以上のコミュニティソースを検索可能なSQLiteデータベースに取り込みます —— 名前、カバー、地域、バージョン、説明。公式APIで完全なチートファイルをダウンロードし、SDカードやZIPへ直接書き出せます。`,
-    dl_win_1:`インストーラー (.exe)`, dl_win_1s:`Setup`, dl_win_2:`ポータブル (.zip)`, dl_win_2s:`インストール不要`,
+    dl_win_1:`インストーラー (.exe)`, dl_win_1s:`Setup`, dl_win_2:`ポータブル (.zip)`, dl_win_2s:`インストール不要`, dl_win_3:`ソースコード`,
     plat_sw_role:`Nintendo Switch - Homebrew`, plat_sw_h3:`本体で動くダウンローダー`,
     plat_sw_os:`Switch本体で動作 · Wi-Fiが必要`,
     plat_sw_p:`本体で最新のチートを取得し、SDカードのAtmosphèreレイアウトに展開する単体の<code>.nro</code>。中断したダウンロードを再開し、自身を更新、Joy-Conとタッチの両操作に対応。`,
