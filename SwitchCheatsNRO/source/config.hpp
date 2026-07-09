@@ -8,7 +8,7 @@
 // -DAPP_VERSION=... durchgereicht (eine Quelle fuer .nacp, kAppVersion und
 // User-Agent). Der Fallback hier greift nur bei Builds ausserhalb des Makefiles.
 #ifndef APP_VERSION
-#define APP_VERSION "1.3.0"
+#define APP_VERSION "1.3"
 #endif
 
 namespace cfg {

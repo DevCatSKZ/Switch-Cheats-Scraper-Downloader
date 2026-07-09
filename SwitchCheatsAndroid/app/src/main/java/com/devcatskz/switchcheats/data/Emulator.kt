@@ -3,17 +3,14 @@ package com.devcatskz.switchcheats.data
 /**
  * A supported Switch emulator on Android and where its cheats live.
  *
- * The cheats source (switch-cheats.zip from the GitHub `data` release) is laid
- * out in the Atmosphère format used by the real console:
+ * The cheats source is the ready-made emulator package
+ * (switch-cheats-emulator.zip from the GitHub `data` release), already in the
+ * Yuzu-family load layout:
  *
- *     atmosphere/contents/<TitleID>/cheats/<BuildID>.txt
+ *     <TitleID>/<GameName>/cheats/<BuildID>.txt
  *
- * The Yuzu-family Android emulators (Eden / Suyu / Sudachi) instead read cheats
- * from a per-game "mod" folder:
- *
- *     <load>/<TitleID>/<CheatName>/cheats/<BuildID>.txt
- *
- * so every entry is re-laid-out into the selected emulator's `load` folder.
+ * so each file is written straight into the selected emulator's `load` folder
+ * (Eden / Suyu / Sudachi) — no re-layout and no name lookup on the device.
  */
 enum class Emulator(
     val id: String,
@@ -65,22 +62,27 @@ enum class Emulator(
 }
 
 /**
- * Re-layout of the Atmosphère cheat paths into the emulator's `load` folder.
- * Shared by every write backend (direct File and SAF/DocumentFile).
+ * Parses entries of the ready-made emulator package (switch-cheats-emulator.zip),
+ * whose paths are already the Yuzu-family load layout:
+ *     <TitleID>/<GameName>/cheats/<BuildID>.txt
+ * The game name is baked into the path, so the app writes each file straight into
+ * <load>/<same path> — no re-layout and no names.json lookup on the phone.
  */
 object CheatLayout {
     private val ENTRY =
-        Regex("^atmosphere/contents/([0-9A-Fa-f]{16})/cheats/([0-9A-Fa-f]{16})\\.txt$")
+        Regex("^([0-9A-Fa-f]{16})/([^/]+)/cheats/([0-9A-Fa-f]{16})\\.txt$")
 
-    /** A cheat file to write. The Yuzu family (Eden/Suyu/Sudachi) reads cheats
-     *  from `load/<TitleID>/<ModName>/cheats/<BuildID>.txt`; the mod folder is
-     *  resolved at write time to the game's name (see Names). */
+    /** Title ID + build ID for a write backend to place the file. */
     data class Target(val titleId: String, val buildId: String)
 
-    /** Map one zip entry to its target under the load folder, or null if the
-     *  entry is not a cheat file (e.g. a directory). */
-    fun targetFor(zipEntryName: String): Target? {
+    /** A parsed cheat entry: Title ID, game (mod-folder) name and build ID. */
+    data class Entry(val titleId: String, val gameName: String, val buildId: String) {
+        val target get() = Target(titleId, buildId)
+    }
+
+    /** Parse one zip entry, or null if it isn't a cheat file (e.g. a directory). */
+    fun parse(zipEntryName: String): Entry? {
         val m = ENTRY.matchEntire(zipEntryName.replace('\\', '/')) ?: return null
-        return Target(m.groupValues[1].uppercase(), m.groupValues[2].uppercase())
+        return Entry(m.groupValues[1].uppercase(), m.groupValues[2], m.groupValues[3].uppercase())
     }
 }

@@ -24,7 +24,7 @@ object Storage {
     fun loadDir(emu: Emulator): File = File(externalRoot, emu.loadRelPath)
 
     /** Human-readable target path shown in the UI. The mod folder is the game's
-     *  name (resolved per Title ID from the data release's names.json). */
+     *  name, taken straight from the emulator package's baked-in folder layout. */
     fun targetLabel(emu: Emulator): String =
         "/storage/emulated/0/${emu.loadRelPath}/<TitleID>/<GameName>/cheats/<BuildID>.txt"
 

@@ -32,8 +32,8 @@ sealed class InstallResult {
 
 class CheatsRepository(private val context: Context, private val prefs: Prefs) {
 
-    private val tmpZip get() = File(context.filesDir, "switch-cheats.zip.part")
-    private val tmpMeta get() = File(context.filesDir, "switch-cheats.zip.part.meta")
+    private val tmpZip get() = File(context.filesDir, "switch-cheats-emulator.zip.part")
+    private val tmpMeta get() = File(context.filesDir, "switch-cheats-emulator.zip.part.meta")
 
     // ---- update check ---------------------------------------------------
     fun checkUpdate(emu: Emulator): UpdateStatus {
@@ -102,10 +102,9 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
         if (lastErr != null) return InstallResult.Error(mapError(lastErr))
         if (!completed) return InstallResult.CancelledResume
 
-        // ---- extract + relayout ----
-        // Load the Title ID → game name map so each game's cheats land in a
-        // folder named after the game (falls back to the Title ID).
-        Names.ensureLoaded(context)
+        // ---- extract straight into the load layout ----
+        // The package is already <TitleID>/<GameName>/cheats/<BuildID>.txt, so we
+        // just write each file where it belongs — no re-layout, no name lookup.
         progress.onPhase(InstallProgress.Phase.EXTRACTING)
         var written = 0
         val gameIds = HashSet<String>()
@@ -119,13 +118,13 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
                 while (entry != null) {
                     if (shouldStop()) return InstallResult.CancelledResume
                     if (!entry.isDirectory) {
-                        val target = CheatLayout.targetFor(entry.name)
+                        val e = CheatLayout.parse(entry.name)
                         // Skip games the user doesn't have when "only installed" is on.
-                        if (target != null && (allowedTitleIds == null || target.titleId in allowedTitleIds)) {
+                        if (e != null && (allowedTitleIds == null || e.titleId in allowedTitleIds)) {
                             val bytes = readAll(zin, buf)
-                            writer.write(target, Names.modFolder(target.titleId), bytes)
+                            writer.write(e.target, e.gameName, bytes)
                             written++
-                            gameIds.add(target.titleId)
+                            gameIds.add(e.titleId)
                             progress.onExtract(written, total)
                         }
                     }
@@ -151,8 +150,8 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
             var e = zin.nextEntry
             while (e != null) {
                 if (!e.isDirectory) {
-                    val target = CheatLayout.targetFor(e.name)
-                    if (target != null && (allowedTitleIds == null || target.titleId in allowedTitleIds)) n++
+                    val p = CheatLayout.parse(e.name)
+                    if (p != null && (allowedTitleIds == null || p.titleId in allowedTitleIds)) n++
                 }
                 zin.closeEntry(); e = zin.nextEntry
             }

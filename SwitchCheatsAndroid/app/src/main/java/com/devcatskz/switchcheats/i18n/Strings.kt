@@ -39,7 +39,7 @@ object Strings {
 
         // ---- Install section ----
         "install.title" to a("Download & Install", "Herunterladen & Installieren", "Descargar e instalar", "Télécharger et installer", "Scarica e installa", "ダウンロードしてインストール"),
-        "install.desc" to a("Downloads the latest switch-cheats.zip and installs it into the selected emulator's cheats folder.", "Lädt die neueste switch-cheats.zip und installiert sie in den Cheats-Ordner des gewählten Emulators.", "Descarga el switch-cheats.zip más reciente y lo instala en la carpeta de cheats del emulador elegido.", "Télécharge le dernier switch-cheats.zip et l'installe dans le dossier de cheats de l'émulateur choisi.", "Scarica l'ultimo switch-cheats.zip e lo installa nella cartella cheat dell'emulatore scelto.", "最新の switch-cheats.zip をダウンロードし、選択したエミュレーターのチートフォルダにインストールします。"),
+        "install.desc" to a("Downloads the latest switch-cheats-emulator.zip and installs it into the selected emulator's cheats folder.", "Lädt die neueste switch-cheats-emulator.zip und installiert sie in den Cheats-Ordner des gewählten Emulators.", "Descarga el switch-cheats-emulator.zip más reciente y lo instala en la carpeta de cheats del emulador elegido.", "Télécharge le dernier switch-cheats-emulator.zip et l'installe dans le dossier de cheats de l'émulateur choisi.", "Scarica l'ultimo switch-cheats-emulator.zip e lo installa nella cartella cheat dell'emulatore scelto.", "最新の switch-cheats-emulator.zip をダウンロードし、選択したエミュレーターのチートフォルダにインストールします。"),
         "install.download" to a("Download:", "Download:", "Descarga:", "Téléchargement :", "Download:", "ダウンロード:"),
         "install.extract" to a("Installing:", "Installiere:", "Instalando:", "Installation :", "Installazione:", "インストール中:"),
         "install.filesSuffix" to a(" files", " Dateien", " archivos", " fichiers", " file", " ファイル"),
@@ -91,7 +91,7 @@ object Strings {
         "info.target" to a("Target: ", "Ziel: ", "Destino: ", "Cible : ", "Destinazione: ", "保存先: "),
         "info.appVersion" to a("App version: ", "App-Version: ", "Versión de la app: ", "Version de l'app : ", "Versione app: ", "アプリバージョン: "),
         "info.language" to a("Language", "Sprache", "Idioma", "Langue", "Lingua", "言語"),
-        "info.note" to a("The switch-cheats.zip cheats file comes from the GitHub repo above and is updated continuously.", "Die Cheats-Datei switch-cheats.zip stammt aus dem obigen GitHub-Repo und wird laufend aktualisiert.", "El archivo switch-cheats.zip proviene del repositorio de GitHub de arriba y se actualiza continuamente.", "Le fichier switch-cheats.zip provient du dépôt GitHub ci-dessus et est mis à jour en continu.", "Il file switch-cheats.zip proviene dal repository GitHub qui sopra e viene aggiornato continuamente.", "上記の GitHub リポジトリの switch-cheats.zip は継続的に更新されます。"),
+        "info.note" to a("The switch-cheats-emulator.zip cheats file comes from the GitHub repo above and is updated continuously.", "Die Cheats-Datei switch-cheats-emulator.zip stammt aus dem obigen GitHub-Repo und wird laufend aktualisiert.", "El archivo switch-cheats-emulator.zip proviene del repositorio de GitHub de arriba y se actualiza continuamente.", "Le fichier switch-cheats-emulator.zip provient du dépôt GitHub ci-dessus et est mis à jour en continu.", "Il file switch-cheats-emulator.zip proviene dal repository GitHub qui sopra e viene aggiornato continuamente.", "上記の GitHub リポジトリの switch-cheats-emulator.zip は継続的に更新されます。"),
 
         // ---- App update ----
         "appupdate.title" to a("App update", "App-Update", "Actualizar la app", "Mise à jour de l'app", "Aggiorna app", "アプリの更新"),
@@ -105,7 +105,7 @@ object Strings {
         // ---- Status ----
         "status.checkInternet" to a("Checking internet connection...", "Prüfe Internetverbindung...", "Comprobando la conexión a Internet...", "Vérification de la connexion Internet...", "Controllo della connessione Internet...", "インターネット接続を確認中..."),
         "status.connecting" to a("Connecting to GitHub...", "Verbinde mit GitHub...", "Conectando con GitHub...", "Connexion à GitHub...", "Connessione a GitHub...", "GitHub に接続中..."),
-        "status.downloading" to a("Downloading switch-cheats.zip...", "Lade switch-cheats.zip herunter...", "Descargando switch-cheats.zip...", "Téléchargement de switch-cheats.zip...", "Download di switch-cheats.zip...", "switch-cheats.zip をダウンロード中..."),
+        "status.downloading" to a("Downloading switch-cheats-emulator.zip...", "Lade switch-cheats-emulator.zip herunter...", "Descargando switch-cheats-emulator.zip...", "Téléchargement de switch-cheats-emulator.zip...", "Download di switch-cheats-emulator.zip...", "switch-cheats-emulator.zip をダウンロード中..."),
         "status.extracting" to a("Installing to the emulator folder...", "Installiere in den Emulator-Ordner...", "Instalando en la carpeta del emulador...", "Installation dans le dossier de l'émulateur...", "Installazione nella cartella dell'emulatore...", "エミュレーターのフォルダにインストール中..."),
 
         // ---- Results ----
