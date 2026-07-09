@@ -309,11 +309,10 @@
       <div class="plat and">
         <img class="plat-ico" src="icon-android.png" alt="">
         <div class="role" data-i18n="plat_and_role">Android 8.0+</div>
-        <h3 data-i18n="plat_and_h3">Emulator downloader</h3>
+        <h3 data-i18n="plat_and_h3">Downloader on Android</h3>
         <div class="os">Eden · Suyu · Sudachi</div>
         <p data-i18n="plat_and_p">Pick your emulator and one tap writes every cheat into its load folder under
-          <code>Android/data/…</code>. All-files access
-          plus a Storage-Access-Framework fallback, resumable downloads, self-update.</p>
+          <code>Android/data/…</code>. Resumable downloads, self-update.</p>
         <div class="dl">
           <a class="main" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/latest/download/SwitchCheatsDownloader-Android.apk">
             <span data-i18n="dl_and_1">App (.apk)</span><span class="sz" data-i18n="dl_and_1s">signed</span></a>
@@ -346,7 +345,7 @@
       <div class="card">
         <div class="ic"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"/></svg></div>
         <h4 data-i18n="f3_h">API-first, no reCAPTCHA</h4>
-        <p data-i18n="f3_p">Downloads via the official <code>X-API-TOKEN</code> with automatic quota reset, and a
+        <p data-i18n="f3_p">Downloads via the official <code>X-API-TOKEN</code> with automatic API-limit reset, and a
           Playwright browser fallback for the rest.</p>
       </div>
       <div class="card">
@@ -364,8 +363,7 @@
         <div class="ic"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H4z"/><path d="M8 20h8M12 16v4"/><path d="M7 8h6M7 11h9"/></svg></div>
         <h4 data-i18n="f6_h">Nothing goes missing</h4>
         <p data-i18n="f6_p">Builds the API reports as empty aren't silently dropped — they land under a
-          <b>“Not downloaded”</b> filter, and a re-scan that returns 0 cheats never overwrites a
-          count you already have. Covers, regions and versions are enriched on demand.</p>
+          <b>“Not downloaded”</b> filter. Covers, regions and versions are enriched on demand.</p>
       </div>
     </div>
   </div>
@@ -522,8 +520,8 @@ const I18N = {
     plat_sw_os:`Läuft auf der Switch selbst · braucht WLAN`,
     plat_sw_p:`Eine eigenständige <code>.nro</code>, die die neuesten Cheats direkt auf der Konsole lädt und im Atmosphère-Format auf die SD-Karte entpackt. Sie setzt abgebrochene Downloads fort, aktualisiert sich selbst und lässt sich per Joy-Con und Touch bedienen.`,
     dl_sw_1:`Homebrew (.zip)`, dl_sw_1s:`SD-Root`, dl_sw_2:`Quellcode (devkitPro)`, dl_src:`Build`,
-    plat_and_role:`Android 8.0+`, plat_and_h3:`Emulator-Downloader`,
-    plat_and_p:`Wähle deinen Emulator — die Cheats werden mit einem Tippen in dessen load-Ordner unter <code>Android/data/…</code> geschrieben. Mit vollem Dateizugriff (und Storage-Access-Framework als Ausweichlösung), fortsetzbaren Downloads und automatischen Updates.`,
+    plat_and_role:`Android 8.0+`, plat_and_h3:`Downloader auf Android`,
+    plat_and_p:`Wähle deinen Emulator — die Cheats werden mit einem Tippen in dessen load-Ordner unter <code>Android/data/…</code> geschrieben. Mit fortsetzbaren Downloads und automatischen Updates.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`signiert`, dl_and_2:`Quellcode (Gradle)`, dl_src2:`Build`,
     feat_eyebrow:`Was drinsteckt`, feat_h2:`Für den gesamten Cheat-Workflow gemacht.`,
     f1_h:`9+ Quellen, eine Datenbank`,
@@ -531,13 +529,13 @@ const I18N = {
     f2_h:`Automatische Updates`,
     f2_p:`Jede App prüft auf GitHub, ob es einen neueren Build oder frische Cheats gibt — auch dann, wenn etwas ohne Versionssprung neu hochgeladen wurde.`,
     f3_h:`API zuerst, kein reCAPTCHA`,
-    f3_p:`Lädt über das offizielle <code>X-API-TOKEN</code> mit automatischem Quota-Reset; für den Rest springt ein Playwright-Browser als Fallback ein.`,
+    f3_p:`Lädt über das offizielle <code>X-API-TOKEN</code> mit automatischem API-Limit-Reset; für den Rest springt ein Playwright-Browser als Fallback ein.`,
     f4_h:`Export auf SD-Karte & als ZIP`,
     f4_p:`Erkennt das Laufwerk automatisch und schreibt exakt das Atmosphère-, Breeze- oder EdiZon-Format — oder packt alles in ein ZIP zum späteren Import.`,
     f5_h:`Sechs Sprachen`,
     f5_p:`EN · DE · ES · FR · IT · JA in jeder App, Sprache wird automatisch erkannt und ist umschaltbar.`,
     f6_h:`Nichts geht verloren`,
-    f6_p:`Builds, die die API als leer meldet, verschwinden nicht einfach — sie landen im Filter <b>„Nicht heruntergeladen“</b>, und ein erneuter Scan mit 0 Cheats überschreibt keine bereits bekannte Anzahl. Cover, Regionen und Versionen werden bei Bedarf nachgeladen.`,
+    f6_p:`Builds, die die API als leer meldet, verschwinden nicht einfach — sie landen im Filter <b>„Nicht heruntergeladen“</b>. Cover, Regionen und Versionen werden bei Bedarf nachgeladen.`,
     how_eyebrow:`So funktioniert's`, how_h2:`Sammeln, durchsuchen, exportieren.`,
     step1_h:`Sammeln`, step1_p:`Durchsucht CheatSlips und holt die Community-Quellen in deine lokale SQLite-Datenbank — Spielnamen, Cover, Regionen, Versionen und Beschreibungen.`,
     step2_h:`Durchsuchen`, step2_p:`Alles in der Oberfläche suchen und filtern. Du siehst, was geladen ist, was fehlt und woher die Cheats jedes Builds stammen.`,
@@ -575,8 +573,8 @@ const I18N = {
     plat_sw_os:`Se ejecuta en la propia Switch · necesita Wi-Fi`,
     plat_sw_p:`Un <code>.nro</code> independiente que obtiene los últimos trucos en la consola y los extrae al formato de Atmosphère en la tarjeta SD. Reanuda descargas interrumpidas, se actualiza solo, control total con Joy-Con y táctil.`,
     dl_sw_1:`Homebrew (.zip)`, dl_sw_1s:`raíz SD`, dl_sw_2:`Código (devkitPro)`, dl_src:`compilar`,
-    plat_and_role:`Android 8.0+`, plat_and_h3:`Descargador para emuladores`,
-    plat_and_p:`Elige tu emulador y con un toque se escribe cada truco en su carpeta load bajo <code>Android/data/…</code>. Acceso a todos los archivos más un respaldo con Storage Access Framework, descargas reanudables, autoactualización.`,
+    plat_and_role:`Android 8.0+`, plat_and_h3:`Descargador en Android`,
+    plat_and_p:`Elige tu emulador y con un toque se escribe cada truco en su carpeta load bajo <code>Android/data/…</code>. Descargas reanudables y autoactualización.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`firmada`, dl_and_2:`Código (Gradle)`, dl_src2:`compilar`,
     feat_eyebrow:`Qué incluye`, feat_h2:`Hecho para todo el ciclo del truco.`,
     f1_h:`Nueve+ fuentes, una base de datos`,
@@ -584,13 +582,13 @@ const I18N = {
     f2_h:`Autoactualización`,
     f2_p:`Cada app comprueba en GitHub si hay un build más nuevo <i>y</i> trucos actualizados — incluidas resubidas sin cambio de versión.`,
     f3_h:`Primero la API, sin reCAPTCHA`,
-    f3_p:`Descargas por el <code>X-API-TOKEN</code> oficial con reinicio automático de cuota, y un respaldo con navegador Playwright para el resto.`,
+    f3_p:`Descargas por el <code>X-API-TOKEN</code> oficial con reinicio automático del límite de API, y un respaldo con navegador Playwright para el resto.`,
     f4_h:`Exportar a SD y ZIP`,
     f4_p:`Detecta la unidad automáticamente y escribe exactamente el formato Atmosphère / Breeze / EdiZon — o lo empaqueta en un ZIP para importarlo después.`,
     f5_h:`Seis idiomas`,
     f5_p:`EN · DE · ES · FR · IT · JA en cada app; el idioma se detecta automáticamente y se puede cambiar.`,
     f6_h:`Nada se pierde`,
-    f6_p:`Los builds que la API informa como vacíos no se descartan en silencio — quedan bajo el filtro <b>«No descargado»</b>, y un nuevo escaneo que devuelva 0 trucos nunca sobrescribe un recuento que ya tienes. Carátulas, regiones y versiones se enriquecen a demanda.`,
+    f6_p:`Los builds que la API informa como vacíos no se descartan en silencio — quedan bajo el filtro <b>«No descargado»</b>. Carátulas, regiones y versiones se enriquecen a demanda.`,
     how_eyebrow:`Cómo funciona`, how_h2:`Reunir, explorar, exportar.`,
     step1_h:`Reunir`, step1_p:`Extrae de CheatSlips e importa las fuentes de la comunidad a tu base de datos SQLite local — nombres de juegos, carátulas, regiones, versiones y descripciones.`,
     step2_h:`Explorar`, step2_p:`Busca y filtra todo en la interfaz. Ve qué está descargado, qué falta y de dónde vienen los trucos de cada build.`,
@@ -628,8 +626,8 @@ const I18N = {
     plat_sw_os:`S'exécute sur la Switch elle-même · nécessite le Wi-Fi`,
     plat_sw_p:`Un <code>.nro</code> autonome qui récupère les derniers codes sur la console et les extrait au format Atmosphère sur la carte SD. Reprend les téléchargements interrompus, se met à jour, contrôle complet Joy-Con et tactile.`,
     dl_sw_1:`Homebrew (.zip)`, dl_sw_1s:`racine SD`, dl_sw_2:`Source (devkitPro)`, dl_src:`compiler`,
-    plat_and_role:`Android 8.0+`, plat_and_h3:`Téléchargeur pour émulateurs`,
-    plat_and_p:`Choisissez votre émulateur et une pression écrit chaque code dans son dossier load sous <code>Android/data/…</code>. Accès à tous les fichiers plus un repli via Storage Access Framework, téléchargements repris, mise à jour automatique.`,
+    plat_and_role:`Android 8.0+`, plat_and_h3:`Téléchargeur sur Android`,
+    plat_and_p:`Choisissez votre émulateur et une pression écrit chaque code dans son dossier load sous <code>Android/data/…</code>. Téléchargements repris et mise à jour automatique.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`signée`, dl_and_2:`Source (Gradle)`, dl_src2:`compiler`,
     feat_eyebrow:`Ce qu'il contient`, feat_h2:`Conçu pour tout le cycle de vie des codes.`,
     f1_h:`Neuf+ sources, une base de données`,
@@ -637,13 +635,13 @@ const I18N = {
     f2_h:`Mise à jour automatique`,
     f2_p:`Chaque app vérifie sur GitHub un build plus récent <i>et</i> des codes actualisés — y compris les re-uploads sans changement de version.`,
     f3_h:`API d'abord, sans reCAPTCHA`,
-    f3_p:`Téléchargements via le <code>X-API-TOKEN</code> officiel avec réinitialisation automatique du quota, et un repli navigateur Playwright pour le reste.`,
+    f3_p:`Téléchargements via le <code>X-API-TOKEN</code> officiel avec réinitialisation automatique de la limite d'API, et un repli navigateur Playwright pour le reste.`,
     f4_h:`Export carte SD & ZIP`,
     f4_p:`Détecte le lecteur automatiquement et écrit exactement le format Atmosphère / Breeze / EdiZon — ou l'emballe dans un ZIP à importer plus tard.`,
     f5_h:`Six langues`,
     f5_p:`EN · DE · ES · FR · IT · JA dans chaque app ; la langue est détectée automatiquement et modifiable.`,
     f6_h:`Rien ne disparaît`,
-    f6_p:`Les builds que l'API signale comme vides ne sont pas silencieusement écartés — ils apparaissent sous le filtre <b>« Non téléchargé »</b>, et un nouveau scan renvoyant 0 code n'écrase jamais un compte déjà obtenu. Jaquettes, régions et versions sont enrichies à la demande.`,
+    f6_p:`Les builds que l'API signale comme vides ne sont pas silencieusement écartés — ils apparaissent sous le filtre <b>« Non téléchargé »</b>. Jaquettes, régions et versions sont enrichies à la demande.`,
     how_eyebrow:`Comment ça marche`, how_h2:`Collecter, parcourir, exporter.`,
     step1_h:`Collecter`, step1_p:`Extrayez CheatSlips et importez les sources de la communauté dans votre base SQLite locale — noms de jeux, jaquettes, régions, versions et descriptions.`,
     step2_h:`Parcourir`, step2_p:`Cherchez et filtrez tout dans l'interface. Voyez ce qui est téléchargé, ce qui manque et d'où viennent les codes de chaque build.`,
@@ -681,8 +679,8 @@ const I18N = {
     plat_sw_os:`Gira sulla Switch stessa · richiede il Wi-Fi`,
     plat_sw_p:`Un <code>.nro</code> autonomo che scarica gli ultimi trucchi sulla console e li estrae nel formato Atmosphère sulla scheda SD. Riprende i download interrotti, si aggiorna da solo, pieno controllo Joy-Con e touch.`,
     dl_sw_1:`Homebrew (.zip)`, dl_sw_1s:`radice SD`, dl_sw_2:`Sorgente (devkitPro)`, dl_src:`compila`,
-    plat_and_role:`Android 8.0+`, plat_and_h3:`Downloader per emulatori`,
-    plat_and_p:`Scegli l'emulatore e con un tocco ogni trucco viene scritto nella sua cartella load sotto <code>Android/data/…</code>. Accesso a tutti i file più un fallback con Storage Access Framework, download riprendibili, aggiornamento automatico.`,
+    plat_and_role:`Android 8.0+`, plat_and_h3:`Downloader su Android`,
+    plat_and_p:`Scegli l'emulatore e con un tocco ogni trucco viene scritto nella sua cartella load sotto <code>Android/data/…</code>. Download riprendibili e aggiornamento automatico.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`firmata`, dl_and_2:`Sorgente (Gradle)`, dl_src2:`compila`,
     feat_eyebrow:`Cosa contiene`, feat_h2:`Fatto per tutto il ciclo dei trucchi.`,
     f1_h:`Nove+ fonti, un database`,
@@ -690,13 +688,13 @@ const I18N = {
     f2_h:`Aggiornamento automatico`,
     f2_p:`Ogni app controlla su GitHub una build più recente <i>e</i> trucchi aggiornati — inclusi i ricaricamenti senza cambio di versione.`,
     f3_h:`Prima l'API, niente reCAPTCHA`,
-    f3_p:`Download tramite l'<code>X-API-TOKEN</code> ufficiale con reset automatico della quota, e un fallback browser Playwright per il resto.`,
+    f3_p:`Download tramite l'<code>X-API-TOKEN</code> ufficiale con reset automatico del limite API, e un fallback browser Playwright per il resto.`,
     f4_h:`Esporta su SD e ZIP`,
     f4_p:`Rileva l'unità automaticamente e scrive esattamente il formato Atmosphère / Breeze / EdiZon — oppure lo impacchetta in uno ZIP da importare dopo.`,
     f5_h:`Sei lingue`,
     f5_p:`EN · DE · ES · FR · IT · JA in ogni app; la lingua viene rilevata automaticamente ed è commutabile.`,
     f6_h:`Niente va perso`,
-    f6_p:`Le build che l'API segnala come vuote non vengono scartate in silenzio — finiscono sotto il filtro <b>«Non scaricato»</b>, e una nuova scansione che restituisce 0 trucchi non sovrascrive mai un conteggio già ottenuto. Copertine, regioni e versioni si arricchiscono su richiesta.`,
+    f6_p:`Le build che l'API segnala come vuote non vengono scartate in silenzio — finiscono sotto il filtro <b>«Non scaricato»</b>. Copertine, regioni e versioni si arricchiscono su richiesta.`,
     how_eyebrow:`Come funziona`, how_h2:`Raccogli, sfoglia, esporta.`,
     step1_h:`Raccogli`, step1_p:`Estrai da CheatSlips e importa le fonti della community nel tuo database SQLite locale — nomi dei giochi, copertine, regioni, versioni e descrizioni.`,
     step2_h:`Sfoglia`, step2_p:`Cerca e filtra tutto nell'interfaccia. Vedi cosa è scaricato, cosa manca e da dove vengono i trucchi di ogni build.`,
@@ -734,8 +732,8 @@ const I18N = {
     plat_sw_os:`Switch本体で動作 · Wi-Fiが必要`,
     plat_sw_p:`本体で最新のチートを取得し、SDカードのAtmosphèreレイアウトに展開する単体の<code>.nro</code>。中断したダウンロードを再開し、自身を更新、Joy-Conとタッチの両操作に対応。`,
     dl_sw_1:`ホームブリュー (.zip)`, dl_sw_1s:`SD直下`, dl_sw_2:`ソース (devkitPro)`, dl_src:`ビルド`,
-    plat_and_role:`Android 8.0+`, plat_and_h3:`エミュレーター用ダウンローダー`,
-    plat_and_p:`エミュレーターを選ぶと、ワンタップで各チートが<code>Android/data/…</code>下のloadフォルダーに書き込まれます。全ファイルアクセスに加えStorage Access Frameworkのフォールバック、再開可能なダウンロード、自動更新。`,
+    plat_and_role:`Android 8.0+`, plat_and_h3:`Androidで動くダウンローダー`,
+    plat_and_p:`エミュレーターを選ぶと、ワンタップで各チートが<code>Android/data/…</code>下のloadフォルダーに書き込まれます。再開可能なダウンロードと自動更新に対応。`,
     dl_and_1:`アプリ (.apk)`, dl_and_1s:`署名済み`, dl_and_2:`ソース (Gradle)`, dl_src2:`ビルド`,
     feat_eyebrow:`主な機能`, feat_h2:`チートのすべての工程のために。`,
     f1_h:`9つ以上のソース、1つのデータベース`,
@@ -743,13 +741,13 @@ const I18N = {
     f2_h:`自動更新`,
     f2_p:`各アプリはGitHubで新しいビルド<i>と</i>更新されたチートを確認します —— バージョンを上げない再アップロードも含めて。`,
     f3_h:`API優先、reCAPTCHAなし`,
-    f3_p:`公式の<code>X-API-TOKEN</code>で自動クォータリセット付きダウンロード。残りはPlaywrightのブラウザーフォールバックで対応。`,
+    f3_p:`公式の<code>X-API-TOKEN</code>で自動API制限リセット付きダウンロード。残りはPlaywrightのブラウザーフォールバックで対応。`,
     f4_h:`SDカード & ZIPエクスポート`,
     f4_p:`ドライブを自動検出し、Atmosphère / Breeze / EdiZonのレイアウトを正確に書き出します —— または後で取り込めるようZIPにまとめます。`,
     f5_h:`6つの言語`,
     f5_p:`EN · DE · ES · FR · IT · JA を全アプリで。言語は自動で検出され、切り替えられます。`,
     f6_h:`取りこぼしなし`,
-    f6_p:`APIが空と報告したビルドも黙って捨てません —— <b>「未ダウンロード」</b>フィルターに残り、0件を返す再スキャンが既存の件数を上書きすることはありません。カバー・地域・バージョンは必要に応じて補完されます。`,
+    f6_p:`APIが空と報告したビルドも黙って捨てません —— <b>「未ダウンロード」</b>フィルターに残ります。カバー・地域・バージョンは必要に応じて補完されます。`,
     how_eyebrow:`使い方`, how_h2:`集める、見る、書き出す。`,
     step1_h:`集める`, step1_p:`CheatSlipsをスクレイプし、コミュニティソースをローカルのSQLiteデータベースに取り込みます —— ゲーム名、カバー、地域、バージョン、説明。`,
     step2_h:`見る`, step2_p:`GUIですべてを検索・絞り込み。何がダウンロード済みか、何が欠けているか、各ビルドのチートの出所が分かります。`,
