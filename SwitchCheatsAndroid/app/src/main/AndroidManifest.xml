@@ -4,11 +4,11 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Direct write to an emulator's data folder (sideloaded homebrew app). -->
+    <!-- Fast java.io.File writes into a PUBLIC output folder need broad storage
+         access. Android 11+: "All files access"; 8–10: WRITE_EXTERNAL_STORAGE.
+         (SAF was ~60x slower for the ~5300 small cheat files.) -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
     <!-- Install the downloaded .apk when self-updating the app. -->
@@ -30,7 +30,6 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.SwitchCheats">
 

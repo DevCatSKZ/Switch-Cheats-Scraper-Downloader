@@ -8,13 +8,13 @@ import java.util.zip.ZipInputStream
 
 /** Result of the "is a new cheats build available?" check. */
 sealed class UpdateStatus {
-    data class Available(val asset: AssetInfo) : UpdateStatus()   // never installed OR newer
+    data class Available(val asset: AssetInfo) : UpdateStatus()   // never prepared OR newer
     data class UpToDate(val asset: AssetInfo) : UpdateStatus()
     object Offline : UpdateStatus()
     data class Error(val code: String) : UpdateStatus()
 }
 
-/** Progress callbacks for an install run. */
+/** Progress callbacks for a prepare run. */
 interface InstallProgress {
     fun onPhase(phase: Phase)
     fun onDownload(done: Long, total: Long)
@@ -22,7 +22,7 @@ interface InstallProgress {
     enum class Phase { CHECK_INTERNET, CONNECTING, DOWNLOADING, EXTRACTING }
 }
 
-/** Outcome of an install run. */
+/** Outcome of a prepare run. */
 sealed class InstallResult {
     data class Installed(val files: Int, val games: Int) : InstallResult()
     object Offline : InstallResult()
@@ -36,7 +36,7 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
     private val tmpMeta get() = File(context.filesDir, "switch-cheats-emulator.zip.part.meta")
 
     // ---- update check ---------------------------------------------------
-    fun checkUpdate(emu: Emulator): UpdateStatus {
+    fun checkUpdate(): UpdateStatus {
         // No separate connectivity probe (it produced false "offline" reports even
         // while the actual GitHub request worked). The fetch itself decides.
         val release = try {
@@ -45,22 +45,16 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
             return UpdateStatus.Error(mapError(e))
         } ?: return UpdateStatus.Error("assetNotFound")
         val asset = release.asset(Config.ASSET_NAME) ?: return UpdateStatus.Error("assetNotFound")
-        val last = prefs.lastInstalled(emu)
+        val last = prefs.lastPrepared()
         return if (last != null && last == asset.updatedAt) UpdateStatus.UpToDate(asset)
         else UpdateStatus.Available(asset)
     }
 
-    // ---- install (download + extract + relayout) ------------------------
-    /**
-     * @param allowedTitleIds when non-null, only cheats for these (UPPERCASE)
-     *        Title IDs are written — used by the "only installed games" mode.
-     */
+    // ---- prepare (download + extract into the public output folder) -----
     fun install(
-        emu: Emulator,
         writer: CheatWriter,
         progress: InstallProgress,
         shouldStop: () -> Boolean,
-        allowedTitleIds: Set<String>? = null,
     ): InstallResult {
         progress.onPhase(InstallProgress.Phase.CONNECTING)
         val release = try {
@@ -102,16 +96,14 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
         if (lastErr != null) return InstallResult.Error(mapError(lastErr))
         if (!completed) return InstallResult.CancelledResume
 
-        // ---- extract straight into the load layout ----
+        // ---- extract straight into the output layout ----
         // The package is already <TitleID>/<GameName>/cheats/<BuildID>.txt, so we
         // just write each file where it belongs — no re-layout, no name lookup.
         progress.onPhase(InstallProgress.Phase.EXTRACTING)
         var written = 0
         val gameIds = HashSet<String>()
         try {
-            // First pass: count cheat entries for the progress bar (cheap; reads
-            // central directory only via a streamed scan of names).
-            val total = countEntries(allowedTitleIds)
+            val total = countEntries()
             ZipInputStream(tmpZip.inputStream().buffered()).use { zin ->
                 var entry = zin.nextEntry
                 val buf = ByteArray(64 * 1024)
@@ -119,8 +111,7 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
                     if (shouldStop()) return InstallResult.CancelledResume
                     if (!entry.isDirectory) {
                         val e = CheatLayout.parse(entry.name)
-                        // Skip games the user doesn't have when "only installed" is on.
-                        if (e != null && (allowedTitleIds == null || e.titleId in allowedTitleIds)) {
+                        if (e != null) {
                             val bytes = readAll(zin, buf)
                             writer.write(e.target, e.gameName, bytes)
                             written++
@@ -139,21 +130,20 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
         }
 
         // Success: remember the release state and drop the temp file.
-        prefs.setLastInstalled(emu, asset.updatedAt)
+        prefs.setLastPrepared(asset.updatedAt)
         tmpZip.delete(); tmpMeta.delete()
         return InstallResult.Installed(written, gameIds.size)
     }
 
-    private fun countEntries(allowedTitleIds: Set<String>?): Int {
+    /** Count cheat entries by reading only the ZIP's central directory (instant),
+     *  instead of streaming/decompressing the whole archive a second time. */
+    private fun countEntries(): Int {
         var n = 0
-        ZipInputStream(tmpZip.inputStream().buffered()).use { zin ->
-            var e = zin.nextEntry
-            while (e != null) {
-                if (!e.isDirectory) {
-                    val p = CheatLayout.parse(e.name)
-                    if (p != null && (allowedTitleIds == null || p.titleId in allowedTitleIds)) n++
-                }
-                zin.closeEntry(); e = zin.nextEntry
+        java.util.zip.ZipFile(tmpZip).use { zf ->
+            val e = zf.entries()
+            while (e.hasMoreElements()) {
+                val entry = e.nextElement()
+                if (!entry.isDirectory && CheatLayout.parse(entry.name) != null) n++
             }
         }
         return n

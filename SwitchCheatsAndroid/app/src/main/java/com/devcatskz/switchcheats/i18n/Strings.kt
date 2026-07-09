@@ -26,12 +26,12 @@ object Strings {
 
         // ---- Emulator selection ----
         "emu.title" to a("Emulator", "Emulator", "Emulador", "Émulateur", "Emulatore", "エミュレーター"),
-        "emu.hint" to a("Choose the emulator you use — cheats are placed in its folder.", "Wähle deinen Emulator — die Cheats landen in seinem Ordner.", "Elige el emulador que usas: los cheats se colocan en su carpeta.", "Choisis ton émulateur — les cheats sont placés dans son dossier.", "Scegli l'emulatore che usi: i cheat vengono messi nella sua cartella.", "使用するエミュレーターを選択 — チートはそのフォルダに配置されます。"),
+        "emu.hint" to a("The same cheats work with all three — the import steps are identical.", "Dieselben Cheats für alle drei — der Import ist überall gleich.", "Los mismos cheats para los tres — la importación es idéntica.", "Les mêmes cheats pour les trois — l'import est identique.", "Gli stessi cheat per tutti e tre — l'importazione è identica.", "3つとも同じチート — インポート手順は共通です。"),
         "emu.installed" to a("installed", "installiert", "instalado", "installé", "installato", "インストール済み"),
         "emu.notInstalled" to a("not detected", "nicht erkannt", "no detectado", "non détecté", "non rilevato", "未検出"),
 
         // ---- Update check ----
-        "check.local" to a("Locally installed: ", "Lokal installiert: ", "Instalado localmente: ", "Installé localement : ", "Installato localmente: ", "ローカルのバージョン: "),
+        "check.local" to a("Locally prepared: ", "Lokal vorbereitet: ", "Preparado localmente: ", "Préparé localement : ", "Preparato localmente: ", "ローカルで準備済み: "),
         "check.never" to a("never", "noch nie", "nunca", "jamais", "mai", "なし"),
         "check.remote" to a("Latest version: ", "Neueste Version: ", "Última versión: ", "Dernière version : ", "Ultima versione: ", "最新バージョン: "),
         "check.available" to a("→ An update is available!", "→ Ein Update ist verfügbar!", "→ ¡Hay una actualización disponible!", "→ Une mise à jour est disponible !", "→ È disponibile un aggiornamento!", "→ アップデートがあります！"),
@@ -41,7 +41,7 @@ object Strings {
         "install.title" to a("Download & Install", "Herunterladen & Installieren", "Descargar e instalar", "Télécharger et installer", "Scarica e installa", "ダウンロードしてインストール"),
         "install.desc" to a("Downloads the latest switch-cheats-emulator.zip and installs it into the selected emulator's cheats folder.", "Lädt die neueste switch-cheats-emulator.zip und installiert sie in den Cheats-Ordner des gewählten Emulators.", "Descarga el switch-cheats-emulator.zip más reciente y lo instala en la carpeta de cheats del emulador elegido.", "Télécharge le dernier switch-cheats-emulator.zip et l'installe dans le dossier de cheats de l'émulateur choisi.", "Scarica l'ultimo switch-cheats-emulator.zip e lo installa nella cartella cheat dell'emulatore scelto.", "最新の switch-cheats-emulator.zip をダウンロードし、選択したエミュレーターのチートフォルダにインストールします。"),
         "install.download" to a("Download:", "Download:", "Descarga:", "Téléchargement :", "Download:", "ダウンロード:"),
-        "install.extract" to a("Installing:", "Installiere:", "Instalando:", "Installation :", "Installazione:", "インストール中:"),
+        "install.extract" to a("Unpacking:", "Entpacke:", "Descomprimiendo:", "Décompression :", "Estrazione:", "解凍中:"),
         "install.filesSuffix" to a(" files", " Dateien", " archivos", " fichiers", " file", " ファイル"),
         "install.hint" to a("Tap Start to begin.", "Tippe auf Starten.", "Toca Iniciar para empezar.", "Appuie sur Démarrer.", "Tocca Avvia per iniziare.", "「スタート」で開始します。"),
         "install.onlyInstalled" to a("Only installed games", "Nur installierte Spiele", "Solo juegos instalados", "Uniquement les jeux installés", "Solo giochi installati", "インストール済みのゲームのみ"),
@@ -106,7 +106,7 @@ object Strings {
         "status.checkInternet" to a("Checking internet connection...", "Prüfe Internetverbindung...", "Comprobando la conexión a Internet...", "Vérification de la connexion Internet...", "Controllo della connessione Internet...", "インターネット接続を確認中..."),
         "status.connecting" to a("Connecting to GitHub...", "Verbinde mit GitHub...", "Conectando con GitHub...", "Connexion à GitHub...", "Connessione a GitHub...", "GitHub に接続中..."),
         "status.downloading" to a("Downloading switch-cheats-emulator.zip...", "Lade switch-cheats-emulator.zip herunter...", "Descargando switch-cheats-emulator.zip...", "Téléchargement de switch-cheats-emulator.zip...", "Download di switch-cheats-emulator.zip...", "switch-cheats-emulator.zip をダウンロード中..."),
-        "status.extracting" to a("Installing to the emulator folder...", "Installiere in den Emulator-Ordner...", "Instalando en la carpeta del emulador...", "Installation dans le dossier de l'émulateur...", "Installazione nella cartella dell'emulatore...", "エミュレーターのフォルダにインストール中..."),
+        "status.extracting" to a("Unpacking cheats into your folder...", "Entpacke Cheats in deinen Ordner...", "Descomprimiendo cheats en tu carpeta...", "Décompression des cheats dans ton dossier...", "Estrazione dei cheat nella cartella...", "フォルダにチートを解凍中..."),
 
         // ---- Results ----
         "result.noInternet" to a("No internet connection available.", "Keine Internetverbindung verfügbar.", "No hay conexión a Internet disponible.", "Aucune connexion Internet disponible.", "Nessuna connessione a Internet disponibile.", "インターネット接続がありません。"),
@@ -168,6 +168,65 @@ object Strings {
         "btn.cancel" to a("Cancel", "Abbrechen", "Cancelar", "Annuler", "Annulla", "キャンセル"),
         "btn.check" to a("Check", "Prüfen", "Comprobar", "Vérifier", "Verifica", "確認"),
         "btn.export" to a("Export", "Exportieren", "Exportar", "Exporter", "Esporta", "エクスポート"),
+        "btn.prepare" to a("Download & unpack", "Herunterladen & entpacken", "Descargar y descomprimir", "Télécharger et décompresser", "Scarica ed estrai", "ダウンロードして解凍"),
+
+        // ---- Download & unpack section (public folder + emulator import model) ----
+        "prepare.title" to a("Download & unpack", "Herunterladen & entpacken", "Descargar y descomprimir", "Télécharger et décompresser", "Scarica ed estrai", "ダウンロードして解凍"),
+        "prepare.desc" to a(
+            "Downloads the latest cheats and unpacks them into the folder below — ready to import in your emulator.",
+            "Lädt die neuesten Cheats und entpackt sie in den Ordner unten — bereit zum Import in deinem Emulator.",
+            "Descarga los cheats más recientes y los descomprime en la carpeta de abajo — listos para importar en tu emulador.",
+            "Télécharge les derniers cheats et les décompresse dans le dossier ci-dessous — prêts à importer dans ton émulateur.",
+            "Scarica i cheat più recenti e li estrae nella cartella qui sotto — pronti da importare nel tuo emulatore.",
+            "最新のチートをダウンロードし、下のフォルダに解凍します — エミュレーターにインポートする準備が整います。"),
+
+        // ---- Emulator import guide (one generic entry — identical for Eden/Suyu/Sudachi) ----
+        "guide.title" to a("How the cheats are imported", "So werden die Cheats importiert", "Cómo se importan los cheats", "Comment importer les cheats", "Come importare i cheat", "チートのインポート方法"),
+        "guide.step1" to a(
+            "Download & unpack below — the cheats land in a public folder on your device.",
+            "Unten herunterladen & entpacken — die Cheats landen in einem öffentlichen Ordner auf dem Gerät.",
+            "Descarga y descomprime abajo — los cheats quedan en una carpeta pública del dispositivo.",
+            "Télécharge et décompresse ci-dessous — les cheats vont dans un dossier public de l'appareil.",
+            "Scarica ed estrai qui sotto — i cheat finiscono in una cartella pubblica del dispositivo.",
+            "下でダウンロード＆解凍 — チートは端末の公開フォルダに保存されます。"),
+        "guide.step2" to a(
+            "In your emulator (Eden, Suyu, Sudachi): long-press the game → Add-ons → \"Mods and cheats\" → pick the matching <TitleID>/<GameName> folder. The emulator copies them into its own storage.",
+            "In deinem Emulator (Eden, Suyu, Sudachi): Spiel lange drücken → Add-ons → „Mods and cheats\" → passenden <TitleID>/<GameName>-Ordner wählen. Der Emulator kopiert sie in seinen eigenen Speicher.",
+            "En tu emulador (Eden, Suyu, Sudachi): mantén pulsado el juego → Add-ons → «Mods and cheats» → elige la carpeta <TitleID>/<GameName>. El emulador los copia a su propio almacenamiento.",
+            "Dans ton émulateur (Eden, Suyu, Sudachi) : appui long sur le jeu → Add-ons → « Mods and cheats » → choisis le dossier <TitleID>/<GameName>. L'émulateur les copie dans son propre stockage.",
+            "Nel tuo emulatore (Eden, Suyu, Sudachi): tieni premuto il gioco → Add-ons → «Mods and cheats» → scegli la cartella <TitleID>/<GameName>. L'emulatore li copia nella propria memoria.",
+            "エミュレーター（Eden、Suyu、Sudachi）でゲームを長押し → Add-ons →「Mods and cheats」→ 該当する <TitleID>/<GameName> フォルダを選択。エミュレーターが自身のストレージにコピーします。"),
+
+        // ---- Output folder ----
+        "folder.title" to a("Output folder", "Zielordner", "Carpeta de salida", "Dossier de sortie", "Cartella di output", "出力フォルダ"),
+        "folder.none" to a(
+            "Not chosen yet — tap \"Prepare cheats\" and pick any folder you'll find again (e.g. Download).",
+            "Noch nicht gewählt — tippe „Cheats vorbereiten\" und wähle einen wiederauffindbaren Ordner (z. B. Download).",
+            "Aún no elegida — toca «Preparar cheats» y elige una carpeta que puedas encontrar luego (p. ej. Download).",
+            "Pas encore choisi — touche « Préparer les cheats » et choisis un dossier que tu retrouveras (ex. Download).",
+            "Non ancora scelta — tocca «Prepara i cheat» e scegli una cartella che ritroverai (es. Download).",
+            "未選択 —「チートを準備」をタップし、後で見つけられるフォルダ（例: Download）を選んでください。"),
+        "folder.change" to a("Change folder", "Ordner ändern", "Cambiar carpeta", "Changer de dossier", "Cambia cartella", "フォルダを変更"),
+
+        // ---- Import guide (after a successful prepare) ----
+        "import.title" to a("Cheats ready — now import them", "Cheats bereit — jetzt importieren", "Cheats listos — ahora impórtalos", "Cheats prêts — importe-les", "Cheat pronti — ora importali", "チートの準備完了 — インポートしてください"),
+        "import.body" to a(
+            "In %s, long-press your game → Add-ons → \"Mods and cheats\", then pick the matching <TitleID>/<GameName> folder from your output folder. The emulator copies the cheats into its own storage.",
+            "In %s: Spiel lange drücken → Add-ons → „Mods and cheats\", dann den passenden <TitleID>/<GameName>-Ordner aus deinem Zielordner wählen. Der Emulator kopiert die Cheats in seinen eigenen Speicher.",
+            "En %s: mantén pulsado el juego → Add-ons → «Mods and cheats» y elige la carpeta <TitleID>/<GameName> correspondiente de tu carpeta de salida. El emulador copia los cheats a su propio almacenamiento.",
+            "Dans %s : appui long sur le jeu → Add-ons → « Mods and cheats », puis choisis le dossier <TitleID>/<GameName> correspondant dans ton dossier de sortie. L'émulateur copie les cheats dans son propre stockage.",
+            "In %s: tieni premuto il gioco → Add-ons → «Mods and cheats», poi scegli la cartella <TitleID>/<GameName> corrispondente dalla tua cartella di output. L'emulatore copia i cheat nella propria memoria.",
+            "%s でゲームを長押し → Add-ons →「Mods and cheats」を選び、出力フォルダ内の該当する <TitleID>/<GameName> フォルダを選択します。エミュレーターがチートを自身のストレージにコピーします。"),
+        "import.pathHint" to a("Your cheats are in:", "Deine Cheats liegen in:", "Tus cheats están en:", "Tes cheats sont dans :", "I tuoi cheat sono in:", "チートの場所:"),
+        "import.open" to a("Open emulator", "Emulator öffnen", "Abrir emulador", "Ouvrir l'émulateur", "Apri l'emulatore", "エミュレーターを開く"),
+
+        "result.preparedSummary" to a(
+            "Ready! %1\$d files · %2\$d games prepared — import them in your emulator.",
+            "Fertig! %1\$d Dateien · %2\$d Spiele vorbereitet — importiere sie in deinem Emulator.",
+            "¡Listo! %1\$d archivos · %2\$d juegos preparados — impórtalos en tu emulador.",
+            "Prêt ! %1\$d fichiers · %2\$d jeux préparés — importe-les dans ton émulateur.",
+            "Pronto! %1\$d file · %2\$d giochi preparati — importali nel tuo emulatore.",
+            "完了！ %1\$d ファイル・%2\$d ゲームを準備しました — エミュレーターにインポートしてください。"),
     )
 
     private fun a(vararg v: String) = arrayOf(*v)

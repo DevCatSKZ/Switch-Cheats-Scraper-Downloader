@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Process-wide, Compose-observable state for a running install/export.
+ * Process-wide, Compose-observable state for a running "prepare cheats" job.
  *
  * The work runs in [InstallService] (a foreground service) so it survives the
  * screen locking or the app being minimised — the notification keeps the process
@@ -20,13 +20,9 @@ object InstallBus {
 
     /** Final outcome of the last run (null while none has finished this session). */
     sealed class Result {
-        /** [wasExport] distinguishes an emulator install from a folder export
-         *  (the "enable cheats" hint only makes sense after an install). */
-        data class Installed(val files: Int, val games: Int, val wasExport: Boolean) : Result()
+        data class Installed(val files: Int, val games: Int) : Result()
         object Offline : Result()
         object CancelledResume : Result()
-        /** "Only installed games" was on but the emulator's load folder is empty. */
-        object NoGames : Result()
         data class Error(val code: String) : Result()
     }
 
@@ -39,7 +35,7 @@ object InstallBus {
     var progress by mutableStateOf(-1f)   // 0..1, or -1 = indeterminate
     var result by mutableStateOf<Result?>(null)
 
-    /** Cooperative cancel flag polled by the running install. */
+    /** Cooperative cancel flag polled by the running job. */
     val stopFlag = AtomicBoolean(false)
 
     /** Arm a fresh run: clear progress + previous result, reset the stop flag. */

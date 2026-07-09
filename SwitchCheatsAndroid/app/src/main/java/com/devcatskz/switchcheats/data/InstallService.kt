@@ -20,10 +20,11 @@ import com.devcatskz.switchcheats.i18n.Strings
 import java.util.concurrent.Executors
 
 /**
- * Runs the cheat download/extract (or a folder export) as a foreground service so
- * a big transfer survives the screen locking or the app being minimised. Progress
- * is mirrored into [InstallBus] for the UI and shown in an ongoing notification
- * (with a Cancel action). The UI reads results back from [InstallBus].
+ * Runs the cheat download + extract into the user's public output folder as a
+ * foreground service so a big transfer survives the screen locking or the app
+ * being minimised. Progress is mirrored into [InstallBus] for the UI and shown in
+ * an ongoing notification (with a Cancel action). Results are read back from
+ * [InstallBus].
  */
 class InstallService : Service() {
 
@@ -34,7 +35,7 @@ class InstallService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_CANCEL -> { InstallBus.stopFlag.set(true); return START_NOT_STICKY }
-            ACTION_INSTALL, ACTION_EXPORT -> run(intent)
+            ACTION_PREPARE -> run(intent)
             else -> stopSelf()
         }
         return START_NOT_STICKY
@@ -43,10 +44,7 @@ class InstallService : Service() {
     private fun run(intent: Intent) {
         val prefs = Prefs(this)
         val lang = prefs.lang
-        val export = intent.action == ACTION_EXPORT
-        val emu = Emulator.fromId(intent.getStringExtra(EXTRA_EMULATOR))
-        val onlyInstalled = intent.getBooleanExtra(EXTRA_ONLY_INSTALLED, false)
-        val treeUri = intent.getStringExtra(EXTRA_TREE_URI)?.let { Uri.parse(it) }
+        val outPath = intent.getStringExtra(EXTRA_OUTPUT_PATH)
 
         InstallBus.begin()
         ensureChannel()
@@ -54,22 +52,15 @@ class InstallService : Service() {
 
         exec.execute {
             try {
-                val writer: CheatWriter? =
-                    if (export && treeUri != null) SafCheatWriter(this, treeUri)
-                    else Storage.writerFor(this, Storage.resolveWriteMode(this, emu, prefs))
-                if (writer == null) { finish(lang, InstallBus.Result.Error("noAccess")); return@execute }
-
-                val allowed: Set<String>? =
-                    if (!export && onlyInstalled) {
-                        val ids = Storage.installedTitleIds(this, emu, prefs)
-                        if (ids.isEmpty()) { finish(lang, InstallBus.Result.NoGames); return@execute }
-                        ids
-                    } else null
-
+                val base = outPath?.let { java.io.File(it) }
+                if (base == null || !FileCheatWriter.canWrite(base)) {
+                    finish(lang, InstallBus.Result.Error("noAccess")); return@execute
+                }
+                val writer: CheatWriter = FileCheatWriter(base)
                 val repo = CheatsRepository(this, prefs)
-                val res = repo.install(emu, writer, progress(lang), InstallBus.stopFlag::get, allowed)
+                val res = repo.install(writer, progress(lang), InstallBus.stopFlag::get)
                 finish(lang, when (res) {
-                    is InstallResult.Installed -> InstallBus.Result.Installed(res.files, res.games, export)
+                    is InstallResult.Installed -> InstallBus.Result.Installed(res.files, res.games)
                     is InstallResult.Offline -> InstallBus.Result.Offline
                     is InstallResult.CancelledResume -> InstallBus.Result.CancelledResume
                     is InstallResult.Error -> InstallBus.Result.Error(res.code)
@@ -134,11 +125,9 @@ class InstallService : Service() {
 
     private fun resultLine(lang: Lang, r: InstallBus.Result): String = when (r) {
         is InstallBus.Result.Installed ->
-            if (r.wasExport) String.format(t(lang, "result.exportedSummary"), r.files, r.games)
-            else String.format(t(lang, "result.installedSummary"), r.files, r.games)
+            String.format(t(lang, "result.preparedSummary"), r.files, r.games)
         InstallBus.Result.Offline -> t(lang, "result.noInternet")
         InstallBus.Result.CancelledResume -> t(lang, "result.cancelledResume")
-        InstallBus.Result.NoGames -> t(lang, "result.noGames")
         is InstallBus.Result.Error -> t(lang, "result.errorPrefix") + t(lang, "err.${r.code}")
     }
 
@@ -198,26 +187,15 @@ class InstallService : Service() {
         const val CHANNEL = "downloads"
         const val NOTIF_ID = 4201
         const val NOTIF_ID_DONE = 4202
-        const val ACTION_INSTALL = "com.devcatskz.switchcheats.INSTALL"
-        const val ACTION_EXPORT = "com.devcatskz.switchcheats.EXPORT"
+        const val ACTION_PREPARE = "com.devcatskz.switchcheats.PREPARE"
         const val ACTION_CANCEL = "com.devcatskz.switchcheats.CANCEL"
-        const val EXTRA_EMULATOR = "emulator"
-        const val EXTRA_ONLY_INSTALLED = "only_installed"
-        const val EXTRA_TREE_URI = "tree_uri"
+        const val EXTRA_OUTPUT_PATH = "output_path"
 
-        fun install(context: Context, emu: Emulator, onlyInstalled: Boolean) {
+        /** Download the cheats and extract them into the public folder [outputPath]. */
+        fun prepare(context: Context, outputPath: String) {
             val i = Intent(context, InstallService::class.java)
-                .setAction(ACTION_INSTALL)
-                .putExtra(EXTRA_EMULATOR, emu.id)
-                .putExtra(EXTRA_ONLY_INSTALLED, onlyInstalled)
-            androidx.core.content.ContextCompat.startForegroundService(context, i)
-        }
-
-        fun export(context: Context, emu: Emulator, treeUri: Uri) {
-            val i = Intent(context, InstallService::class.java)
-                .setAction(ACTION_EXPORT)
-                .putExtra(EXTRA_EMULATOR, emu.id)
-                .putExtra(EXTRA_TREE_URI, treeUri.toString())
+                .setAction(ACTION_PREPARE)
+                .putExtra(EXTRA_OUTPUT_PATH, outputPath)
             androidx.core.content.ContextCompat.startForegroundService(context, i)
         }
     }

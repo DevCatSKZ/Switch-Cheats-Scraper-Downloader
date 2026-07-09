@@ -22,7 +22,6 @@ import com.devcatskz.switchcheats.MainViewModel
 import com.devcatskz.switchcheats.data.Config
 import com.devcatskz.switchcheats.data.Emulator
 import com.devcatskz.switchcheats.data.InstallBus
-import com.devcatskz.switchcheats.data.Storage
 import com.devcatskz.switchcheats.i18n.Lang
 import com.devcatskz.switchcheats.ui.theme.Prisma
 
@@ -58,46 +57,17 @@ private fun HoloButton(text: String, enabled: Boolean = true, onClick: () -> Uni
 private fun SectionTitle(text: String) =
     Text(text, color = Prisma.Accent, fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
+private fun prettyPath(path: String): String =
+    path.replace("/storage/emulated/0", "").ifEmpty { "/" }
+
 @Composable
 fun HomeScreen(
     vm: MainViewModel,
     onGrantAllFiles: () -> Unit,
-    onPickFolder: () -> Unit,
-    onExport: () -> Unit,
+    onChangeFolder: () -> Unit,
 ) {
-    // When an install finishes, refresh the "locally installed" line once.
     LaunchedEffect(vm.installResult) {
         if (vm.installResult is InstallBus.Result.Installed) vm.checkUpdate()
-    }
-
-    // Startup permission onboarding — explains WHY storage access is needed and
-    // requests the right grant for the selected emulator.
-    if (vm.showPermDialog) {
-        AlertDialog(
-            onDismissRequest = { vm.dismissPermDialog() },
-            icon = { Text("🔒", fontSize = 22.sp) },
-            title = { Text(vm.t("perm.title"), color = Prisma.Text, fontWeight = FontWeight.Bold) },
-            text = { Text(vm.t("perm.body"), color = Prisma.Muted, fontSize = 13.sp) },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.dismissPermDialog()
-                    onGrantAllFiles()   // always request the general storage permission
-                }) {
-                    Text(
-                        vm.t("storage.grantAllFiles"),
-                        color = Prisma.Accent, fontWeight = FontWeight.Bold,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { vm.dismissPermDialog() }) {
-                    Text(vm.t("perm.later"), color = Prisma.Muted)
-                }
-            },
-            containerColor = Prisma.Panel,
-            titleContentColor = Prisma.Text,
-            textContentColor = Prisma.Muted,
-        )
     }
 
     Box(Modifier.fillMaxSize().background(Prisma.BgGradient)) {
@@ -114,48 +84,26 @@ fun HomeScreen(
                 Text(vm.t("app.subtitle"), color = Prisma.Muted, fontSize = 13.sp)
             }
 
-            // Emulator selection
+            // Supported emulators + how to import (one combined section — the steps
+            // are identical for all three, so there's nothing to switch between).
             GlassCard {
-                SectionTitle(vm.t("emu.title"))
+                SectionTitle("Eden / Suyu / Sudachi")
                 Spacer(Modifier.height(2.dp))
                 Text(vm.t("emu.hint"), color = Prisma.Muted, fontSize = 12.sp)
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Emulator.entries.forEach { e ->
-                        val sel = vm.emulator == e
-                        Box(
-                            Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (sel) Prisma.Accent.copy(alpha = 0.18f) else Prisma.Bg2)
-                                .border(
-                                    BorderStroke(1.dp, if (sel) Prisma.Accent else Prisma.PanelBorder),
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .clickable { vm.changeEmulator(e) }
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                e.displayName,
-                                color = if (sel) Prisma.Accent else Prisma.Text,
-                                fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                            )
-                        }
-                    }
-                }
+                Spacer(Modifier.height(12.dp))
+                ImportGuide(vm)
             }
 
-            // Update check
+            // Download & unpack
             GlassCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    SectionTitle(vm.t("install.title"))
+                    SectionTitle(vm.t("prepare.title"))
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = { vm.checkUpdate() }, enabled = !vm.busy) {
                         Text(vm.t("btn.check"), color = Prisma.Violet)
                     }
                 }
-                Text(vm.t("install.desc"), color = Prisma.Muted, fontSize = 12.sp)
+                Text(vm.t("prepare.desc"), color = Prisma.Muted, fontSize = 12.sp)
                 if (vm.checkText.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -165,22 +113,12 @@ fun HomeScreen(
                     )
                 }
 
-                // Storage prompts
-                if (vm.needAllFiles) {
+                Spacer(Modifier.height(12.dp))
+                FolderRow(vm, onChangeFolder)
+
+                if (vm.needAllFiles && !vm.busy) {
                     Spacer(Modifier.height(10.dp))
                     Text(vm.t("storage.needAllFiles"), color = Prisma.Muted, fontSize = 12.sp)
-                    Spacer(Modifier.height(8.dp))
-                    HoloButton(vm.t("storage.grantAllFiles")) { onGrantAllFiles() }
-                } else if (vm.needFolderGrant) {
-                    Spacer(Modifier.height(10.dp))
-                    Text(vm.t("storage.safHint"), color = Prisma.Muted, fontSize = 12.sp)
-                    if (vm.folderError.isNotEmpty()) {
-                        Spacer(Modifier.height(6.dp))
-                        Text(vm.folderError, color = Prisma.Error, fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    HoloButton(vm.t("storage.pickFolder")) { vm.armAutoInstall(); onPickFolder() }
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -201,22 +139,9 @@ fun HomeScreen(
                     Spacer(Modifier.height(10.dp))
                     HoloButton(vm.t("btn.cancel")) { vm.cancel() }
                 } else {
-                    OnlyInstalledToggle(vm)
-                    Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        HoloButton(vm.t("btn.start")) {
-                            when {
-                                // Ask for the general permission (explained), then auto-continue.
-                                vm.needAllFiles -> { vm.armAutoInstall(); vm.openPermDialog() }
-                                // Fallback only: one-tap folder pick, then the download runs itself.
-                                vm.needFolderGrant -> { vm.armAutoInstall(); onPickFolder() }
-                                else -> vm.startInstall()
-                            }
-                        }
-                        OutlinedButton(
-                            onClick = onExport,
-                            border = BorderStroke(1.dp, Prisma.PanelBorder),
-                        ) { Text(vm.t("btn.export"), color = Prisma.Text) }
+                    HoloButton(if (vm.needAllFiles) vm.t("storage.grantAllFiles") else vm.t("btn.prepare")) {
+                        if (vm.needAllFiles) { vm.armAutoPrepare(); onGrantAllFiles() }
+                        else vm.startPrepare()
                     }
                 }
 
@@ -228,13 +153,6 @@ fun HomeScreen(
                         fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     )
                 }
-
-                // Feature 2: after a successful install, explain how to turn the
-                // cheats on in the emulator and offer to open it.
-                if (vm.showActivationHint) {
-                    Spacer(Modifier.height(12.dp))
-                    ActivationHint(vm)
-                }
             }
 
             // Info
@@ -243,9 +161,6 @@ fun HomeScreen(
                 Spacer(Modifier.height(6.dp))
                 Text(vm.t("info.source") + "github.com/${Config.REPO_OWNER}/${Config.REPO_NAME}",
                     color = Prisma.Muted, fontSize = 12.sp)
-                Text(vm.t("info.target"), color = Prisma.Muted, fontSize = 12.sp)
-                Text(Storage.targetLabel(vm.emulator), color = Prisma.Accent, fontSize = 11.sp)
-                Spacer(Modifier.height(4.dp))
                 Text(vm.t("info.appVersion") + Config.APP_VERSION, color = Prisma.Muted, fontSize = 12.sp)
                 Spacer(Modifier.height(8.dp))
                 Text(vm.t("info.note"), color = Prisma.Muted, fontSize = 11.sp)
@@ -288,49 +203,45 @@ fun HomeScreen(
     }
 }
 
+/** Always-visible, emulator-specific "how to import" card. */
 @Composable
-private fun OnlyInstalledToggle(vm: MainViewModel) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { vm.changeOnlyInstalled(!vm.onlyInstalled) }
-            .padding(vertical = 2.dp),
-    ) {
-        Checkbox(
-            checked = vm.onlyInstalled,
-            onCheckedChange = { vm.changeOnlyInstalled(it) },
-            colors = CheckboxDefaults.colors(
-                checkedColor = Prisma.Accent,
-                uncheckedColor = Prisma.Muted,
-                checkmarkColor = Prisma.OnAccent,
-            ),
-        )
-        Spacer(Modifier.width(4.dp))
-        Column {
-            Text(vm.t("install.onlyInstalled"), color = Prisma.Text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Text(vm.t("install.onlyInstalledHint"), color = Prisma.Muted, fontSize = 11.sp)
-        }
-    }
-}
-
-@Composable
-private fun ActivationHint(vm: MainViewModel) {
+private fun ImportGuide(vm: MainViewModel) {
     Column(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(Prisma.Accent.copy(alpha = 0.10f))
-            .border(BorderStroke(1.dp, Prisma.Accent.copy(alpha = 0.5f)), RoundedCornerShape(12.dp))
+            .border(BorderStroke(1.dp, Prisma.Accent.copy(alpha = 0.4f)), RoundedCornerShape(12.dp))
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text("✅ " + vm.t("activate.title"), color = Prisma.Accent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        Text(String.format(vm.t("activate.body"), vm.emulator.displayName), color = Prisma.Text, fontSize = 12.sp)
-        if (vm.emulatorInstalled()) {
+        Text(vm.t("guide.title"),
+            color = Prisma.Accent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text("1. " + vm.t("guide.step1"), color = Prisma.Text, fontSize = 12.sp)
+        Text("2. " + vm.t("guide.step2"), color = Prisma.Text, fontSize = 12.sp)
+        Text(vm.t("import.pathHint") + " " + prettyPath(vm.outputPath), color = Prisma.Muted, fontSize = 11.sp)
+        if (vm.hasEmulatorInstalled) {
             Spacer(Modifier.height(2.dp))
-            HoloButton(String.format(vm.t("activate.open"), vm.emulator.displayName)) { vm.openEmulator() }
+            HoloButton(vm.t("import.open")) { vm.openEmulator() }
+        }
+    }
+}
+
+@Composable
+private fun FolderRow(vm: MainViewModel, onChangeFolder: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Prisma.Bg2)
+            .border(BorderStroke(1.dp, Prisma.PanelBorder), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text("📁 " + vm.t("folder.title"), color = Prisma.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(prettyPath(vm.outputPath), color = Prisma.Accent, fontSize = 12.sp)
+        TextButton(onClick = onChangeFolder, contentPadding = PaddingValues(0.dp)) {
+            Text(vm.t("folder.change"), color = Prisma.Violet, fontSize = 12.sp)
         }
     }
 }

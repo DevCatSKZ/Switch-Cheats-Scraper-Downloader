@@ -51,13 +51,13 @@ Source & developer docs: [`SwitchCheatsNRO/`](SwitchCheatsNRO/) — build with d
 
 ## 🤖 Android app (emulators)
 
-The same downloader also runs on **Android**, for the Switch emulators **Eden, Suyu and Sudachi** (`SwitchCheatsDownloader-Android.apk`). It fetches the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) **on the phone** and writes the cheats straight into the emulator's load layout — no PC needed.
+The same downloader also runs on **Android**, for the Switch emulators **Eden, Suyu and Sudachi** (`SwitchCheatsDownloader-Android.apk`). It fetches the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) **on the phone**, unpacks the cheats into a public folder, and you import them per game via the emulator's own **Add-ons → Mods and cheats** — no PC needed.
 
 <p align="center"><img src="screenshots/android-app.png" width="340" alt="Switch Cheats Downloader (Android)"></p>
 
-**What it does:** pick your emulator and tap **Start** — it downloads every cheat and writes it into the emulator's load folder as `.../load/<TitleID>/<GameName>/cheats/<BuildID>.txt`, naming each mod folder after the real game (resolved from the data release's `names.json`, falling back to the Title ID). Interrupted downloads **resume**, the app checks this repo for **updates** (a newer APK *and* refreshed cheats, same re-upload detection as the desktop tool), shows a live online status, and speaks the same **6 languages** (EN/DE/ES/FR/IT/JA, auto-detected from the device). Same **Holo-Glass** look as the Windows and Switch apps.
+**What it does:** tap **Download & unpack** — it downloads every cheat and unpacks it into a public folder as `.../SwitchCheats/<TitleID>/<GameName>/cheats/<BuildID>.txt`, each folder named after the real game (baked into the `switch-cheats-emulator.zip` package). Then in **Eden, Suyu or Sudachi** you long-press the game → **Add-ons → “Mods and cheats”** → pick the matching folder, and the emulator copies them into its own storage. Interrupted downloads **resume**, the app checks this repo for **updates** (a newer APK *and* refreshed cheats, same re-upload detection as the desktop tool), shows a live online status, and speaks the same **6 languages** (EN/DE/ES/FR/IT/JA, auto-detected from the device). Same **Holo-Glass** look as the Windows and Switch apps.
 
-**Storage:** on first launch the app asks once for **All files access** (`MANAGE_EXTERNAL_STORAGE`) so it can write into the emulator folders. Where the OS still blocks a direct write (another app's `Android/data/…` on Android 11+), it falls back to a **one-time folder pick** — pre-navigated to the emulator's folder — and then keeps working automatically. An **export to a folder of your choice** is always available.
+**Why a public folder?** On Android 11+ no third-party app can write into an emulator's private `Android/data/…` — neither “All files access” nor the folder picker reach it. So the app unpacks into a **public** folder (default `/storage/emulated/0/SwitchCheats`, changeable) and the emulator imports from there itself. Writing many small files fast needs **All files access** (`MANAGE_EXTERNAL_STORAGE`), which the app asks for once on Android 11+.
 
 **Install:** download [`SwitchCheatsDownloader-Android.apk`](../../releases/latest) from the latest release, allow installation from unknown sources, and grant **All files access** on first launch. Requires Android 8.0 (API 26)+.
 
@@ -72,7 +72,7 @@ You don't have to scrape anything yourself: a **continuously updated** cheats ar
 | `switch-cheats.zip` | All cheat files (Atmosphère layout) | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip) |
 | `switch-cheats-emulator.zip` | All cheat files in the **emulator load layout** (`<TitleID>/<GameName>/cheats/<BuildID>.txt`) — drop the contents into an emulator's `load` folder (Yuzu · Suyu · Sudachi · Torzu · Eden) or Ryujinx's `mods` | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats-emulator.zip) |
 | `database.db` | Complete GUI database (names, regions, versions, descriptions, cover **URLs**) | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/database.db) |
-| `names.json` | Title ID → game name (names the Android app's cheat folders) | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/names.json) |
+| `names.json` | Title ID → game name mapping (the `switch-cheats-emulator.zip` package already has the names baked in) | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/names.json) |
 
 In the app, the **★ Get Everything from DevCatSKZ** card downloads these with one click (**Download Cheats** / **Download Database** / **★ Download Complete**), and **Check Updates** notices when they were refreshed and re-imports them — nothing is removed, existing entries are merged and enriched.
 

@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.DocumentsContract
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,7 +27,7 @@ class MainActivity : ComponentActivity() {
     private val notifPermLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
-    // Returning from the "All files access" settings screen.
+    // Returning from the "All files access" settings screen → re-check + auto-continue.
     private val allFilesLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             vm.onAllFilesGranted()
@@ -40,16 +39,10 @@ class MainActivity : ComponentActivity() {
             vm.onAllFilesGranted()
         }
 
-    // Grant the emulator's folder (SAF) so the app may write into Android/data.
-    private val folderLauncher =
+    // Optional: let the user point the output at a different public folder.
+    private val changeFolderLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
-            uri?.let { vm.onFolderGranted(it) }
-        }
-
-    // Pick a folder to EXPORT the ready-to-copy layout into.
-    private val exportLauncher =
-        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
-            uri?.let { vm.exportTo(it) }
+            uri?.let { vm.setFolder(it) }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,8 +52,7 @@ class MainActivity : ComponentActivity() {
                 HomeScreen(
                     vm = vm,
                     onGrantAllFiles = { grantStorageAccess() },
-                    onPickFolder = { folderLauncher.launch(initialTreeUri()) },
-                    onExport = { exportLauncher.launch(null) },
+                    onChangeFolder = { changeFolderLauncher.launch(null) },
                 )
             }
         }
@@ -71,24 +63,20 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.onAllFilesGranted()   // re-evaluate after returning from settings
-        vm.recheckOnline()       // refresh the online dot after lock/minimise/resume
-        maybeAskNotifications()  // ask once storage access is settled
+        vm.recheckOnline()
+        maybeAskNotifications()
     }
 
-    /** Ask for POST_NOTIFICATIONS once (Android 13+), but only after broad storage
-     *  access is settled — so it never stacks on top of the first-run storage
-     *  onboarding the user sees on a fresh install. */
     private fun maybeAskNotifications() {
         if (Build.VERSION.SDK_INT < 33 || prefs.notifPrompted) return
-        if (!Storage.hasAllFilesAccess(this)) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
             == PackageManager.PERMISSION_GRANTED) { prefs.notifPrompted = true; return }
         prefs.notifPrompted = true
         notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
-    /** Request broad storage write access: All-files-access settings on
-     *  Android 11+, or the WRITE_EXTERNAL_STORAGE runtime permission on 8–10. */
+    /** Request broad storage write access: All-files-access settings on Android 11+,
+     *  or the WRITE_EXTERNAL_STORAGE runtime permission on 8–10. */
     private fun grantStorageAccess() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
@@ -99,16 +87,7 @@ class MainActivity : ComponentActivity() {
                 allFilesLauncher.launch(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
             }
         } else {
-            writePermLauncher.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            writePermLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
         }
-    }
-
-    /** Open the folder picker already pointed at the selected emulator's folder,
-     *  so granting it is a single confirmation (best-effort; the OS may ignore it). */
-    private fun initialTreeUri(): Uri? = try {
-        val docId = "primary:" + vm.emulator.loadRelPath
-        DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", docId)
-    } catch (_: Exception) {
-        null
     }
 }

@@ -340,8 +340,8 @@
         <div class="role" data-i18n="plat_and_role">Android 8.0+</div>
         <h3 data-i18n="plat_and_h3">Downloader on Android</h3>
         <div class="os">Eden · Suyu · Sudachi</div>
-        <p data-i18n="plat_and_p">Pick your emulator and one tap writes every cheat into its load folder under
-          <code>Android/data/…</code>. Resumable downloads, self-update.</p>
+        <p data-i18n="plat_and_p">Downloads every cheat and unpacks them into a public folder — then import them per game in
+          Eden, Suyu or Sudachi via the emulator's <code>Add-ons → Mods and cheats</code>. Resumable downloads, self-update.</p>
         <div class="dl">
           <a class="main" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/latest/download/SwitchCheatsDownloader-Android.apk">
             <span data-i18n="dl_and_1">App (.apk)</span><span class="sz" data-i18n="dl_and_1s">signed</span></a>
@@ -507,8 +507,8 @@
       <div class="card">
         <div class="ic"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></div>
         <h4 data-i18n="priv_b1_h">Storage access</h4>
-        <p data-i18n="priv_b1_p">The app requests file access only to save downloaded cheat files into your
-          emulator or SD-card folders. It never reads or uploads your other files.</p>
+        <p data-i18n="priv_b1_p">The app requests file access only to save the downloaded cheat files into a public folder
+          on your device. It never reads or uploads your other files.</p>
       </div>
       <div class="card">
         <div class="ic"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg></div>
@@ -574,7 +574,7 @@ const I18N = {
     plat_sw_p:`Eine eigenständige <code>.nro</code>, die die neuesten Cheats direkt auf der Konsole lädt und im Atmosphère-Format auf die SD-Karte entpackt. Sie setzt abgebrochene Downloads fort, aktualisiert sich selbst und lässt sich per Joy-Con und Touch bedienen.`,
     dl_sw_1:`Homebrew (.zip)`, dl_sw_1s:`SD-Root`, dl_sw_2:`Quellcode (devkitPro)`, dl_src:`Build`,
     plat_and_role:`Android 8.0+`, plat_and_h3:`Downloader auf Android`,
-    plat_and_p:`Wähle deinen Emulator — die Cheats werden mit einem Tippen in dessen load-Ordner unter <code>Android/data/…</code> geschrieben. Mit fortsetzbaren Downloads und automatischen Updates.`,
+    plat_and_p:`Lädt alle Cheats und entpackt sie in einen öffentlichen Ordner — dann importierst du sie pro Spiel in Eden, Suyu oder Sudachi über <code>Add-ons → Mods and cheats</code> des Emulators. Mit fortsetzbaren Downloads und automatischen Updates.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`signiert`, dl_and_2:`Quellcode (Gradle)`, dl_src2:`Build`,
     screens_eyebrow:`So sieht's aus`, screens_h2:`Dieselben Daten, auf jedem Bildschirm.`,
     feat_eyebrow:`Was drinsteckt`, feat_h2:`Für den gesamten Cheat-Workflow gemacht.`,
@@ -602,7 +602,7 @@ const I18N = {
     foot_repo:`Repository`, foot_releases:`Releases`, foot_data:`Daten`, foot_privacy:`Datenschutz`,
     priv_eyebrow:`Datenschutz`, priv_h2:`Deine Daten bleiben deine.`,
     priv_intro:`Switch Cheats Scraper & Downloader erhebt keine personenbezogenen Daten. Es gibt keine Analyse, kein Tracking, keine Werbung und keine Benutzerkonten auf unserer Seite — die Apps laufen vollständig auf deinem Gerät.`,
-    priv_b1_h:`Speicherzugriff`, priv_b1_p:`Die App fragt Dateizugriff nur an, um heruntergeladene Cheat-Dateien in die Ordner deines Emulators oder deiner SD-Karte zu schreiben. Andere Dateien werden nie gelesen oder hochgeladen.`,
+    priv_b1_h:`Speicherzugriff`, priv_b1_p:`Die App fragt Dateizugriff nur an, um heruntergeladene Cheat-Dateien in einen öffentlichen Ordner auf deinem Gerät zu schreiben. Andere Dateien werden nie gelesen oder hochgeladen.`,
     priv_b2_h:`Netzwerk`, priv_b2_p:`Sie verbindet sich mit GitHub und den öffentlichen Cheat-Quellen ausschließlich, um Cheats herunterzuladen und nach Updates zu suchen — nichts über dich wird gesendet.`,
     priv_b3_h:`Keine Konten, kein Tracking`, priv_b3_p:`CheatSlips-Zugangsdaten, die du im Windows-Tool eingibst, bleiben auf deinem Gerät und gehen nur an CheatSlips, um dich anzumelden. Wir speichern nichts über dich.`,
     priv_full:`Vollständige Datenschutzerklärung →`,
@@ -629,7 +629,7 @@ const I18N = {
     plat_sw_p:`Un <code>.nro</code> independiente que obtiene los últimos trucos en la consola y los extrae al formato de Atmosphère en la tarjeta SD. Reanuda descargas interrumpidas, se actualiza solo, control total con Joy-Con y táctil.`,
     dl_sw_1:`Homebrew (.zip)`, dl_sw_1s:`raíz SD`, dl_sw_2:`Código (devkitPro)`, dl_src:`compilar`,
     plat_and_role:`Android 8.0+`, plat_and_h3:`Descargador en Android`,
-    plat_and_p:`Elige tu emulador y con un toque se escribe cada truco en su carpeta load bajo <code>Android/data/…</code>. Descargas reanudables y autoactualización.`,
+    plat_and_p:`Descarga todos los trucos y los descomprime en una carpeta pública — luego los importas por juego en Eden, Suyu o Sudachi mediante <code>Add-ons → Mods and cheats</code> del emulador. Descargas reanudables y autoactualización.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`firmada`, dl_and_2:`Código (Gradle)`, dl_src2:`compilar`,
     screens_eyebrow:`Míralo en acción`, screens_h2:`Los mismos datos, en cada pantalla.`,
     feat_eyebrow:`Qué incluye`, feat_h2:`Hecho para todo el ciclo del truco.`,
@@ -657,7 +657,7 @@ const I18N = {
     foot_repo:`Repositorio`, foot_releases:`Versiones`, foot_data:`Datos`, foot_privacy:`Privacidad`,
     priv_eyebrow:`Privacidad`, priv_h2:`Tus datos siguen siendo tuyos.`,
     priv_intro:`Switch Cheats Scraper & Downloader no recopila datos personales. No hay analíticas, ni rastreadores, ni anuncios, ni cuentas de usuario por nuestra parte — las apps funcionan por completo en tu dispositivo.`,
-    priv_b1_h:`Acceso al almacenamiento`, priv_b1_p:`La app pide acceso a archivos solo para guardar los archivos de trucos descargados en las carpetas de tu emulador o tarjeta SD. Nunca lee ni sube tus demás archivos.`,
+    priv_b1_h:`Acceso al almacenamiento`, priv_b1_p:`La app pide acceso a archivos solo para guardar los archivos de trucos descargados en una carpeta pública de tu dispositivo. Nunca lee ni sube tus demás archivos.`,
     priv_b2_h:`Red`, priv_b2_p:`Se conecta a GitHub y a las fuentes públicas de trucos únicamente para descargar trucos y buscar actualizaciones — no se envía nada sobre ti.`,
     priv_b3_h:`Sin cuentas, sin rastreo`, priv_b3_p:`Las credenciales de CheatSlips que introduzcas en la herramienta de Windows quedan en tu dispositivo y solo van a CheatSlips para iniciar tu sesión. No guardamos nada sobre ti.`,
     priv_full:`Ver la política de privacidad completa →`,
@@ -684,7 +684,7 @@ const I18N = {
     plat_sw_p:`Un <code>.nro</code> autonome qui récupère les derniers codes sur la console et les extrait au format Atmosphère sur la carte SD. Reprend les téléchargements interrompus, se met à jour, contrôle complet Joy-Con et tactile.`,
     dl_sw_1:`Homebrew (.zip)`, dl_sw_1s:`racine SD`, dl_sw_2:`Source (devkitPro)`, dl_src:`compiler`,
     plat_and_role:`Android 8.0+`, plat_and_h3:`Téléchargeur sur Android`,
-    plat_and_p:`Choisissez votre émulateur et une pression écrit chaque code dans son dossier load sous <code>Android/data/…</code>. Téléchargements repris et mise à jour automatique.`,
+    plat_and_p:`Télécharge tous les codes et les décompresse dans un dossier public — puis importez-les par jeu dans Eden, Suyu ou Sudachi via <code>Add-ons → Mods and cheats</code> de l'émulateur. Téléchargements repris et mise à jour automatique.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`signée`, dl_and_2:`Source (Gradle)`, dl_src2:`compiler`,
     screens_eyebrow:`Voir en action`, screens_h2:`Les mêmes données, sur chaque écran.`,
     feat_eyebrow:`Ce qu'il contient`, feat_h2:`Conçu pour tout le cycle de vie des codes.`,
@@ -712,7 +712,7 @@ const I18N = {
     foot_repo:`Dépôt`, foot_releases:`Versions`, foot_data:`Données`, foot_privacy:`Confidentialité`,
     priv_eyebrow:`Confidentialité`, priv_h2:`Vos données restent les vôtres.`,
     priv_intro:`Switch Cheats Scraper & Downloader ne collecte aucune donnée personnelle. Aucune analyse, aucun traceur, aucune publicité et aucun compte utilisateur de notre côté — les apps fonctionnent entièrement sur votre appareil.`,
-    priv_b1_h:`Accès au stockage`, priv_b1_p:`L'app demande l'accès aux fichiers uniquement pour enregistrer les fichiers de triche téléchargés dans les dossiers de votre émulateur ou de votre carte SD. Elle ne lit ni n'envoie jamais vos autres fichiers.`,
+    priv_b1_h:`Accès au stockage`, priv_b1_p:`L'app demande l'accès aux fichiers uniquement pour enregistrer les fichiers de triche téléchargés dans un dossier public de votre appareil. Elle ne lit ni n'envoie jamais vos autres fichiers.`,
     priv_b2_h:`Réseau`, priv_b2_p:`Elle se connecte à GitHub et aux sources publiques de triche uniquement pour télécharger des codes et vérifier les mises à jour — rien vous concernant n'est envoyé.`,
     priv_b3_h:`Sans compte, sans suivi`, priv_b3_p:`Les identifiants CheatSlips que vous saisissez dans l'outil Windows restent sur votre appareil et ne vont qu'à CheatSlips pour vous connecter. Nous ne stockons rien vous concernant.`,
     priv_full:`Lire la politique de confidentialité complète →`,
@@ -739,7 +739,7 @@ const I18N = {
     plat_sw_p:`Un <code>.nro</code> autonomo che scarica gli ultimi trucchi sulla console e li estrae nel formato Atmosphère sulla scheda SD. Riprende i download interrotti, si aggiorna da solo, pieno controllo Joy-Con e touch.`,
     dl_sw_1:`Homebrew (.zip)`, dl_sw_1s:`radice SD`, dl_sw_2:`Sorgente (devkitPro)`, dl_src:`compila`,
     plat_and_role:`Android 8.0+`, plat_and_h3:`Downloader su Android`,
-    plat_and_p:`Scegli l'emulatore e con un tocco ogni trucco viene scritto nella sua cartella load sotto <code>Android/data/…</code>. Download riprendibili e aggiornamento automatico.`,
+    plat_and_p:`Scarica tutti i trucchi e li estrae in una cartella pubblica — poi li importi per gioco in Eden, Suyu o Sudachi tramite <code>Add-ons → Mods and cheats</code> dell'emulatore. Download riprendibili e aggiornamento automatico.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`firmata`, dl_and_2:`Sorgente (Gradle)`, dl_src2:`compila`,
     screens_eyebrow:`Guardalo in azione`, screens_h2:`Gli stessi dati, su ogni schermo.`,
     feat_eyebrow:`Cosa contiene`, feat_h2:`Fatto per tutto il ciclo dei trucchi.`,
@@ -767,7 +767,7 @@ const I18N = {
     foot_repo:`Repository`, foot_releases:`Versioni`, foot_data:`Dati`, foot_privacy:`Privacy`,
     priv_eyebrow:`Privacy`, priv_h2:`I tuoi dati restano tuoi.`,
     priv_intro:`Switch Cheats Scraper & Downloader non raccoglie dati personali. Nessuna analitica, nessun tracker, nessuna pubblicità e nessun account utente da parte nostra — le app funzionano interamente sul tuo dispositivo.`,
-    priv_b1_h:`Accesso all'archiviazione`, priv_b1_p:`L'app chiede l'accesso ai file solo per salvare i file di trucchi scaricati nelle cartelle del tuo emulatore o della scheda SD. Non legge né carica mai i tuoi altri file.`,
+    priv_b1_h:`Accesso all'archiviazione`, priv_b1_p:`L'app chiede l'accesso ai file solo per salvare i file di trucchi scaricati in una cartella pubblica del tuo dispositivo. Non legge né carica mai i tuoi altri file.`,
     priv_b2_h:`Rete`, priv_b2_p:`Si connette a GitHub e alle fonti pubbliche di trucchi solo per scaricare i trucchi e cercare aggiornamenti — non viene inviato nulla su di te.`,
     priv_b3_h:`Nessun account, nessun tracciamento`, priv_b3_p:`Le credenziali CheatSlips che inserisci nello strumento Windows restano sul tuo dispositivo e vanno solo a CheatSlips per farti accedere. Non memorizziamo nulla su di te.`,
     priv_full:`Leggi l'informativa sulla privacy completa →`,
@@ -794,7 +794,7 @@ const I18N = {
     plat_sw_p:`本体で最新のチートを取得し、SDカードのAtmosphèreレイアウトに展開する単体の<code>.nro</code>。中断したダウンロードを再開し、自身を更新、Joy-Conとタッチの両操作に対応。`,
     dl_sw_1:`ホームブリュー (.zip)`, dl_sw_1s:`SD直下`, dl_sw_2:`ソース (devkitPro)`, dl_src:`ビルド`,
     plat_and_role:`Android 8.0+`, plat_and_h3:`Androidで動くダウンローダー`,
-    plat_and_p:`エミュレーターを選ぶと、ワンタップで各チートが<code>Android/data/…</code>下のloadフォルダーに書き込まれます。再開可能なダウンロードと自動更新に対応。`,
+    plat_and_p:`すべてのチートをダウンロードして公開フォルダーに解凍します — その後、エミュレーターの <code>Add-ons → Mods and cheats</code> から Eden・Suyu・Sudachi にゲームごとにインポートします。再開可能なダウンロードと自動更新に対応。`,
     dl_and_1:`アプリ (.apk)`, dl_and_1s:`署名済み`, dl_and_2:`ソース (Gradle)`, dl_src2:`ビルド`,
     screens_eyebrow:`実際の画面`, screens_h2:`同じデータを、あらゆる画面で。`,
     feat_eyebrow:`主な機能`, feat_h2:`チートのすべての工程のために。`,
@@ -822,7 +822,7 @@ const I18N = {
     foot_repo:`リポジトリ`, foot_releases:`リリース`, foot_data:`データ`, foot_privacy:`プライバシー`,
     priv_eyebrow:`プライバシー`, priv_h2:`あなたのデータはあなたのもの。`,
     priv_intro:`Switch Cheats Scraper & Downloader は個人データを一切収集しません。解析もトラッキングも広告もなく、私たち側にユーザーアカウントもありません —— アプリは完全にあなたのデバイス上で動作します。`,
-    priv_b1_h:`ストレージアクセス`, priv_b1_p:`アプリは、ダウンロードしたチートファイルをエミュレーターやSDカードのフォルダーに保存するためだけにファイルアクセスを求めます。他のファイルを読み取ったりアップロードしたりすることはありません。`,
+    priv_b1_h:`ストレージアクセス`, priv_b1_p:`アプリは、ダウンロードしたチートファイルを端末の公開フォルダーに保存するためだけにファイルアクセスを求めます。他のファイルを読み取ったりアップロードしたりすることはありません。`,
     priv_b2_h:`ネットワーク`, priv_b2_p:`GitHubと公開のチートソースに接続するのは、チートのダウンロードと更新確認のためだけです —— あなたに関する情報は送信されません。`,
     priv_b3_h:`アカウントなし、追跡なし`, priv_b3_p:`Windowsツールに入力したCheatSlipsの資格情報はデバイス上に留まり、ログインのためCheatSlipsにのみ送られます。私たちはあなたに関する情報を保存しません。`,
     priv_full:`プライバシーポリシー全文を読む →`,

@@ -20,30 +20,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- observable UI state ----
     var lang by mutableStateOf(prefs.lang); private set
-    var emulator by mutableStateOf(prefs.emulator); private set
     var online by mutableStateOf<Boolean?>(null); private set
 
     var checkText by mutableStateOf(""); private set
     var updateAvailable by mutableStateOf(false); private set
     var pendingAsset by mutableStateOf<AssetInfo?>(null); private set
 
-    // Opt-in: only write cheats for games already set up in the emulator. Off by default.
-    var onlyInstalled by mutableStateOf(prefs.onlyInstalled); private set
-
+    // Public output folder (absolute filesystem path) + whether we may write there.
+    var outputPath by mutableStateOf(prefs.outputPath); private set
     var needAllFiles by mutableStateOf(false); private set
-    var needFolderGrant by mutableStateOf(false); private set
-    // Set when the user picked a folder that isn't on the emulator's path.
-    var folderError by mutableStateOf(""); private set
-
-    // Startup permission onboarding: a prominent, explained request shown once
-    // per install (persisted) while the general storage grant is missing.
-    var showPermDialog by mutableStateOf(false); private set
 
     var appUpdateText by mutableStateOf(""); private set
     var appUpdateReady by mutableStateOf<AssetInfo?>(null); private set
 
-    // ---- install run state (lives in InstallBus so it survives backgrounding;
-    //      exposed here as localised strings so the language stays reactive) ----
+    // ---- prepare run state (lives in InstallBus so it survives backgrounding) ----
     val busy: Boolean get() = InstallBus.busy
     val progress: Float get() = InstallBus.progress
     val installResult: InstallBus.Result? get() = InstallBus.result
@@ -67,12 +57,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val resultText: String get() = when (val r = InstallBus.result) {
         null -> ""
-        is InstallBus.Result.Installed ->
-            if (r.wasExport) String.format(t("result.exportedSummary"), r.files, r.games)
-            else String.format(t("result.installedSummary"), r.files, r.games)
+        is InstallBus.Result.Installed -> String.format(t("result.preparedSummary"), r.files, r.games)
         InstallBus.Result.Offline -> t("result.noInternet")
         InstallBus.Result.CancelledResume -> t("result.cancelledResume")
-        InstallBus.Result.NoGames -> t("result.noGames")
         is InstallBus.Result.Error -> t("result.errorPrefix") + t("err.${r.code}")
     }
     val resultIsError: Boolean get() = when (InstallBus.result) {
@@ -80,9 +67,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         else -> true
     }
 
-    /** Show the "now enable cheats" hint only after a real install (not export). */
-    val showActivationHint: Boolean get() =
-        (InstallBus.result as? InstallBus.Result.Installed)?.let { !it.wasExport && it.files > 0 } ?: false
+    /** Show the "now import in your emulator" confirmation after a successful prepare. */
+    val didPrepare: Boolean get() =
+        (InstallBus.result as? InstallBus.Result.Installed)?.let { it.files > 0 } ?: false
 
     fun t(key: String) = Strings.get(key, lang)
 
@@ -90,54 +77,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- settings ----
     fun changeLang(l: Lang) { lang = l; prefs.lang = l }
-    fun changeOnlyInstalled(v: Boolean) { onlyInstalled = v; prefs.onlyInstalled = v }
-    fun changeEmulator(e: Emulator) {
-        emulator = e; prefs.emulator = e
-        needAllFiles = false; needFolderGrant = false; folderError = ""
-        if (!InstallBus.busy) InstallBus.result = null   // clear last result + hint
-        refreshWriteNeeds()
-        checkUpdate()
-    }
 
     fun refresh() {
         refreshWriteNeeds()
-        // Ask for the GENERAL storage permission ONCE per install (like a normal
-        // app): if it's still missing and we haven't asked yet, show the explained
-        // prompt. Once granted the app just works; if denied, the Start button
-        // re-offers it. The per-emulator folder grant is never the startup prompt.
-        if (!prefs.permPrompted && needAllFiles) {
-            prefs.permPrompted = true
-            showPermDialog = true
-        }
         checkUpdate()
     }
 
     private fun refreshWriteNeeds() {
-        val mode = Storage.resolveWriteMode(getApplication(), emulator, prefs)
-        needAllFiles = mode is Storage.WriteMode.NeedsAllFiles
-        needFolderGrant = mode is Storage.WriteMode.NeedsFolderGrant
-        // Grant satisfied → make sure the dialog is closed.
-        if (!needAllFiles && !needFolderGrant) showPermDialog = false
-    }
-
-    fun openPermDialog() { showPermDialog = true }
-    fun dismissPermDialog() { showPermDialog = false }
-
-    // ---- launch the selected emulator ----
-    fun emulatorInstalled(): Boolean =
-        getApplication<Application>().packageManager.getLaunchIntentForPackage(emulator.launchPackage) != null
-
-    fun openEmulator() {
-        val pm = getApplication<Application>().packageManager
-        val i = pm.getLaunchIntentForPackage(emulator.launchPackage) ?: return
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        try { getApplication<Application>().startActivity(i) } catch (_: Exception) {}
+        needAllFiles = !Storage.hasAllFilesAccess(getApplication())
     }
 
     // ---- online indicator ----
     private var lastOnlineCheck = 0L
-    /** Re-probe reachability when the app returns to the foreground so the online
-     *  dot recovers instead of staying stuck "offline" after a lock/minimise. */
     fun recheckOnline() {
         val now = android.os.SystemClock.elapsedRealtime()
         if (now - lastOnlineCheck < 2500L) return
@@ -152,20 +103,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun checkUpdate() {
         checkText = t("status.connecting")
         io.execute {
-            val status = repo.checkUpdate(emulator)
+            val status = repo.checkUpdate()
             ui {
                 when (status) {
                     is UpdateStatus.Offline -> { checkText = "" }
                     is UpdateStatus.Available -> {
                         online = true; updateAvailable = true; pendingAsset = status.asset
-                        val last = prefs.lastInstalled(emulator)
+                        val last = prefs.lastPrepared()
                         checkText = t("check.local") +
                             (last?.take(10) ?: t("check.never")) + "   " + t("check.available")
                     }
                     is UpdateStatus.UpToDate -> {
                         online = true; updateAvailable = false; pendingAsset = status.asset
                         checkText = t("check.local") +
-                            (prefs.lastInstalled(emulator)?.take(10) ?: "?") + "   " + t("check.uptodate")
+                            (prefs.lastPrepared()?.take(10) ?: "?") + "   " + t("check.uptodate")
                     }
                     is UpdateStatus.Error -> {
                         if (status.code == "network") online = false
@@ -176,69 +127,54 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---- storage grants ----
-    // When the user taps Start but a grant is still missing, we remember to
+    // ---- output folder + all-files grant + prepare ----
+    // When the user taps the button but the grant is still missing, we remember to
     // continue the download automatically once the grant comes back.
-    private var autoInstallAfterGrant = false
-    fun armAutoInstall() { autoInstallAfterGrant = true }
+    private var autoAfterGrant = false
+    fun armAutoPrepare() { autoAfterGrant = true }
 
+    /** Called after returning from the "All files access" settings screen. */
     fun onAllFilesGranted() {
         refreshWriteNeeds()
-        if (autoInstallAfterGrant && !needAllFiles && !needFolderGrant) {
-            autoInstallAfterGrant = false
-            startInstall()
+        if (autoAfterGrant && !needAllFiles) {
+            autoAfterGrant = false
+            startPrepare()
         }
     }
 
-    fun onFolderGranted(uri: Uri) {
-        // Foolproof: the folder just has to be somewhere on the emulator's path.
-        if (Storage.safPrefixFor(uri, emulator) == null) {
-            autoInstallAfterGrant = false
-            folderError = t("storage.wrongFolder")
-            return
-        }
-        try {
-            getApplication<Application>().contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            )
-        } catch (_: Exception) {}
-        folderError = ""
-        refreshWriteNeeds()
-        if (autoInstallAfterGrant) {
-            autoInstallAfterGrant = false
-            startInstall()
-        }
+    /** The user re-picked the output folder (SAF picker); resolve it to a path and
+     *  remember it. Writing itself uses fast java.io.File under All-files access. */
+    fun setFolder(uri: Uri) {
+        val path = Storage.treeUriToPath(uri) ?: return
+        prefs.outputPath = path
+        outputPath = path
     }
 
-    // ---- install / export (run in the foreground service) ----
-    fun startInstall() {
+    fun startPrepare() {
         if (InstallBus.busy) return
-        val mode = Storage.resolveWriteMode(getApplication(), emulator, prefs)
-        if (Storage.writerFor(getApplication(), mode) == null) {
-            // Missing storage access — pop the explained dialog only for the general
-            // permission; the folder grant is offered inline.
-            refreshWriteNeeds()
-            if (needAllFiles) showPermDialog = true
-            return
-        }
-        InstallBus.begin()   // flip the UI to busy at once
-        InstallService.install(getApplication(), emulator, onlyInstalled)
+        refreshWriteNeeds()
+        if (needAllFiles) return           // UI opens the All-files settings screen
+        InstallBus.result = null
+        InstallBus.begin()
+        InstallService.prepare(getApplication(), outputPath)
     }
 
     fun cancel() { InstallBus.stopFlag.set(true) }
 
-    /** Export the ready-to-copy layout into a user-picked folder (SAF). */
-    fun exportTo(treeUri: Uri) {
-        if (InstallBus.busy) return
-        try {
-            getApplication<Application>().contentResolver.takePersistableUriPermission(
-                treeUri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            )
-        } catch (_: Exception) {}
-        InstallBus.begin()
-        InstallService.export(getApplication(), emulator, treeUri)
+    // ---- launch whichever supported emulator is installed ----
+    private fun installedEmu(): Emulator? =
+        Emulator.entries.firstOrNull {
+            getApplication<Application>().packageManager.getLaunchIntentForPackage(it.launchPackage) != null
+        }
+
+    val hasEmulatorInstalled: Boolean get() = installedEmu() != null
+
+    fun openEmulator() {
+        val e = installedEmu() ?: return
+        val pm = getApplication<Application>().packageManager
+        val i = pm.getLaunchIntentForPackage(e.launchPackage) ?: return
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try { getApplication<Application>().startActivity(i) } catch (_: Exception) {}
     }
 
     // ---- app self-update ----
