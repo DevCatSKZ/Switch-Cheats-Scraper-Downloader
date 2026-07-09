@@ -115,6 +115,19 @@ object Network {
         }
     }
 
+    /** GET [url] as UTF-8 text (follows redirects). Returns null on any failure. */
+    fun fetchText(url: String): String? = try {
+        val c = openDownload(url, null)
+        try {
+            if (c.responseCode !in 200..299) null
+            else c.inputStream.readBytes().toString(Charsets.UTF_8)
+        } finally {
+            c.disconnect()
+        }
+    } catch (_: Exception) {
+        null
+    }
+
     /**
      * Download [url] to [sink], resuming from [existing] bytes via an HTTP Range
      * request when the server supports it. [onProgress] gets (done, total).

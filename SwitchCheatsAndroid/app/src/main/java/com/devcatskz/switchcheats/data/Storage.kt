@@ -18,9 +18,10 @@ object Storage {
     /** Absolute `load` folder of an emulator on the primary shared storage. */
     fun loadDir(emu: Emulator): File = File(externalRoot, emu.loadRelPath)
 
-    /** Human-readable target path shown in the UI. */
+    /** Human-readable target path shown in the UI. The mod folder is the game's
+     *  name (resolved per Title ID from the data release's names.json). */
     fun targetLabel(emu: Emulator): String =
-        "/storage/emulated/0/${emu.loadRelPath}/<TitleID>/${CheatLayout.MOD_NAME}/cheats/<BuildID>.txt"
+        "/storage/emulated/0/${emu.loadRelPath}/<TitleID>/<GameName>/cheats/<BuildID>.txt"
 
     /** Broad write access to shared storage — needed to write outside the app's
      *  own dirs via java.io.File.

@@ -62,22 +62,13 @@ enum class Emulator(
  * Shared by every write backend (direct File and SAF/DocumentFile).
  */
 object CheatLayout {
-    /** The per-game "mod" folder name the cheats are placed under. Any name
-     *  works for the Yuzu family; a stable, recognisable one keeps them grouped
-     *  and easy to toggle/remove in the emulator. */
-    const val MOD_NAME = "SwitchCheatsDownloader"
-
     private val ENTRY =
         Regex("^atmosphere/contents/([0-9A-Fa-f]{16})/cheats/([0-9A-Fa-f]{16})\\.txt$")
 
-    data class Target(val titleId: String, val buildId: String) {
-        /** Path segments UNDER the emulator's load folder:
-         *  <TitleID>/<MOD_NAME>/cheats/<BuildID>.txt */
-        val relSegments: List<String>
-            get() = listOf(titleId, MOD_NAME, "cheats", "$buildId.txt")
-
-        val relPath: String get() = relSegments.joinToString("/")
-    }
+    /** A cheat file to write. The Yuzu family (Eden/Suyu/Sudachi) reads cheats
+     *  from `load/<TitleID>/<ModName>/cheats/<BuildID>.txt`; the mod folder is
+     *  resolved at write time to the game's name (see Names). */
+    data class Target(val titleId: String, val buildId: String)
 
     /** Map one zip entry to its target under the load folder, or null if the
      *  entry is not a cheat file (e.g. a directory). */

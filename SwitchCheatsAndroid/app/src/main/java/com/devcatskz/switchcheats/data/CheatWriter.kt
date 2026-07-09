@@ -7,16 +7,17 @@ import java.io.File
 
 /** Writes one cheat file (already re-laid-out) into the target backend. */
 interface CheatWriter {
-    /** Write [bytes] to <base>/<TitleID>/<MOD>/cheats/<BuildID>.txt. */
-    fun write(target: CheatLayout.Target, bytes: ByteArray)
+    /** Write [bytes] to <base>/<TitleID>/<modName>/cheats/<BuildID>.txt, where
+     *  [modName] is the game's name (falling back to the Title ID). */
+    fun write(target: CheatLayout.Target, modName: String, bytes: ByteArray)
     fun close() {}
 }
 
 /** Direct java.io.File writer — fast. Works for Suyu (public path) and, on
  *  Android ≤ 10 or rooted devices, for Android/data too. */
 class FileCheatWriter(private val loadBase: File) : CheatWriter {
-    override fun write(target: CheatLayout.Target, bytes: ByteArray) {
-        val dir = File(loadBase, "${target.titleId}/${CheatLayout.MOD_NAME}/cheats")
+    override fun write(target: CheatLayout.Target, modName: String, bytes: ByteArray) {
+        val dir = File(loadBase, "${target.titleId}/$modName/cheats")
         if (!dir.exists()) dir.mkdirs()
         File(dir, "${target.buildId}.txt").writeBytes(bytes)
     }
@@ -70,8 +71,8 @@ class SafCheatWriter(
         return cur
     }
 
-    override fun write(target: CheatLayout.Target, bytes: ByteArray) {
-        val dir = dirFor(target.titleId, CheatLayout.MOD_NAME, "cheats")
+    override fun write(target: CheatLayout.Target, modName: String, bytes: ByteArray) {
+        val dir = dirFor(target.titleId, modName, "cheats")
         val fileName = "${target.buildId}.txt"
         val file = dir.findFile(fileName) ?: dir.createFile("text/plain", fileName)
         ?: throw java.io.IOException("create failed: $fileName")

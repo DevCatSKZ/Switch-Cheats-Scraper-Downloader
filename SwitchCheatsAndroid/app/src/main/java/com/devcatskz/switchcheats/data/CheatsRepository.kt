@@ -98,6 +98,9 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
         if (!completed) return InstallResult.CancelledResume
 
         // ---- extract + relayout ----
+        // Load the Title ID → game name map so each game's cheats land in a
+        // folder named after the game (falls back to the Title ID).
+        Names.ensureLoaded(context)
         progress.onPhase(InstallProgress.Phase.EXTRACTING)
         var written = 0
         try {
@@ -113,7 +116,7 @@ class CheatsRepository(private val context: Context, private val prefs: Prefs) {
                         val target = CheatLayout.targetFor(entry.name)
                         if (target != null) {
                             val bytes = readAll(zin, buf)
-                            writer.write(target, bytes)
+                            writer.write(target, Names.modFolder(target.titleId), bytes)
                             written++
                             progress.onExtract(written, total)
                         }
