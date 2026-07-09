@@ -115,6 +115,31 @@ object Network {
         }
     }
 
+    /**
+     * True if GitHub is reachable right now. ANY HTTP response counts as online
+     * (even a 403 rate-limit) — only a real connection failure is "offline".
+     * Retries once after a short pause to ride out a network link that is still
+     * waking up right after unlock/resume (the cause of a stuck "offline").
+     */
+    fun reachable(): Boolean {
+        repeat(2) { attempt ->
+            var c: HttpURLConnection? = null
+            try {
+                c = URL(Config.DATA_API_URL).openConnection() as HttpURLConnection
+                c.setRequestProperty("User-Agent", Config.USER_AGENT)
+                c.connectTimeout = 5000
+                c.readTimeout = 5000
+                c.requestMethod = "GET"
+                return c.responseCode in 100..599   // any reply = we're online
+            } catch (_: Exception) {
+                if (attempt == 0) try { Thread.sleep(1200) } catch (_: Exception) {}
+            } finally {
+                c?.disconnect()
+            }
+        }
+        return false
+    }
+
     /** GET [url] as UTF-8 text (follows redirects). Returns null on any failure. */
     fun fetchText(url: String): String? = try {
         val c = openDownload(url, null)

@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.onAllFilesGranted()   // re-evaluate after returning from settings
+        vm.recheckOnline()       // refresh the online dot after lock/minimise/resume
     }
 
     /** Request broad storage write access: All-files-access settings on

@@ -83,6 +83,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun openPermDialog() { showPermDialog = true }
     fun dismissPermDialog() { showPermDialog = false }
 
+    // ---- online indicator ----
+    private var lastOnlineCheck = 0L
+    /** Re-probe reachability when the app returns to the foreground so the online
+     *  dot recovers instead of staying stuck "offline" after a lock/minimise
+     *  (the first check right after unlock often hits a not-yet-ready network).
+     *  Debounced so transient resumes (dialogs, folder picker) don't re-probe. */
+    fun recheckOnline() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastOnlineCheck < 2500L) return
+        lastOnlineCheck = now
+        io.execute {
+            val ok = Network.reachable()
+            ui { online = ok }
+        }
+    }
+
     // ---- update check ----
     fun checkUpdate() {
         checkText = t("status.connecting")
