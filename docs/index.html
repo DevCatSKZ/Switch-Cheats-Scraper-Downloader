@@ -79,7 +79,9 @@
     -webkit-background-clip:text; background-clip:text; color:transparent}
   .lede{font-size:clamp(17px,2.3vw,21px); color:var(--muted); margin:26px 0 0; max-width:56ch}
   .lede b{color:var(--text); font-weight:600}
-  .cta{display:flex; flex-wrap:wrap; gap:14px; margin-top:38px; align-items:center}
+  .cta{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:38px; max-width:640px}
+  .cta .btn{justify-content:center}
+  @media (max-width:560px){ .cta{grid-template-columns:1fr} }
   .btn{display:inline-flex; align-items:center; gap:10px; font-weight:650; font-size:15px;
     padding:14px 22px; border-radius:12px; border:1px solid transparent; transition:.18s; cursor:pointer}
   .btn svg{width:18px; height:18px; flex:none}
@@ -278,11 +280,11 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l4-4m-4 4l-4-4M4 21h16"/></svg>
         <span data-i18n="cta_android">Download for Android</span>
       </a>
+      <a class="btn btn-ghost" href="#platforms" data-i18n="cta_all">All platforms &amp; portable</a>
       <a class="btn btn-ghost" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/latest/download/SwitchCheatsDownloader-Switch.zip">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l4-4m-4 4l-4-4M4 21h16"/></svg>
         <span data-i18n="cta_switch">Download for Switch</span>
       </a>
-      <a class="btn btn-ghost" href="#platforms" data-i18n="cta_all">All platforms &amp; portable</a>
     </div>
 
     <div class="meta-row">
@@ -486,7 +488,7 @@
       <span><b>CheatSlips</b> <span data-i18n="src_scrape">scrape + API</span></span>
       <span>GBATempArchive</span>
       <span>HamletDuFromage</span>
-      <span>Sthetix <span class="q">~141k</span></span>
+      <span>Sthetix</span>
       <span>Breeze / NXCheatCode</span>
       <span>Chansey 60FPS/Res/GFX</span>
       <span>MyNXCheats</span>

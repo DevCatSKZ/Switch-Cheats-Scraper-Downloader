@@ -67,7 +67,6 @@ Du musst nichts selbst scrapen: Ein **laufend aktualisiertes** Cheat-Archiv und 
 | `switch-cheats.zip` | Alle Cheat-Dateien (Atmosphère-Format) | [Download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip) |
 | `switch-cheats-emulator.zip` | Alle Cheat-Dateien im **Emulator-Load-Layout** (`<TitleID>/<GameName>/cheats/<BuildID>.txt`) — Inhalt in den `load`-Ordner eines Emulators (Yuzu · Suyu · Sudachi · Torzu · Eden) oder in Ryujinx' `mods` kopieren | [Download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats-emulator.zip) |
 | `database.db` | Komplette GUI-Datenbank (Namen, Regionen, Versionen, Beschreibungen, Cover-**URLs**) | [Download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/database.db) |
-| `names.json` | Title-ID → Spielname (das `switch-cheats-emulator.zip`-Paket enthält die Namen bereits) | [Download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/names.json) |
 
 In der App holt die Karte **★ Alles von DevCatSKZ holen** diese Dateien mit einem Klick, und **Nach Updates suchen** erkennt, wenn sie aktualisiert wurden, und importiert sie neu — nichts wird entfernt, vorhandene Einträge werden zusammengeführt und ergänzt.
 
