@@ -145,6 +145,9 @@ def fetch_github_release(tag: Optional[str] = None, repo: str = DEVCAT_REPO,
             "epoch": github_iso_to_epoch(when),
             "size": a.get("size", 0),
             "url": a.get("browser_download_url"),
+            # GitHub publishes a content digest per asset ("sha256:<hex>") —
+            # the self-updater verifies downloads against it before installing.
+            "digest": a.get("digest") or "",
         })
     published = data.get("published_at") or data.get("created_at")
     pub_epoch = github_iso_to_epoch(published)

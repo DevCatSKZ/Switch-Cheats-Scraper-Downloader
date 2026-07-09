@@ -1080,6 +1080,99 @@ _merge({
         "de": "Cheat-Daten (von DevCatSKZ)", "es": "Datos de cheats (de DevCatSKZ)",
         "fr": "Données de cheats (de DevCatSKZ)", "it": "Dati dei cheat (da DevCatSKZ)",
         "ja": "チートデータ（DevCatSKZ）"},
+    "Verifying download…": {
+        "de": "Download wird geprüft…", "es": "Verificando la descarga…",
+        "fr": "Vérification du téléchargement…", "it": "Verifica del download…",
+        "ja": "ダウンロードを検証中…"},
+    "Update verified (SHA-256 OK).": {
+        "de": "Update geprüft (SHA-256 OK).", "es": "Actualización verificada (SHA-256 OK).",
+        "fr": "Mise à jour vérifiée (SHA-256 OK).", "it": "Aggiornamento verificato (SHA-256 OK).",
+        "ja": "更新を検証しました（SHA-256 OK）。"},
+    "Update is installing": {
+        "de": "Update wird installiert", "es": "Instalando la actualización",
+        "fr": "Installation de la mise à jour", "it": "Installazione dell'aggiornamento",
+        "ja": "更新をインストール中"},
+    "The app closes and reopens automatically.": {
+        "de": "Die App schließt sich und öffnet sich automatisch neu.",
+        "es": "La app se cierra y se vuelve a abrir automáticamente.",
+        "fr": "L'application se ferme et se rouvre automatiquement.",
+        "it": "L'app si chiude e si riapre automaticamente.",
+        "ja": "アプリは自動的に閉じて再起動します。"},
+})
+
+# ---- First-run welcome / safety backups / notifications ---------------------
+_merge({
+    "Welcome!": {"de": "Willkommen!", "es": "¡Bienvenido!", "fr": "Bienvenue !",
+                 "it": "Benvenuto!", "ja": "ようこそ！"},
+    "Get started in one click": {
+        "de": "Mit einem Klick startklar", "es": "Listo con un clic",
+        "fr": "Prêt en un clic", "it": "Pronto con un clic",
+        "ja": "ワンクリックで準備完了"},
+    "Your database is still empty. Load the complete, "
+    "continuously-updated cheat database from DevCatSKZ — "
+    "every game, every cheat, ready to browse. You can also "
+    "start empty and scrape everything yourself later.": {
+        "de": "Deine Datenbank ist noch leer. Lade die komplette, laufend "
+              "aktualisierte Cheat-Datenbank von DevCatSKZ — jedes Spiel, jeder "
+              "Cheat, sofort durchsuchbar. Du kannst auch leer starten und später "
+              "alles selbst scrapen.",
+        "es": "Tu base de datos aún está vacía. Carga la base de datos de cheats "
+              "completa y en constante actualización de DevCatSKZ: cada juego, "
+              "cada truco, listos para explorar. También puedes empezar vacío y "
+              "scrapear todo tú mismo más tarde.",
+        "fr": "Ta base de données est encore vide. Charge la base de cheats "
+              "complète et continuellement mise à jour de DevCatSKZ — chaque jeu, "
+              "chaque cheat, prêts à parcourir. Tu peux aussi démarrer à vide et "
+              "tout scraper toi-même plus tard.",
+        "it": "Il tuo database è ancora vuoto. Carica il database di cheat "
+              "completo e continuamente aggiornato di DevCatSKZ — ogni gioco, "
+              "ogni cheat, subito consultabili. Puoi anche iniziare da zero e "
+              "fare lo scraping da solo più tardi.",
+        "ja": "データベースはまだ空です。DevCatSKZ の完全かつ継続的に更新される"
+              "チートデータベースを読み込めば、すべてのゲームとチートをすぐに"
+              "閲覧できます。空のまま始めて、後で自分でスクレイプすることも"
+              "できます。"},
+    "Tip: the ★ card at the top does the same any time.": {
+        "de": "Tipp: Die ★-Karte oben macht dasselbe — jederzeit.",
+        "es": "Consejo: la tarjeta ★ de arriba hace lo mismo en cualquier momento.",
+        "fr": "Astuce : la carte ★ en haut fait la même chose à tout moment.",
+        "it": "Suggerimento: la scheda ★ in alto fa lo stesso in qualsiasi momento.",
+        "ja": "ヒント：上部の★カードでいつでも同じことができます。"},
+    "Start empty": {
+        "de": "Leer starten", "es": "Empezar vacío", "fr": "Démarrer à vide",
+        "it": "Inizia da zero", "ja": "空のまま開始"},
+    "Download complete database (~25 MB)": {
+        "de": "Komplette Datenbank laden (~25 MB)",
+        "es": "Descargar la base de datos completa (~25 MB)",
+        "fr": "Télécharger la base complète (~25 Mo)",
+        "it": "Scarica il database completo (~25 MB)",
+        "ja": "完全なデータベースをダウンロード（約25 MB）"},
+    "Safety backup before {reason}: {name}": {
+        "de": "Sicherheits-Backup vor {reason}: {name}",
+        "es": "Copia de seguridad antes de {reason}: {name}",
+        "fr": "Sauvegarde de sécurité avant {reason} : {name}",
+        "it": "Backup di sicurezza prima di {reason}: {name}",
+        "ja": "{reason} の前に安全バックアップ: {name}"},
+    "Scrape finished": {
+        "de": "Scrape abgeschlossen", "es": "Scrape terminado",
+        "fr": "Scrape terminé", "it": "Scrape completato",
+        "ja": "スクレイプ完了"},
+    "The scrape is done — the results are in the table.": {
+        "de": "Der Scrape ist fertig — die Ergebnisse stehen in der Tabelle.",
+        "es": "El scrape ha terminado: los resultados están en la tabla.",
+        "fr": "Le scrape est terminé — les résultats sont dans le tableau.",
+        "it": "Lo scraping è finito — i risultati sono nella tabella.",
+        "ja": "スクレイプが完了しました。結果は表に表示されています。"},
+    "Data update installed": {
+        "de": "Daten-Update eingespielt", "es": "Actualización de datos instalada",
+        "fr": "Mise à jour des données installée",
+        "it": "Aggiornamento dei dati installato", "ja": "データ更新を適用しました"},
+    "Cheats and database are up to date.": {
+        "de": "Cheats und Datenbank sind auf dem neuesten Stand.",
+        "es": "Los cheats y la base de datos están al día.",
+        "fr": "Les cheats et la base de données sont à jour.",
+        "it": "Cheat e database sono aggiornati.",
+        "ja": "チートとデータベースは最新です。"},
 })
 
 # ---- Messagebox titles -----------------------------------------------------

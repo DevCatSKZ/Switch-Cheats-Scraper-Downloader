@@ -1010,6 +1010,109 @@ def _fmt_size(n) -> str:
     return f"{n:.1f} GB"
 
 
+def backup_database(db_path) -> "Path | None":
+    """Safety net before destructive actions: snapshot *db_path* to <db>.bak,
+    rotating the previous snapshot to <db>.bak2 (two generations). Uses sqlite's
+    online backup API, so it is safe while the DB is open in WAL mode.
+    Returns the backup path, or None when there was nothing to back up or the
+    backup failed (the caller logs, but never blocks the action on it)."""
+    import sqlite3 as _sq
+    src = Path(db_path)
+    if not src.exists() or src.stat().st_size == 0:
+        return None
+    bak1 = Path(str(src) + ".bak")
+    bak2 = Path(str(src) + ".bak2")
+    try:
+        if bak1.exists():
+            if bak2.exists():
+                bak2.unlink()
+            bak1.replace(bak2)
+        s = _sq.connect(f"file:{src}?mode=ro", uri=True)
+        d = _sq.connect(str(bak1))
+        with d:
+            s.backup(d)
+        s.close(); d.close()
+        return bak1
+    except Exception:
+        return None
+
+
+def sha256_of_file(path, chunk=1 << 20) -> str:
+    """Hex SHA-256 of a file, streamed (update downloads are hundreds of MB)."""
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(chunk), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+# ---- Windows notifications (no third-party deps) ---------------------------
+# Shell_NotifyIcon with NIF_INFO shows a balloon that Windows 10/11 renders as
+# a regular toast in the notification center — exactly what we want for "the
+# long task finished while the window was in the background".
+
+def _notifyicondata(hwnd, title="", msg=""):
+    import ctypes
+    from ctypes import wintypes
+
+    class NOTIFYICONDATAW(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("hWnd", wintypes.HWND),
+            ("uID", wintypes.UINT),
+            ("uFlags", wintypes.UINT),
+            ("uCallbackMessage", wintypes.UINT),
+            ("hIcon", wintypes.HICON),
+            ("szTip", ctypes.c_wchar * 128),
+            ("dwState", wintypes.DWORD),
+            ("dwStateMask", wintypes.DWORD),
+            ("szInfo", ctypes.c_wchar * 256),
+            ("uTimeoutOrVersion", wintypes.UINT),
+            ("szInfoTitle", ctypes.c_wchar * 64),
+            ("dwInfoFlags", wintypes.DWORD),
+        ]
+
+    n = NOTIFYICONDATAW()
+    n.cbSize = ctypes.sizeof(n)
+    n.hWnd = hwnd
+    n.uID = 0x5343  # 'SC'
+    n.szTip = APP_NAME[:127]
+    n.szInfo = (msg or "")[:255]
+    n.szInfoTitle = (title or "")[:63]
+    return n
+
+
+def show_windows_toast(hwnd, title, msg) -> bool:
+    """Show (or refresh) the toast; returns True when Windows accepted it."""
+    try:
+        import ctypes
+        NIF_ICON, NIF_TIP, NIF_INFO = 0x2, 0x4, 0x10
+        NIM_ADD, NIM_MODIFY = 0x0, 0x1
+        n = _notifyicondata(hwnd, title, msg)
+        n.uFlags = NIF_INFO | NIF_TIP | NIF_ICON
+        n.hIcon = ctypes.windll.user32.LoadIconW(None, 32512)  # IDI_APPLICATION
+        n.dwInfoFlags = 0x1  # NIIF_INFO
+        n.uTimeoutOrVersion = 10000
+        shell = ctypes.windll.shell32
+        if not shell.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(n)):
+            return bool(shell.Shell_NotifyIconW(NIM_ADD, ctypes.byref(n)))
+        return True
+    except Exception:
+        return False
+
+
+def remove_windows_toast(hwnd):
+    """Drop the temporary tray icon again once the balloon has faded."""
+    try:
+        import ctypes
+        NIM_DELETE = 0x2
+        n = _notifyicondata(hwnd)
+        ctypes.windll.shell32.Shell_NotifyIconW(NIM_DELETE, ctypes.byref(n))
+    except Exception:
+        pass
+
+
 def _render_release_notes(txt: "tk.Text", md: str, t: dict):
     """Render simple GitHub-flavoured markdown (headings, **bold**, bullets and
     `code`) into a Text widget with tags — far nicer than showing the raw
@@ -1244,6 +1347,66 @@ class UpdateProgressDialog:
             pass
 
 
+class WelcomeDialog:
+    """First-run greeting shown when the database is missing or empty.
+
+    One friendly choice instead of an empty table: pull the complete, always
+    current DevCatSKZ dataset with a single click (the same action as the
+    ★ Download Complete card), or start empty and scrape yourself.
+    """
+
+    def __init__(self, parent, app):
+        self.app = app
+        t_theme = theme()
+        self.top = tk.Toplevel(parent)
+        self.top.title("Welcome")
+        self.top.transient(parent)
+        self.top.grab_set()
+        self.top.resizable(False, False)
+        self.top.configure(bg=t_theme["bg"])
+        frm = ttk.Frame(self.top, padding=22)
+        frm.pack(fill="both", expand=True)
+
+        ttk.Label(frm, text="👋  " + t("Welcome!"),
+                  foreground=t_theme["accent"],
+                  font=("Segoe UI Semibold", 16)).pack(anchor="w")
+        ttk.Label(frm, text="Get started in one click",
+                  foreground=t_theme["fg"], font=("Segoe UI Semibold", 11)).pack(
+                      anchor="w", pady=(10, 2))
+        ttk.Label(
+            frm,
+            text="Your database is still empty. Load the complete, "
+                 "continuously-updated cheat database from DevCatSKZ — "
+                 "every game, every cheat, ready to browse. You can also "
+                 "start empty and scrape everything yourself later.",
+            foreground=t_theme["fg_muted"], font=("Segoe UI", 10),
+            wraplength=430, justify="left").pack(anchor="w")
+        ttk.Label(
+            frm,
+            text="Tip: the ★ card at the top does the same any time.",
+            foreground=t_theme["fg_muted"], font=("Segoe UI", 8)).pack(
+                anchor="w", pady=(8, 0))
+
+        ttk.Separator(frm).pack(fill="x", pady=14)
+        row = ttk.Frame(frm)
+        row.pack(fill="x")
+        ttk.Button(row, text="Start empty",
+                   command=self._close).pack(side="left")
+        ttk.Button(row, text="★  " + t("Download complete database (~25 MB)"),
+                   style="Accent.TButton",
+                   command=self._download).pack(side="right")
+        self.top.bind("<Escape>", lambda _e: self._close())
+        self.top.protocol("WM_DELETE_WINDOW", self._close)
+        _center_dialog(self.top, parent)
+
+    def _close(self):
+        self.top.destroy()
+
+    def _download(self):
+        self.top.destroy()
+        self.app.on_devcat_complete()
+
+
 class _QueueWriter:
     """File-like object that forwards written lines to a queue (for the log).
 
@@ -1324,6 +1487,8 @@ class ScraperGUI:
         # only ever done silently when the app folder is writable (per-user install
         # or portable), so it never triggers a UAC prompt.
         self.auto_update = tk.BooleanVar(value=True)
+        # One-time first-run greeting (persisted in settings.json).
+        self._welcome_shown = False
         # SD-card export (remembered between runs).
         self.sd_export_root = tk.StringVar(value="")
         self.sd_export_mode = tk.StringVar(value="atmosphere")
@@ -1463,6 +1628,8 @@ class ScraperGUI:
         # toggle 'check at startup'); runs in a background thread.
         if self.online_check_startup.get():
             self.root.after(800, self.on_check_online)
+        # First run with an empty database → friendly one-click onboarding.
+        self.root.after(900, self._maybe_show_welcome)
         # Check GitHub for a newer program/data version at startup (optional).
         # Runs quietly in the background; pops the dialog only if something's new.
         if self.update_check_startup.get():
@@ -1625,6 +1792,7 @@ class ScraperGUI:
         self.nroapp_copy_sd.set(bool(data.get("nroapp_copy_sd", False)))
         self.update_check_startup.set(bool(data.get("update_check_startup", True)))
         self.auto_update.set(bool(data.get("auto_update", True)))
+        self._welcome_shown = bool(data.get("welcome_shown", False))
         self.sd_export_root.set(data.get("sd_export_root", ""))
         self.sd_export_mode.set(data.get("sd_export_mode", "atmosphere"))
         self.export_zip_path.set(data.get("export_zip_path", ""))
@@ -1664,6 +1832,7 @@ class ScraperGUI:
             "nroapp_copy_sd": self.nroapp_copy_sd.get(),
             "update_check_startup": self.update_check_startup.get(),
             "auto_update": self.auto_update.get(),
+            "welcome_shown": getattr(self, "_welcome_shown", False),
             "sd_export_root": self.sd_export_root.get(),
             "sd_export_mode": self.sd_export_mode.get(),
             "export_zip_path": self.export_zip_path.get(),
@@ -1678,6 +1847,60 @@ class ScraperGUI:
         try:
             with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
+        except Exception:
+            pass
+
+    # --------------------------------------------------- first-run welcome
+    def _db_build_count(self) -> int:
+        """Number of builds in the current DB (0 when missing/unreadable)."""
+        try:
+            p = Path(self.db_path.get())
+            if not p.exists() or p.stat().st_size == 0:
+                return 0
+            import sqlite3 as _sq
+            con = _sq.connect(f"file:{p}?mode=ro", uri=True)
+            n = con.execute("SELECT COUNT(*) FROM builds").fetchone()[0]
+            con.close()
+            return int(n)
+        except Exception:
+            return 0
+
+    def _maybe_show_welcome(self):
+        """First start with an empty database → offer the one-click complete
+        download instead of greeting the user with an empty table. Shown once."""
+        if self._welcome_shown or self._busy:
+            return
+        self._welcome_shown = True
+        self._save_settings()
+        if self._db_build_count() > 0:
+            return   # existing data — nothing to onboard
+        WelcomeDialog(self.root, self)
+
+    # ------------------------------------------------------ safety backups
+    def _backup_db(self, reason: str):
+        """Rotating snapshot (<db>.bak, previous → .bak2) before an action that
+        can destroy data. Never blocks the action — a failed backup is logged."""
+        bak = backup_database(self.db_path.get())
+        if bak:
+            self._append_log(t("Safety backup before {reason}: {name}",
+                               reason=reason, name=bak.name))
+        return bak
+
+    # ------------------------------------------------ Windows notifications
+    def _toast(self, title: str, message: str):
+        """Windows notification for a finished long task — only when the window
+        is NOT in the foreground (in focus, the in-app status is enough)."""
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+            user = ctypes.windll.user32
+            hwnd = user.GetAncestor(self.root.winfo_id(), 2)   # GA_ROOT
+            if user.GetForegroundWindow() == hwnd:
+                return
+            if show_windows_toast(hwnd, title, message):
+                # Drop the temporary tray icon once the balloon has faded.
+                self.root.after(12000, lambda: remove_windows_toast(hwnd))
         except Exception:
             pass
 
@@ -3810,6 +4033,8 @@ class ScraperGUI:
             parts.append(f"Cheats: {cheats_summary[0]} file(s) for "
                          f"{cheats_summary[1]} game(s)")
         self.status_var.set(t("DevCatSKZ download done — {parts}", parts=" · ".join(parts)))
+        self._toast(t("Data update installed"),
+                    t("Cheats and database are up to date."))
         # Covers are fetched only when the user opted in via the card checkbox
         # (off by default). No prompt — the checkbox is the choice.
         if self.devcat_covers.get():
@@ -4162,6 +4387,19 @@ class ScraperGUI:
             got = dest.stat().st_size
             if want and got != want:
                 raise RuntimeError(f"download incomplete: got {got:,} of {want:,} bytes")
+            # Verify the content against GitHub's published SHA-256 digest —
+            # a corrupted or tampered download is never installed.
+            digest = (asset.get("digest") or "").strip().lower()
+            if digest.startswith("sha256:"):
+                self._log_queue.put(("update_phase", t("Verifying download…"),
+                                     "SHA-256"))
+                have = sha256_of_file(dest)
+                if have != digest.split(":", 1)[1]:
+                    raise RuntimeError(
+                        f"SHA-256 mismatch — the download is corrupted or was "
+                        f"tampered with (expected {digest.split(':', 1)[1][:12]}…, "
+                        f"got {have[:12]}…). Nothing was installed.")
+                self._log_queue.put(("status", t("Update verified (SHA-256 OK).")))
             if method == "portable":
                 # Extract here (worker thread) so the UI/progress dialog stays live.
                 self._log_queue.put(("update_phase", "Preparing update…", "Extracting files…"))
@@ -4248,6 +4486,8 @@ class ScraperGUI:
             return
         self._advance_program_baseline(prog)
         self.status_var.set("Update installing — the app will close and reopen…")
+        self._toast(t("Update is installing"),
+                    t("The app closes and reopens automatically."))
         self._quit_for_update()
 
     def _apply_portable_update(self, payload: dict, prog: dict):
@@ -4291,6 +4531,8 @@ class ScraperGUI:
             return
         self._advance_program_baseline(prog)
         self.status_var.set("Updating — the app will close and reopen…")
+        self._toast(t("Update is installing"),
+                    t("The app closes and reopens automatically."))
         self._quit_for_update()
 
     # ---- data (cheats + database) update -------------------------------
@@ -5057,6 +5299,7 @@ class ScraperGUI:
             "This CANNOT be undone.",
         ):
             return
+        self._backup_db("Clear DB")
         self._save_settings()
         self._stop_event.clear()
         self._set_busy(True)
@@ -5753,6 +5996,7 @@ class ScraperGUI:
             "Proceed?",
         ):
             return
+        self._backup_db("Fix ID names")
         self._stop_event.clear()
         self._set_busy(True)
         self.status_var.set("Fixing title-id placeholders...")
@@ -5801,6 +6045,7 @@ class ScraperGUI:
             "so the titles folder matches the database exactly?",
         ):
             return
+        self._backup_db("Sync titles")
         self._save_settings()
         self._stop_event.clear()
         self._set_busy(True)
@@ -5920,6 +6165,7 @@ class ScraperGUI:
             "contains codes. It does not delete anything.",
         ):
             return
+        self._backup_db("Recount cheats")
         self._save_settings()
         self._stop_event.clear()
         self._set_busy(True)
@@ -6019,6 +6265,7 @@ class ScraperGUI:
             "once the quota resets.",
         ):
             return
+        self._backup_db("Clean invalid")
         self._save_settings()
         self._stop_event.clear()
         self._set_busy(True)
@@ -6802,6 +7049,7 @@ class ScraperGUI:
                 icon="warning"):
                 return
 
+        self._backup_db("Import DB")
         self._stop_event.clear()
         self._set_busy(True)
         self.status_var.set(t("Importing database ({mode})...", mode=mode))
@@ -7460,6 +7708,9 @@ class ScraperGUI:
             if self.auto_download.get():
                 self.status_var.set("Scraping done - starting download...")
                 self.root.after(500, lambda: self._start_download(None))
+            else:
+                self._toast(t("Scrape finished"),
+                            t("The scrape is done — the results are in the table."))
         elif kind == "download_done":
             dlg = getattr(self, "_update_dlg", None)
             if dlg:
