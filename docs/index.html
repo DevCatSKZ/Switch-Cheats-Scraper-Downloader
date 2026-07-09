@@ -274,6 +274,14 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l4-4m-4 4l-4-4M4 21h16"/></svg>
         <span data-i18n="cta_win">Download for Windows</span>
       </a>
+      <a class="btn btn-ghost" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/latest/download/SwitchCheatsDownloader-Android.apk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l4-4m-4 4l-4-4M4 21h16"/></svg>
+        <span data-i18n="cta_android">Download for Android</span>
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/latest/download/SwitchCheatsDownloader-Switch.zip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l4-4m-4 4l-4-4M4 21h16"/></svg>
+        <span data-i18n="cta_switch">Download for Switch</span>
+      </a>
       <a class="btn btn-ghost" href="#platforms" data-i18n="cta_all">All platforms &amp; portable</a>
     </div>
 
@@ -281,15 +289,6 @@
       <span><i class="dot"></i>Version 1.3</span>
       <span data-i18n="meta_mit">MIT licensed</span>
       <span data-i18n="meta_langs">6 languages</span>
-    </div>
-
-    <div class="emblems">
-      <div class="emblem win"><img src="icon-windows.png" alt="Windows icon">
-        <div><div class="t">Windows</div><div class="s" data-i18n="emb_win_s">Scraper · Downloader · Manager</div></div></div>
-      <div class="emblem sw"><img src="icon-switch.png" alt="Switch icon">
-        <div><div class="t">Nintendo Switch</div><div class="s" data-i18n="emb_sw_s">Download Cheats for Nintendo Switch</div></div></div>
-      <div class="emblem and"><img src="icon-android.png" alt="Android icon">
-        <div><div class="t">Android</div><div class="s" data-i18n="emb_and_s">Download Cheats for Nintendo Switch Emulators on Android</div></div></div>
     </div>
   </div>
 </header>
@@ -557,7 +556,7 @@ const I18N = {
     hero_eyebrow:`Scrapen · Herunterladen · Verwalten`,
     hero_title:`Jeder Switch-Cheat, <span class="g">auf jedem Gerät.</span>`,
     hero_lede:`Ein Toolkit, das Cheat-Codes aus <b>9+ Quellen</b> zusammenträgt, in einer durchsuchbaren Datenbank verwaltet — Einträge anlegen, bearbeiten und ergänzen — und direkt im passenden Format ablegt, unter <b>Windows</b>, auf der <b>Switch</b> selbst und in <b>Android</b>-Emulatoren.`,
-    cta_win:`Für Windows herunterladen`, cta_all:`Alle Plattformen & Portable`,
+    cta_win:`Für Windows herunterladen`, cta_android:`Für Android herunterladen`, cta_switch:`Für Switch herunterladen`, cta_all:`Alle Plattformen & Portable`,
     meta_mit:`MIT-Lizenz`, meta_langs:`6 Sprachen`, meta_noacct:`Zum Stöbern kein Konto nötig`,
     emb_win_s:`Scraper · Downloader · Manager`, emb_sw_s:`Cheats für die Nintendo Switch laden`,
     emb_and_s:`Cheats für Nintendo Switch-Emulatoren auf Android laden`,
@@ -612,7 +611,7 @@ const I18N = {
     hero_eyebrow:`Extraer · Descargar · Gestionar`,
     hero_title:`Cada truco de Switch, <span class="g">en cada dispositivo.</span>`,
     hero_lede:`Un kit que reúne códigos de trucos de <b>9+ fuentes</b>, los gestiona en una base de datos con búsqueda — crear, editar y enriquecer entradas — y los escribe en el formato correcto, en <b>Windows</b>, en la propia <b>Switch</b> y en emuladores de <b>Android</b>.`,
-    cta_win:`Descargar para Windows`, cta_all:`Todas las plataformas y portable`,
+    cta_win:`Descargar para Windows`, cta_android:`Descargar para Android`, cta_switch:`Descargar para Switch`, cta_all:`Todas las plataformas y portable`,
     meta_mit:`Licencia MIT`, meta_langs:`6 idiomas`, meta_noacct:`No hace falta cuenta para explorar`,
     emb_win_s:`Scraper · Descargador · Gestor`, emb_sw_s:`Descargar trucos para Nintendo Switch`,
     emb_and_s:`Descargar trucos para emuladores de Nintendo Switch en Android`,
@@ -667,7 +666,7 @@ const I18N = {
     hero_eyebrow:`Extraire · Télécharger · Gérer`,
     hero_title:`Chaque code Switch, <span class="g">sur chaque appareil.</span>`,
     hero_lede:`Une boîte à outils qui récupère les codes de triche depuis <b>9+ sources</b>, les gère dans une base de données consultable — créer, modifier et enrichir des entrées — et les écrit directement au bon format, sur <b>Windows</b>, sur la <b>Switch</b> elle-même et sur les émulateurs <b>Android</b>.`,
-    cta_win:`Télécharger pour Windows`, cta_all:`Toutes les plateformes & portable`,
+    cta_win:`Télécharger pour Windows`, cta_android:`Télécharger pour Android`, cta_switch:`Télécharger pour Switch`, cta_all:`Toutes les plateformes & portable`,
     meta_mit:`Licence MIT`, meta_langs:`6 langues`, meta_noacct:`Aucun compte requis pour parcourir`,
     emb_win_s:`Scraper · Téléchargeur · Gestionnaire`, emb_sw_s:`Télécharger des codes pour Nintendo Switch`,
     emb_and_s:`Télécharger des codes pour les émulateurs Nintendo Switch sur Android`,
@@ -722,7 +721,7 @@ const I18N = {
     hero_eyebrow:`Estrai · Scarica · Gestisci`,
     hero_title:`Ogni trucco per Switch, <span class="g">su ogni dispositivo.</span>`,
     hero_lede:`Un toolkit che raccoglie i codici trucco da <b>9+ fonti</b>, li gestisce in un database consultabile — creare, modificare e arricchire le voci — e li scrive nel formato giusto, su <b>Windows</b>, sulla <b>Switch</b> stessa e sugli emulatori <b>Android</b>.`,
-    cta_win:`Scarica per Windows`, cta_all:`Tutte le piattaforme e portable`,
+    cta_win:`Scarica per Windows`, cta_android:`Scarica per Android`, cta_switch:`Scarica per Switch`, cta_all:`Tutte le piattaforme e portable`,
     meta_mit:`Licenza MIT`, meta_langs:`6 lingue`, meta_noacct:`Nessun account per sfogliare`,
     emb_win_s:`Scraper · Downloader · Gestore`, emb_sw_s:`Scarica trucchi per Nintendo Switch`,
     emb_and_s:`Scarica trucchi per emulatori Nintendo Switch su Android`,
@@ -777,7 +776,7 @@ const I18N = {
     hero_eyebrow:`収集 · ダウンロード · 管理`,
     hero_title:`すべてのSwitchチートを、<span class="g">あらゆるデバイスで。</span>`,
     hero_lede:`<b>9つ以上のソース</b>からチートコードを集め、検索できるデータベースで管理し（エントリの追加・編集・情報の補完）、正しいレイアウトで書き出すツールキット —— <b>Windows</b>、<b>Switch</b>本体、そして<b>Android</b>エミュレーターで。`,
-    cta_win:`Windows版をダウンロード`, cta_all:`全プラットフォーム & ポータブル`,
+    cta_win:`Windows版をダウンロード`, cta_android:`Android版をダウンロード`, cta_switch:`Switch版をダウンロード`, cta_all:`全プラットフォーム & ポータブル`,
     meta_mit:`MITライセンス`, meta_langs:`6言語対応`, meta_noacct:`閲覧にアカウント不要`,
     emb_win_s:`スクレイパー · ダウンローダー · マネージャー`, emb_sw_s:`Nintendo Switch用のチートをダウンロード`,
     emb_and_s:`Android版 Nintendo Switch エミュレーター用のチートをダウンロード`,
