@@ -141,6 +141,20 @@
   .feat{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:44px}
   @media(max-width:820px){.feat{grid-template-columns:1fr 1fr}}
   @media(max-width:560px){.feat{grid-template-columns:1fr}}
+
+  /* screenshots */
+  .screens{display:flex; flex-direction:column; gap:22px; margin-top:44px}
+  .shot{border:1px solid var(--border); border-radius:16px; overflow:hidden;
+    background:var(--panel-solid); box-shadow:0 24px 60px -34px rgba(0,0,0,.85)}
+  .shot > img{display:block; width:100%; height:auto}
+  .shot .cap{font-family:var(--mono); font-size:11.5px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--teal); padding:11px 15px; border-top:1px solid var(--border); display:flex; align-items:center; gap:9px}
+  .shot .cap img{width:17px; height:17px}
+  .screens-row{display:flex; gap:22px; align-items:flex-start}
+  .screens-row .s-switch{flex:1 1 520px; min-width:0}
+  .screens-row .s-android{flex:0 0 258px}
+  @media(max-width:720px){.screens-row{flex-direction:column; align-items:stretch}
+    .screens-row .s-android{flex:1 1 auto; max-width:340px; margin:0 auto; width:100%}}
   .card{background:var(--panel); border:1px solid var(--border); border-radius:18px; padding:24px;
     display:flex; flex-direction:column; transition:.18s}
   .card:hover{border-color:var(--border-hi)}
@@ -334,6 +348,29 @@
             <span data-i18n="dl_and_1">App (.apk)</span><span class="sz" data-i18n="dl_and_1s">signed</span></a>
           <a class="alt" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/tree/main/SwitchCheatsAndroid">
             <span data-i18n="dl_and_2">Source (Gradle)</span><span class="sz" data-i18n="dl_src2">build</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="screens">
+  <div class="wrap">
+    <p class="sec-eyebrow" data-i18n="screens_eyebrow">See it in action</p>
+    <h2 data-i18n="screens_h2">The same data, on every screen.</h2>
+    <div class="screens">
+      <div class="shot">
+        <img src="shot-windows.png" alt="Switch Cheats Scraper &amp; Downloader on Windows" loading="lazy">
+        <div class="cap"><img src="icon-windows.png" alt="">Windows</div>
+      </div>
+      <div class="screens-row">
+        <div class="shot s-switch">
+          <img src="shot-switch.png" alt="Switch Cheats Downloader on Nintendo Switch" loading="lazy">
+          <div class="cap"><img src="icon-switch.png" alt="">Nintendo Switch</div>
+        </div>
+        <div class="shot s-android">
+          <img src="shot-android.png" alt="Switch Cheats Downloader on Android" loading="lazy">
+          <div class="cap"><img src="icon-android.png" alt="">Android</div>
         </div>
       </div>
     </div>
@@ -537,6 +574,7 @@ const I18N = {
     plat_and_role:`Android 8.0+`, plat_and_h3:`Downloader auf Android`,
     plat_and_p:`Wähle deinen Emulator — die Cheats werden mit einem Tippen in dessen load-Ordner unter <code>Android/data/…</code> geschrieben. Mit fortsetzbaren Downloads und automatischen Updates.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`signiert`, dl_and_2:`Quellcode (Gradle)`, dl_src2:`Build`,
+    screens_eyebrow:`So sieht's aus`, screens_h2:`Dieselben Daten, auf jedem Bildschirm.`,
     feat_eyebrow:`Was drinsteckt`, feat_h2:`Für den gesamten Cheat-Workflow gemacht.`,
     f1_h:`9+ Quellen, eine Datenbank`,
     f1_p:`CheatSlips (Scrape + offizielle API), GBATempArchive, HamletDuFromage, Sthetix, Breeze, Chansey 60FPS/Res/GFX, MyNXCheats, ibnux und titledb — pro Build zusammengeführt, damit keine Duplikate verloren gehen, in einer SQLite-Datenbank im WAL-Modus.`,
@@ -591,6 +629,7 @@ const I18N = {
     plat_and_role:`Android 8.0+`, plat_and_h3:`Descargador en Android`,
     plat_and_p:`Elige tu emulador y con un toque se escribe cada truco en su carpeta load bajo <code>Android/data/…</code>. Descargas reanudables y autoactualización.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`firmada`, dl_and_2:`Código (Gradle)`, dl_src2:`compilar`,
+    screens_eyebrow:`Míralo en acción`, screens_h2:`Los mismos datos, en cada pantalla.`,
     feat_eyebrow:`Qué incluye`, feat_h2:`Hecho para todo el ciclo del truco.`,
     f1_h:`Nueve+ fuentes, una base de datos`,
     f1_p:`CheatSlips (scrape + API oficial), GBATempArchive, HamletDuFromage, Sthetix, Breeze, Chansey 60FPS/Res/GFX, MyNXCheats, ibnux y titledb — combinados por build para no perder duplicados, en una BD SQLite en modo WAL.`,
@@ -645,6 +684,7 @@ const I18N = {
     plat_and_role:`Android 8.0+`, plat_and_h3:`Téléchargeur sur Android`,
     plat_and_p:`Choisissez votre émulateur et une pression écrit chaque code dans son dossier load sous <code>Android/data/…</code>. Téléchargements repris et mise à jour automatique.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`signée`, dl_and_2:`Source (Gradle)`, dl_src2:`compiler`,
+    screens_eyebrow:`Voir en action`, screens_h2:`Les mêmes données, sur chaque écran.`,
     feat_eyebrow:`Ce qu'il contient`, feat_h2:`Conçu pour tout le cycle de vie des codes.`,
     f1_h:`Neuf+ sources, une base de données`,
     f1_p:`CheatSlips (scrape + API officielle), GBATempArchive, HamletDuFromage, Sthetix, Breeze, Chansey 60FPS/Res/GFX, MyNXCheats, ibnux et titledb — fusionnés par build pour ne jamais perdre de doublons, dans une base SQLite en mode WAL.`,
@@ -699,6 +739,7 @@ const I18N = {
     plat_and_role:`Android 8.0+`, plat_and_h3:`Downloader su Android`,
     plat_and_p:`Scegli l'emulatore e con un tocco ogni trucco viene scritto nella sua cartella load sotto <code>Android/data/…</code>. Download riprendibili e aggiornamento automatico.`,
     dl_and_1:`App (.apk)`, dl_and_1s:`firmata`, dl_and_2:`Sorgente (Gradle)`, dl_src2:`compila`,
+    screens_eyebrow:`Guardalo in azione`, screens_h2:`Gli stessi dati, su ogni schermo.`,
     feat_eyebrow:`Cosa contiene`, feat_h2:`Fatto per tutto il ciclo dei trucchi.`,
     f1_h:`Nove+ fonti, un database`,
     f1_p:`CheatSlips (scrape + API ufficiale), GBATempArchive, HamletDuFromage, Sthetix, Breeze, Chansey 60FPS/Res/GFX, MyNXCheats, ibnux e titledb — uniti per build così non si perdono duplicati, in un DB SQLite in modalità WAL.`,
@@ -753,6 +794,7 @@ const I18N = {
     plat_and_role:`Android 8.0+`, plat_and_h3:`Androidで動くダウンローダー`,
     plat_and_p:`エミュレーターを選ぶと、ワンタップで各チートが<code>Android/data/…</code>下のloadフォルダーに書き込まれます。再開可能なダウンロードと自動更新に対応。`,
     dl_and_1:`アプリ (.apk)`, dl_and_1s:`署名済み`, dl_and_2:`ソース (Gradle)`, dl_src2:`ビルド`,
+    screens_eyebrow:`実際の画面`, screens_h2:`同じデータを、あらゆる画面で。`,
     feat_eyebrow:`主な機能`, feat_h2:`チートのすべての工程のために。`,
     f1_h:`9つ以上のソース、1つのデータベース`,
     f1_p:`CheatSlips（スクレイプ＋公式API）、GBATempArchive、HamletDuFromage、Sthetix、Breeze、Chansey 60FPS/Res/GFX、MyNXCheats、ibnux、titledb —— ビルドごとに統合するので重複が失われず、WALモードのSQLite DBに保存されます。`,
