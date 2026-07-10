@@ -702,6 +702,26 @@ class CheatEditorDialog:
         self._hl_after = None
         self.code.bind("<<Modified>>", self._on_modified)
 
+        # Right-click menu: insert a new-cheat template, duplicate/delete the
+        # cheat block under the cursor, and the standard clipboard trio.
+        self._menu_line = 1
+        self._code_menu = tk.Menu(self.code, tearoff=0,
+                                  bg=th["surface"], fg=th["fg"],
+                                  activebackground=th["hover"],
+                                  activeforeground=th["fg"])
+        self._code_menu.add_command(label=t("＋ Insert new cheat"),
+                                    command=self._insert_template)
+        self._code_menu.add_command(label=t("Duplicate this cheat"),
+                                    command=lambda: self._block_op("dup"))
+        self._code_menu.add_command(label=t("Delete this cheat"),
+                                    command=lambda: self._block_op("del"))
+        self._code_menu.add_separator()
+        for lbl, ev in ((t("Cut"), "<<Cut>>"), (t("Copy"), "<<Copy>>"),
+                        (t("Paste"), "<<Paste>>")):
+            self._code_menu.add_command(
+                label=lbl, command=lambda e=ev: self.code.event_generate(e))
+        self.code.bind("<Button-3>", self._show_code_menu)
+
         # ---- footer: live count + status + buttons ---------------------------
         foot = ttk.Frame(frm)
         foot.pack(fill="x", pady=(10, 0))
@@ -721,6 +741,12 @@ class CheatEditorDialog:
                    command=self._save).pack(side="right", padx=(0, 6))
         ttk.Button(foot, text=t("Reload from disk"),
                    command=self._reload).pack(side="right", padx=(0, 6))
+        newbtn = ttk.Button(foot, text="＋ " + t("New cheat"),
+                            command=self._insert_template)
+        newbtn.pack(side="right", padx=(0, 6))
+        _Tooltip(newbtn, "Insert a ready-made [Name] + code-line scaffold at "
+                         "the end — right-click any cheat to duplicate or "
+                         "delete it.")
 
         self._reload_content = content or ""
         self._refresh_count()
@@ -728,6 +754,87 @@ class CheatEditorDialog:
         self.top.bind("<Escape>", lambda _e: self._close())
         self.top.protocol("WM_DELETE_WINDOW", self._close)
         _center_dialog(self.top, parent)
+
+    # ---- template + per-cheat block operations ----------------------------
+    def _show_code_menu(self, event):
+        """Remember the clicked line, then pop the editor context menu."""
+        try:
+            self._menu_line = int(self.code.index(f"@{event.x},{event.y}").split(".")[0])
+        except Exception:
+            self._menu_line = 1
+        try:
+            self._code_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self._code_menu.grab_release()
+
+    def _insert_template(self):
+        """Append a fresh [Name] + code-line scaffold and select the name so
+        the user can type straight over it."""
+        body = self.code.get("1.0", "end-1c")
+        if body and not body.endswith("\n"):
+            self.code.insert("end", "\n")
+        if body.strip():
+            self.code.insert("end", "\n")
+        start = self.code.index("end-1c")
+        line = int(start.split(".")[0])
+        self.code.insert("end", "[New Cheat]\n04000000 00000000 00000000\n")
+        # Select "New Cheat" inside the brackets for immediate renaming.
+        self.code.tag_remove("sel", "1.0", "end")
+        self.code.tag_add("sel", f"{line}.1", f"{line}.10")
+        self.code.mark_set("insert", f"{line}.10")
+        self.code.see("end")
+        self.code.focus_set()
+        self._rehighlight()
+
+    def _cheat_block_at(self, line: int):
+        """(first_line, last_line) of the cheat block containing *line* — from
+        its [header]/{header} down to the line before the next header."""
+        lines = self.code.get("1.0", "end-1c").split("\n")
+        n = len(lines)
+        line = max(1, min(line, n))
+
+        def is_head(s):
+            s = s.strip()
+            return (s.startswith("[") and s.endswith("]")) or \
+                   (s.startswith("{") and s.endswith("}"))
+
+        start = None
+        for i in range(line, 0, -1):
+            if is_head(lines[i - 1]):
+                start = i
+                break
+        if start is None:
+            return None
+        end = n
+        for i in range(start + 1, n + 1):
+            if is_head(lines[i - 1]):
+                end = i - 1
+                break
+        # Trim trailing blank lines off the block.
+        while end > start and not lines[end - 1].strip():
+            end -= 1
+        return start, end
+
+    def _block_op(self, op: str):
+        blk = self._cheat_block_at(self._menu_line)
+        if blk is None:
+            self.status.config(text=t("Click inside a cheat block first."),
+                               foreground=theme().get("warn", "#ffc24b"))
+            return
+        start, end = blk
+        text = self.code.get(f"{start}.0", f"{end}.end")
+        if op == "del":
+            # Also swallow ONE blank separator line after the block.
+            after = self.code.get(f"{end + 1}.0", f"{end + 1}.end")
+            self.code.delete(f"{start}.0",
+                             f"{end + (2 if not after.strip() else 1)}.0")
+        else:  # duplicate — rename the header so both stay distinguishable
+            first, rest = (text.split("\n", 1) + [""])[:2]
+            s = first.strip()
+            first = s[0] + s[1:-1] + " (copy)" + s[-1]
+            copy = first + ("\n" + rest if rest else "")
+            self.code.insert(f"{end}.end", "\n\n" + copy)
+        self._rehighlight()
 
     def _on_modified(self, _e=None):
         if not self.code.edit_modified():
@@ -792,6 +899,111 @@ class CheatEditorDialog:
 
     def _close(self):
         self.top.destroy()
+
+
+class InvalidLinesDialog:
+    """Result list of the 'Find invalid code lines' repair scan.
+
+    Non-modal, so the user can work through the list: double-click (or the
+    button) opens the build in the cheat editor — the broken lines are already
+    marked red there. After the editor closes the file is re-checked and a
+    fixed file disappears from the list.
+    """
+
+    def __init__(self, parent, app, results):
+        self.app = app
+        th = theme()
+        self.top = tk.Toplevel(parent)
+        self.top.title(t("Find invalid code lines"))
+        self.top.transient(parent)
+        self.top.configure(bg=th["bg"])
+        self.top.minsize(640, 380)
+
+        frm = ttk.Frame(self.top, padding=12)
+        frm.pack(fill="both", expand=True)
+        self.head_var = tk.StringVar()
+        ttk.Label(frm, textvariable=self.head_var,
+                  font=("Segoe UI Semibold", 11),
+                  foreground=th["accent"]).pack(anchor="w")
+        ttk.Label(frm, text=t("Double-click a row to open it in the cheat "
+                              "editor — the broken lines are marked red."),
+                  foreground=th["fg_muted"], font=("Segoe UI", 9)).pack(
+                      anchor="w", pady=(2, 8))
+
+        cols = ("game", "tid", "bid", "count", "sample")
+        box = ttk.Frame(frm)
+        box.pack(fill="both", expand=True)
+        self.tree = ttk.Treeview(box, columns=cols, show="headings",
+                                 selectmode="browse")
+        for cid, head, width, anchor in (
+                ("game", t("Game"), 200, "w"),
+                ("tid", "Title ID", 130, "center"),
+                ("bid", "Build ID", 130, "center"),
+                ("count", t("⚠ Lines"), 60, "center"),
+                ("sample", t("Example"), 190, "w")):
+            self.tree.heading(cid, text=head)
+            self.tree.column(cid, width=width, anchor=anchor,
+                             stretch=(cid in ("game", "sample")))
+        vsb = ttk.Scrollbar(box, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+        self.tree.pack(side="left", fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
+        self._rows = {}
+        for r in results:
+            item = self.tree.insert("", "end", values=(
+                r["name"] or t("Unnamed game"), r["tid"] or "?", r["bid"],
+                r["count"], r["sample"]))
+            self._rows[item] = r
+        self._update_head()
+
+        self.tree.bind("<Double-1>", self._open_selected)
+        btns = ttk.Frame(frm)
+        btns.pack(fill="x", pady=(8, 0))
+        ttk.Button(btns, text=t("Close"),
+                   command=self.top.destroy).pack(side="right")
+        ttk.Button(btns, text=t("Open in editor"), style="Accent.TButton",
+                   command=self._open_selected).pack(side="right", padx=(0, 6))
+        self.top.bind("<Escape>", lambda _e: self.top.destroy())
+        _center_dialog(self.top, parent)
+
+    def _update_head(self):
+        self.head_var.set(t("{n} file(s) with invalid code lines.",
+                            n=len(self.tree.get_children())))
+
+    def _open_selected(self, _event=None):
+        sel = self.tree.selection()
+        if not sel:
+            return
+        item = sel[0]
+        r = self._rows.get(item)
+        if not r:
+            return
+        dlg = self.app._open_cheat_editor_for(r["tid"], r["bid"],
+                                              name=r["name"])
+        try:
+            self.top.wait_window(dlg.top)
+        except Exception:
+            pass
+        # Re-check the file: fixed → drop the row; still broken → update count.
+        try:
+            p = self.app._cheat_file_path(r["tid"], r["bid"])
+            bad = []
+            if p and p.exists():
+                bad = [ln for ln in p.read_text(
+                           encoding="utf-8", errors="replace").splitlines()
+                       if classify_cheat_line(ln.strip()) == "error"]
+            if not bad:
+                self.tree.delete(item)
+                self._rows.pop(item, None)
+                self._update_head()
+            else:
+                r["count"] = len(bad)
+                r["sample"] = bad[0].strip()[:60]
+                self.tree.item(item, values=(
+                    r["name"] or t("Unnamed game"), r["tid"] or "?", r["bid"],
+                    r["count"], r["sample"]))
+        except Exception:
+            pass
 
 
 class ExportSDDialog:
@@ -3220,6 +3432,21 @@ class ScraperGUI:
             self.status_var.set(t("Deleted filter preset '{name}'.", name=name))
 
     # -- ⭐ favourites / watchlist -----------------------------------------
+    def toggle_favorite_tid(self, tid) -> bool:
+        """Toggle one game's ⭐; returns the NEW state. Persists + refreshes."""
+        tid_u = (tid or "").strip().upper()
+        if not tid_u:
+            return False
+        if tid_u in self._favorites:
+            self._favorites.discard(tid_u)
+            fav = False
+        else:
+            self._favorites.add(tid_u)
+            fav = True
+        self._save_settings()
+        self.refresh_table()
+        return fav
+
     def _ctx_toggle_favorite(self):
         """Toggle ⭐ for every selected row's game (per title_id)."""
         pairs = self._selected_pairs()
@@ -3437,6 +3664,7 @@ class ScraperGUI:
         repair_menu.add_command(label="Fix 0-cheat entries", command=self.on_fix_zero)
         repair_menu.add_command(label="Recount cheats from disk", command=self.on_recount_disk)
         repair_menu.add_command(label="Scan for empty cheat files", command=self.on_find_empty)
+        repair_menu.add_command(label="Find invalid code lines", command=self.on_find_invalid_lines)
         repair_menu.add_command(label="Fix ID names", command=self.on_fix_id_names)
         repair_menu.add_separator()
         repair_menu.add_command(label="Sync titles folder with DB", command=self.on_sync_titles)
@@ -4329,7 +4557,9 @@ class ScraperGUI:
         """
         if self._busy:
             return
-        selected = self._selected_title_ids()
+        # Callers may hand an explicit title set (context menu, game page);
+        # otherwise fall back to the table selection.
+        selected = title_ids or self._selected_title_ids()
         # Default file name is always dated with today's date, e.g.
         # "switch-cheats-05072026.zip". Keep the last-used folder (from a
         # remembered path) but refresh the name to the current date each time.
@@ -5923,6 +6153,12 @@ class ScraperGUI:
             version = ""
         if name == "-":
             name = ""
+        self._open_cheat_editor_for(tid, bid, name=name, version=version)
+
+    def _open_cheat_editor_for(self, tid, bid, name="", version=""):
+        """Open the cheat editor for a specific build (used by the table's
+        double-click, the invalid-lines repair list and the game page).
+        Missing metadata is filled from the DB. Returns the dialog."""
         # Credits come from the DB; content + downloaded state come from disk.
         credits = ""
         try:
@@ -5933,7 +6169,7 @@ class ScraperGUI:
                 if not name:
                     name = info.get("title") or ""
                 for s in info.get("sources", []):
-                    if (s.get("build_id") or "").upper() == bid.upper():
+                    if (s.get("build_id") or "").upper() == (bid or "").upper():
                         credits = s.get("credits") or ""
                         if not version:
                             version = s.get("version") or ""
@@ -5948,7 +6184,7 @@ class ScraperGUI:
                 content = p.read_text(encoding="utf-8", errors="replace")
             except Exception:
                 content = ""
-        CheatEditorDialog(
+        return CheatEditorDialog(
             self.root, title_id=tid, build_id=bid, name=name, version=version,
             credits=credits, content=content, downloaded=downloaded,
             on_save=self._editor_save)
@@ -5994,6 +6230,91 @@ class ScraperGUI:
                               tid=tid, bid=bid, n=len(names)))
         self.refresh_table()
         return True, t("Saved — {n} cheat(s).", n=len(names))
+
+    # ------------------------------------- repair: find invalid code lines
+    def on_find_invalid_lines(self):
+        """Scan every downloaded cheat file for malformed Atmosphère code lines
+        (same rules as the editor's red marking) and list the hits — a click
+        opens the file in the editor, where the lines are already highlighted."""
+        if self._busy:
+            return
+        self._stop_event.clear()
+        self._set_busy(True)
+        self.status_var.set(t("Scanning cheat files for invalid code lines…"))
+        cfg = {"output": self.dl_output.get().strip() or DEFAULT_OUTPUT,
+               "db_path": self.db_path.get()}
+        threading.Thread(target=self._invalid_lines_worker, args=(cfg,),
+                         daemon=True).start()
+
+    def _invalid_lines_worker(self, cfg):
+        out = Path(cfg["output"])
+        results = []
+        try:
+            # Name + tid lookups from the DB (one shot, read-only).
+            names, bid2tid = {}, {}
+            try:
+                import sqlite3 as _sq
+                con = _sq.connect(f"file:{Path(cfg['db_path'])}?mode=ro", uri=True)
+                for tid, bid, name in con.execute(
+                        "SELECT UPPER(title_id), UPPER(build_id), game_title "
+                        "FROM builds"):
+                    bid2tid.setdefault(bid, tid)
+                    if name:
+                        names.setdefault(tid, name)
+                con.close()
+            except Exception:
+                pass
+
+            files = []
+            troot = out / "titles"
+            if troot.exists():
+                files += [(p.parts[-3].upper(), p.stem.upper(), p)
+                          for p in troot.glob("*/cheats/*.txt")]
+            broot = out / "by_bid"
+            if broot.exists():
+                seen = {bid for _t, bid, _p in files}
+                files += [(bid2tid.get(p.stem.upper(), ""), p.stem.upper(), p)
+                          for p in broot.glob("*.txt")
+                          if p.stem.upper() not in seen]
+
+            for i, (tid, bid, path) in enumerate(files, 1):
+                if self._stop_event.is_set():
+                    break
+                if i % 250 == 0:
+                    self._log_queue.put(("progress", i, len(files),
+                                         f"Scanning {i}/{len(files)}"))
+                try:
+                    txt = path.read_text(encoding="utf-8", errors="replace")
+                except Exception:
+                    continue
+                bad = [ln.strip() for ln in txt.splitlines()
+                       if classify_cheat_line(ln.strip()) == "error"]
+                if bad:
+                    results.append({
+                        "tid": tid, "bid": bid,
+                        "name": names.get(tid, ""),
+                        "count": len(bad), "sample": bad[0][:60],
+                    })
+            results.sort(key=lambda r: (-r["count"], r["name"] or "~"))
+            self._log_queue.put(("invalid_scan_done", results))
+        except Exception as exc:
+            self._log_queue.put(("error", f"Invalid-line scan failed:\n{exc}"))
+            self._log_queue.put(("invalid_scan_done", None))
+
+    def _finish_invalid_scan(self, results):
+        self._set_busy(False)
+        if results is None:
+            return
+        if not results:
+            self.status_var.set(t("No invalid code lines found — all files are clean."))
+            messagebox.showinfo(
+                t("Find invalid code lines"),
+                t("No invalid code lines found — all files are clean."),
+                parent=self.root)
+            return
+        self.status_var.set(t("{n} file(s) with invalid code lines.",
+                              n=len(results)))
+        InvalidLinesDialog(self.root, self, results)
 
     def _ctx_edit_entry(self):
         pairs = self._selected_pairs()
@@ -8501,6 +8822,8 @@ class ScraperGUI:
             self._finish_switch_app(msg[1], msg[2])
         elif kind == "androidapp_done":
             self._finish_android_app(msg[1], msg[2])
+        elif kind == "invalid_scan_done":
+            self._finish_invalid_scan(msg[1])
         elif kind == "run_installer":
             self._set_busy(False)
             path = msg[1]

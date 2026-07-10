@@ -1557,6 +1557,111 @@ _merge({
         "de": "Favoriten aktualisiert", "es": "Favoritos actualizados",
         "fr": "Favoris mis à jour", "it": "Preferiti aggiornati",
         "ja": "お気に入りが更新されました"},
+    # -- Editor: templates + block ops --
+    "New cheat": {"de": "Neuer Cheat", "es": "Nuevo cheat", "fr": "Nouveau cheat",
+                  "it": "Nuovo cheat", "ja": "新しいチート"},
+    "＋ Insert new cheat": {
+        "de": "＋ Neuen Cheat einfügen", "es": "＋ Insertar nuevo cheat",
+        "fr": "＋ Insérer un nouveau cheat", "it": "＋ Inserisci nuovo cheat",
+        "ja": "＋ 新しいチートを挿入"},
+    "Duplicate this cheat": {
+        "de": "Diesen Cheat duplizieren", "es": "Duplicar este cheat",
+        "fr": "Dupliquer ce cheat", "it": "Duplica questo cheat",
+        "ja": "このチートを複製"},
+    "Delete this cheat": {
+        "de": "Diesen Cheat löschen", "es": "Eliminar este cheat",
+        "fr": "Supprimer ce cheat", "it": "Elimina questo cheat",
+        "ja": "このチートを削除"},
+    "Cut": {"de": "Ausschneiden", "es": "Cortar", "fr": "Couper",
+            "it": "Taglia", "ja": "切り取り"},
+    "Paste": {"de": "Einfügen", "es": "Pegar", "fr": "Coller",
+              "it": "Incolla", "ja": "貼り付け"},
+    "Click inside a cheat block first.": {
+        "de": "Klicke zuerst in einen Cheat-Block.",
+        "es": "Primero haz clic dentro de un bloque de cheat.",
+        "fr": "Cliquez d'abord dans un bloc de cheat.",
+        "it": "Prima fai clic dentro un blocco di cheat.",
+        "ja": "まずチートブロック内をクリックしてください。"},
+    # -- Repair: find invalid code lines --
+    "Find invalid code lines": {
+        "de": "Ungültige Code-Zeilen finden",
+        "es": "Buscar líneas de código no válidas",
+        "fr": "Trouver les lignes de code invalides",
+        "it": "Trova righe di codice non valide",
+        "ja": "無効なコード行を検索"},
+    "Scanning cheat files for invalid code lines…": {
+        "de": "Durchsuche Cheat-Dateien nach ungültigen Code-Zeilen…",
+        "es": "Buscando líneas de código no válidas en los archivos…",
+        "fr": "Analyse des fichiers de cheats (lignes invalides)…",
+        "it": "Scansione dei file di cheat (righe non valide)…",
+        "ja": "チートファイルの無効なコード行をスキャン中…"},
+    "No invalid code lines found — all files are clean.": {
+        "de": "Keine ungültigen Code-Zeilen gefunden — alle Dateien sind sauber.",
+        "es": "No se encontraron líneas no válidas: todos los archivos están limpios.",
+        "fr": "Aucune ligne invalide trouvée — tous les fichiers sont propres.",
+        "it": "Nessuna riga non valida trovata — tutti i file sono a posto.",
+        "ja": "無効なコード行は見つかりませんでした — すべてのファイルは正常です。"},
+    "{n} file(s) with invalid code lines.": {
+        "de": "{n} Datei(en) mit ungültigen Code-Zeilen.",
+        "es": "{n} archivo(s) con líneas de código no válidas.",
+        "fr": "{n} fichier(s) avec des lignes de code invalides.",
+        "it": "{n} file con righe di codice non valide.",
+        "ja": "無効なコード行を含むファイル：{n} 件。"},
+    "Double-click a row to open it in the cheat editor — the broken lines are marked red.": {
+        "de": "Doppelklicke eine Zeile, um sie im Cheat-Editor zu öffnen — die "
+              "defekten Zeilen sind rot markiert.",
+        "es": "Haz doble clic en una fila para abrirla en el editor: las líneas "
+              "rotas están marcadas en rojo.",
+        "fr": "Double-cliquez sur une ligne pour l'ouvrir dans l'éditeur — les "
+              "lignes cassées sont en rouge.",
+        "it": "Fai doppio clic su una riga per aprirla nell'editor — le righe "
+              "difettose sono in rosso.",
+        "ja": "行をダブルクリックするとエディタで開きます — 壊れた行は赤色で"
+              "表示されます。"},
+    "Open in editor": {
+        "de": "Im Editor öffnen", "es": "Abrir en el editor",
+        "fr": "Ouvrir dans l'éditeur", "it": "Apri nell'editor",
+        "ja": "エディタで開く"},
+    "⚠ Lines": {"de": "⚠ Zeilen", "es": "⚠ Líneas", "fr": "⚠ Lignes",
+                "it": "⚠ Righe", "ja": "⚠ 行"},
+    "Example": {"de": "Beispiel", "es": "Ejemplo", "fr": "Exemple",
+                "it": "Esempio", "ja": "例"},
+    # -- Game detail page --
+    "Back to Library": {
+        "de": "Zurück zur Bibliothek", "es": "Volver a la biblioteca",
+        "fr": "Retour à la bibliothèque", "it": "Torna alla libreria",
+        "ja": "ライブラリに戻る"},
+    "Add to favorites": {
+        "de": "Zu Favoriten hinzufügen", "es": "Añadir a favoritos",
+        "fr": "Ajouter aux favoris", "it": "Aggiungi ai preferiti",
+        "ja": "お気に入りに追加"},
+    "Remove favorite": {
+        "de": "Favorit entfernen", "es": "Quitar de favoritos",
+        "fr": "Retirer des favoris", "it": "Rimuovi dai preferiti",
+        "ja": "お気に入りを解除"},
+    "Download cheats": {
+        "de": "Cheats herunterladen", "es": "Descargar cheats",
+        "fr": "Télécharger les cheats", "it": "Scarica i cheat",
+        "ja": "チートをダウンロード"},
+    "Export as ZIP": {
+        "de": "Als ZIP exportieren", "es": "Exportar como ZIP",
+        "fr": "Exporter en ZIP", "it": "Esporta come ZIP",
+        "ja": "ZIPとしてエクスポート"},
+    "Edit codes": {"de": "Codes bearbeiten", "es": "Editar códigos",
+                   "fr": "Modifier les codes", "it": "Modifica codici",
+                   "ja": "コードを編集"},
+    "Show cheats": {"de": "Cheats zeigen", "es": "Mostrar cheats",
+                    "fr": "Afficher les cheats", "it": "Mostra cheat",
+                    "ja": "チートを表示"},
+    "{n} build(s)": {"de": "{n} Build(s)", "es": "{n} build(s)",
+                     "fr": "{n} build(s)", "it": "{n} build",
+                     "ja": "{n} 件のビルド"},
+    "Players": {"de": "Spieler", "es": "Jugadores", "fr": "Joueurs",
+                "it": "Giocatori", "ja": "プレイ人数"},
+    "Languages": {"de": "Sprachen", "es": "Idiomas", "fr": "Langues",
+                  "it": "Lingue", "ja": "言語"},
+    "Rating": {"de": "Freigabe", "es": "Clasificación", "fr": "Classification",
+               "it": "Classificazione", "ja": "レーティング"},
     # -- Cheat content search --
     "Search in cheats": {
         "de": "In Cheats suchen", "es": "Buscar en cheats",

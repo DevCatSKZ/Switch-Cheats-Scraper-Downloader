@@ -12,12 +12,13 @@ Classic:  py gui.py          (unchanged, always available as fallback)
 
 import sys
 import tkinter as tk
+from pathlib import Path
 from tkinter import ttk
 
 import i18n
 from i18n import t
 from gui import (ScraperGUI, theme, _Tooltip, _BROWSER_KINDS, _fmt_size,
-                 APP_NAME, APP_AUTHOR, APP_VERSION)
+                 COLUMNS, APP_NAME, APP_AUTHOR, APP_VERSION)
 
 
 # Sidebar navigation: (key, glyph, label). Labels are static English keys —
@@ -168,6 +169,12 @@ class ModernApp(ScraperGUI):
                                       style="SideCredit.TLabel")
         self._side_credit.pack(side="bottom", pady=(10, 2))
 
+        # Hidden page (no sidebar entry): the per-game detail view, opened by
+        # double-clicking a row in the Library or a name on the Home page.
+        detail = ttk.Frame(content, style="Body.TFrame", padding=(18, 12, 18, 10))
+        detail.grid(row=0, column=0, sticky="nsew")
+        self._pages["detail"] = detail
+
         # ---------- pages ---------------------------------------------------
         self._build_home_page(self._pages["home"])
         self._build_library_page(self._pages["library"])
@@ -175,6 +182,7 @@ class ModernApp(ScraperGUI):
         self._build_scrape_page(self._pages["scrape"])
         self._build_settings_page(self._pages["settings"])
         self._build_log_page(self._pages["log"])
+        self._build_detail_page(self._pages["detail"])
 
         # ---------- footer --------------------------------------------------
         self._footer_line = tk.Frame(root, height=1, bd=0, highlightthickness=0)
@@ -304,7 +312,12 @@ class ModernApp(ScraperGUI):
             rowf = ttk.Frame(host, style="Glass.TFrame")
             rowf.pack(fill="x", pady=1)
             label = (name or tid or "?")[:34]
-            ttk.Label(rowf, text=label, style="Glass.TLabel").pack(side="left")
+            name_lbl = ttk.Label(rowf, text=label, style="Glass.TLabel",
+                                 cursor="hand2")
+            name_lbl.pack(side="left")
+            # Click a name → jump straight to its game page.
+            name_lbl.bind("<Button-1>",
+                          lambda _e, t_=tid: self.open_game_page(t_))
             meta = f"{cc}"
             if version:
                 meta = f"v{version} · {cc}"
@@ -422,6 +435,278 @@ class ModernApp(ScraperGUI):
         ttk.Entry(row, textvariable=var).pack(side="left", fill="x", expand=True)
         ttk.Button(row, text="…", width=3, command=chooser).pack(side="left", padx=(4, 0))
 
+    # ------------------------------------------------------- game detail page
+    def _build_detail_page(self, page):
+        """Static skeleton — the body is rebuilt per game in open_game_page."""
+        bar = ttk.Frame(page, style="Body.TFrame")
+        bar.pack(fill="x", pady=(0, 8))
+        ttk.Button(bar, text="←  " + t("Back to Library"),
+                   command=lambda: self._select_page("library")).pack(side="left")
+        self._detail_fav_btn = ttk.Button(bar, text="⭐",
+                                          command=self._detail_toggle_fav)
+        self._detail_fav_btn.pack(side="right")
+        self._detail_export_btn = ttk.Button(
+            bar, text=t("Export as ZIP"), command=self._detail_export)
+        self._detail_export_btn.pack(side="right", padx=(0, 6))
+        self._detail_dl_btn = ttk.Button(
+            bar, text="⬇ " + t("Download cheats"), command=self._detail_download)
+        self._detail_dl_btn.pack(side="right", padx=(0, 6))
+        self._detail_body = ttk.Frame(page, style="Body.TFrame")
+        self._detail_body.pack(fill="both", expand=True)
+        self._detail_tid = None
+        self._detail_imgs = {}   # keep PhotoImage refs alive
+
+    def _detail_toggle_fav(self):
+        if not self._detail_tid:
+            return
+        fav = self.toggle_favorite_tid(self._detail_tid)
+        self._paint_detail_fav(fav)
+
+    def _paint_detail_fav(self, fav):
+        self._detail_fav_btn.config(
+            text=("★ " + t("Remove favorite")) if fav
+            else ("⭐ " + t("Add to favorites")))
+
+    def _detail_download(self):
+        if self._detail_tid:
+            self._start_download([self._detail_tid])
+
+    def _detail_export(self):
+        if self._detail_tid:
+            self.on_export_zip([self._detail_tid])
+
+    def open_game_page(self, tid):
+        """Populate + show the game page for *tid* (all builds, cover, facts)."""
+        tid = (tid or "").strip()
+        if not tid or tid == "-":
+            return
+        import sqlite3 as _sq
+        try:
+            con = _sq.connect(f"file:{Path(self.db_path.get())}?mode=ro", uri=True)
+            con.row_factory = _sq.Row
+            rows = con.execute(
+                "SELECT * FROM builds WHERE UPPER(title_id)=UPPER(?) "
+                "ORDER BY version IS NULL, version, build_id", (tid,)).fetchall()
+            con.close()
+        except Exception as exc:
+            self._append_log(f"Game page: query failed: {exc}")
+            rows = []
+        if not rows:
+            return
+        self._detail_tid = tid.upper()
+        first = rows[0]
+
+        def field(name):
+            vals = [r[name] for r in rows if name in r.keys() and r[name]]
+            return vals[0] if vals else ""
+
+        body = self._detail_body
+        for w in body.winfo_children():
+            w.destroy()
+        self._detail_imgs.clear()
+        c = theme()
+
+        # ---- head: eyebrow, title, meta line ------------------------------
+        title = field("game_title") or tid.upper()
+        ttk.Label(body, text="—  " + _spaced(t("Game")),
+                  style="Eyebrow.TLabel").pack(anchor="w")
+        ttk.Label(body, text=title, style="PageTitle.TLabel").pack(
+            anchor="w", pady=(3, 0))
+        meta_bits = [b for b in (
+            field("publisher"), field("developer"), field("category"),
+            field("release_date"), field("region")) if b]
+        sub = "  ·  ".join(str(b) for b in meta_bits) or tid.upper()
+        ttk.Label(body, text=sub, style="PageSub.TLabel").pack(anchor="w")
+        self._hairline(body, pady=(10, 12))
+
+        cols = ttk.Frame(body, style="Body.TFrame")
+        cols.pack(fill="both", expand=True)
+
+        # ---- left column: cover + description + facts ----------------------
+        left = ttk.Frame(cols, style="Body.TFrame")
+        left.pack(side="left", fill="y", padx=(0, 16), anchor="n")
+        cover = ttk.Label(left, style="Glass.TLabel", anchor="center")
+        cover.pack(anchor="n")
+        url = field("image") or field("banner")
+        if url:
+            self._load_cover_into(cover, url, tid)
+        facts = ttk.Frame(left, style="Body.TFrame")
+        facts.pack(anchor="w", pady=(10, 0))
+        for label, value in (
+                ("Title ID", tid.upper()),
+                (t("Players"), field("players")),
+                (t("Languages"), field("languages")),
+                (t("Rating"), field("rating"))):
+            if not value:
+                continue
+            rowf = ttk.Frame(facts, style="Body.TFrame")
+            rowf.pack(anchor="w", fill="x")
+            ttk.Label(rowf, text=f"{label}:", style="PageSub.TLabel",
+                      width=10).pack(side="left")
+            ttk.Label(rowf, text=str(value)[:36],
+                      style="PageSub.TLabel").pack(side="left")
+
+        desc = field("game_description") or field("description") or field("intro")
+        if desc:
+            dbox = tk.Text(left, width=36, height=13, wrap="word",
+                           font=("Segoe UI", 9), relief="flat",
+                           bg=c["surface"], fg=c["fg_muted"],
+                           padx=10, pady=8, highlightthickness=1,
+                           highlightbackground=c["border"], cursor="arrow")
+            dbox.insert("1.0", str(desc)[:2200])
+            dbox.config(state="disabled")
+            dbox.pack(anchor="w", pady=(10, 0))
+
+        # ---- right column: builds as glass cards (scrollable) -------------
+        right = ttk.Frame(cols, style="Body.TFrame")
+        right.pack(side="left", fill="both", expand=True)
+        ttk.Label(right, text=t("{n} build(s)", n=len(rows)),
+                  style="CardTitle2.TLabel").pack(anchor="w", pady=(0, 6))
+        canvas = tk.Canvas(right, highlightthickness=0, bd=0, bg=c["bg"])
+        vsb = ttk.Scrollbar(right, orient="vertical", command=canvas.yview)
+        inner = ttk.Frame(canvas, style="Body.TFrame")
+        win = canvas.create_window((0, 0), window=inner, anchor="nw")
+        canvas.configure(yscrollcommand=vsb.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
+        inner.bind("<Configure>",
+                   lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>",
+                    lambda e: canvas.itemconfigure(win, width=e.width))
+        def _wheel(e):
+            canvas.yview_scroll(-e.delta // 120, "units")
+        for w in (canvas, inner):
+            w.bind("<MouseWheel>", _wheel)
+
+        import json as _json
+        for r in rows:
+            self._build_build_card(inner, tid, r, _json)
+
+        self._paint_detail_fav(self._detail_tid in self._favorites)
+        self._pages["detail"].tkraise()
+        self._nav_current = "library"   # keep Library lit in the sidebar
+        self._paint_nav()
+
+    def _build_build_card(self, parent, tid, r, _json):
+        c = theme()
+        border, card = self._glass_card(parent, padding=(14, 10))
+        border.pack(fill="x", pady=(0, 8), padx=(0, 4))
+        bid = (r["build_id"] or "").upper()
+        head = ttk.Frame(card, style="Glass.TFrame")
+        head.pack(fill="x")
+        ttk.Label(head, text=bid, style="CardMono.TLabel").pack(side="left")
+        if r["version"]:
+            ttk.Label(head, text=f"v{r['version']}",
+                      style="CardAccent.TLabel").pack(side="left", padx=(10, 0))
+        downloaded = False
+        try:
+            p = self._cheat_file_path(tid, bid)
+            downloaded = bool(p and p.exists())
+        except Exception:
+            pass
+        ttk.Label(head, text=("✓ " + t("downloaded")) if downloaded
+                  else ("✗ " + t("not downloaded")),
+                  foreground=c["ok"] if downloaded else c["fg_muted"],
+                  background=c["surface"], font=("Segoe UI", 9)).pack(side="right")
+
+        sub_bits = []
+        if r["upload_date"]:
+            sub_bits.append(str(r["upload_date"]))
+        if r["source"]:
+            sub_bits.append(str(r["source"]))
+        n_cheats = r["cheat_count"] or 0
+        sub_bits.append(t("{n} cheat(s)", n=n_cheats))
+        ttk.Label(card, text="  ·  ".join(sub_bits),
+                  style="StatSub.TLabel").pack(anchor="w", pady=(2, 6))
+
+        btns = ttk.Frame(card, style="Glass.TFrame")
+        btns.pack(fill="x")
+        ttk.Button(btns, text="✏ " + t("Edit codes"),
+                   command=lambda: self._detail_edit(tid, bid)).pack(side="left")
+        try:
+            names = _json.loads(r["cheat_names"] or "[]")
+        except Exception:
+            names = []
+        if names:
+            holder = ttk.Frame(card, style="Glass.TFrame")
+            shown = {"on": False}
+            lbl = ttk.Label(holder, text="\n".join(f"· {n}" for n in names[:40]),
+                            style="StatSub.TLabel", justify="left")
+
+            def toggle(_e=None, holder=holder, lbl=lbl, shown=shown):
+                shown["on"] = not shown["on"]
+                if shown["on"]:
+                    holder.pack(fill="x", pady=(6, 0))
+                    lbl.pack(anchor="w")
+                else:
+                    lbl.pack_forget()
+                    holder.pack_forget()
+
+            ttk.Button(btns, text="▾ " + t("Show cheats"),
+                       command=toggle).pack(side="left", padx=(6, 0))
+            holder.pack_forget()
+
+    def _detail_edit(self, tid, bid):
+        dlg = self._open_cheat_editor_for(tid, bid)
+        try:
+            self.root.wait_window(dlg.top)
+        except Exception:
+            pass
+        # Counts/downloaded state may have changed — rebuild the page.
+        self.open_game_page(tid)
+
+    def _load_cover_into(self, label, url, tid, maxsize=(280, 400)):
+        """Async cover for the game page (independent of the table's toggle)."""
+        try:
+            from PIL import Image, ImageTk
+        except Exception:
+            return
+        import io
+        import threading as _th
+        cache = self._cover_cache_path(url, (tid or "").upper())
+
+        def work():
+            try:
+                if cache.exists():
+                    raw = cache.read_bytes()
+                else:
+                    import requests
+                    raw = requests.get(self._normalize_url(url), timeout=15).content
+                    if self.cache_covers.get():
+                        try:
+                            cache.parent.mkdir(parents=True, exist_ok=True)
+                            cache.write_bytes(raw)
+                        except Exception:
+                            pass
+                img = Image.open(io.BytesIO(raw))
+                img.thumbnail(maxsize)
+
+                def apply():
+                    try:
+                        photo = ImageTk.PhotoImage(img)
+                        self._detail_imgs[url] = photo
+                        label.config(image=photo)
+                    except Exception:
+                        pass
+                self.root.after(0, apply)
+            except Exception:
+                pass
+
+        _th.Thread(target=work, daemon=True).start()
+
+    # Double-click in the MODERN library opens the game page (the richer view);
+    # the cheat editor sits one click deeper, on each build card.
+    def _open_cheat_editor(self, event):
+        row = self.tree.identify_row(event.y)
+        if not row:
+            return
+        col_ids = [col[0] for col in COLUMNS]
+        v = self.tree.item(row, "values")
+        idx = col_ids.index("title_id")
+        tid = str(v[idx]).strip() if len(v) > idx else ""
+        if tid and tid != "-":
+            self.open_game_page(tid)
+
     # ------------------------------------------------------------ navigation
     def _select_page(self, key):
         self._pages[key].tkraise()
@@ -486,6 +771,12 @@ class ModernApp(ScraperGUI):
         # Controls sitting on a glass card must share its surface background.
         st.configure("CardTitle.TLabel", background=c["surface"],
                      foreground=c["title"], font=("Segoe UI Semibold", 11))
+        st.configure("CardTitle2.TLabel", background=c["bg"],
+                     foreground=c["title"], font=("Segoe UI Semibold", 11))
+        st.configure("CardMono.TLabel", background=c["surface"],
+                     foreground=c["fg"], font=("Consolas", 10, "bold"))
+        st.configure("CardAccent.TLabel", background=c["surface"],
+                     foreground=c["accent"], font=("Segoe UI Semibold", 10))
         st.configure("Glass.TLabel", background=c["surface"], foreground=c["fg"])
         st.configure("Glass.TCheckbutton", background=c["surface"],
                      foreground=c["fg"])

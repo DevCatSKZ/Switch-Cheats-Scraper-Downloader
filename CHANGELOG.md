@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-10 (feature update 3)
+
+### Added — game pages, a broken-file finder and editor power tools
+- **Game detail page** (modern UI): double-click a game (or click a name on
+  Home) → a full page with the cover art, description and facts (players,
+  languages, rating), every build as a glass card (version, source, download
+  state, cheat count) with expandable cheat lists, per-build "Edit codes",
+  and header actions: ⭐ favorite toggle, "Download cheats", "Export as ZIP",
+  "Back to Library". The cheat editor now sits one click deeper, on each
+  build card.
+- **Repair → "Find invalid code lines":** scans every downloaded cheat file
+  with the editor's validation rules and lists the broken ones (sorted by
+  error count, with an example line). Double-click opens the file in the
+  editor — red lines already marked; fixed files disappear from the list.
+  Found 183 genuinely broken files on the reference dataset.
+- **Editor power tools:** a "＋ New cheat" button inserts a ready-made
+  [Name] + code scaffold (name pre-selected for typing); right-click any
+  cheat block to duplicate ("[Name (copy)]") or delete it, plus the standard
+  clipboard actions.
+
 ## v1.3 — 2026-07-10 (feature update 2)
 
 ### Added — editor validation, favourites watchlist, cheat search
