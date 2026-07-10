@@ -12,16 +12,38 @@
 
 <p align="center"><b>by DevCatSKZ</b></p>
 
-A tool to **scrape and download** Nintendo Switch cheat codes from **[CheatSlips.com](https://www.cheatslips.com), [GBATempArchive](https://gbatemp.net), [HamletDuFromage](https://github.com/HamletDuFromage/switch-cheats-db), [Sthetix](https://github.com/sthetix/nx-cheats-db), [Breeze (NXCheatCode)](https://github.com/tomvita/NXCheatCode), [ChanseyIsTheBest (60FPS/Res/GFX)](https://github.com/ChanseyIsTheBest/NX-60FPS-RES-GFX-Cheats), [MyNXCheats](https://github.com/Arch9SK7/MyNXCheats), [ibnux](https://github.com/ibnux/switch-cheat) and [titledb](https://github.com/blawar/titledb)**, manage them in a **searchable SQLite database** (names, covers, regions, versions, descriptions) and export them straight into the right layout on your **Switch SD card** (Atmosphère / Breeze / EdiZon) — or as a ZIP.
+A complete **toolkit for Nintendo Switch cheat codes**. It scrapes and downloads codes from **9+ sources** — [CheatSlips.com](https://www.cheatslips.com), [GBATempArchive](https://gbatemp.net), [HamletDuFromage](https://github.com/HamletDuFromage/switch-cheats-db), [Sthetix](https://github.com/sthetix/nx-cheats-db), [Breeze (NXCheatCode)](https://github.com/tomvita/NXCheatCode), [ChanseyIsTheBest (60FPS/Res/GFX)](https://github.com/ChanseyIsTheBest/NX-60FPS-RES-GFX-Cheats), [MyNXCheats](https://github.com/Arch9SK7/MyNXCheats), [ibnux](https://github.com/ibnux/switch-cheat) and [titledb](https://github.com/blawar/titledb) — and keeps them in a **searchable database** you actually manage through a modern **Holo-Glass GUI**:
+
+- **Browse** as a table *or* a cover gallery, with quick-filter chips, saved filter presets, a per-game page and a **Ctrl+K command palette**.
+- **View & edit** the codes in a built-in editor with **syntax highlighting and validation** (malformed lines are flagged before they ever reach your console), plus a "＋ New cheat" scaffold and per-cheat duplicate/delete.
+- **⭐ Favourites & watchlist** — mark games and get notified when a favourite gains new cheats after a data update.
+- **Enrich** names, cover art, regions, versions and descriptions from titledb & more.
+- **Export** straight into the right layout for your **Switch SD card** (Atmosphère / Breeze / EdiZon), for **Switch emulators** (Eden / Suyu / Sudachi / Yuzu / Ryujinx) or as a ZIP.
+- **Stays current by itself** — silent, SHA-256-verified auto-updates (no admin/UAC) and an opt-in that keeps the cheat data fresh automatically.
+- **Companion apps** download the same cheats **on the Switch itself** (homebrew `.nro`) and on **Android** — no PC needed.
+- **6 languages** (EN/DE/ES/FR/IT/JA), three themes, Windows installer **and** portable.
+
+## ⭐ Nintendo Switch Cheats Database — always up to date
+
+**Don't want to scrape anything?** A ready-made, continuously-updated **Nintendo Switch Cheats Database** is published in the repo's [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) and refreshed whenever new cheats appear — every game, every cheat, in one click:
+
+| Direct download | What it is |
+|---|---|
+| **📥 [database.db](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/database.db)** | The complete cheat database (game names, regions, versions, cover URLs) — ~10 MB |
+| **📥 [switch-cheats.zip](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip)** | Every cheat file in Atmosphère layout — ~4 MB |
+| **➡ [Open the Nintendo Switch Cheats Database »](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data)** | Browse the full data release |
+
+In the app, the **★ Download Complete** button on Home pulls both in one click, merges them into your library and keeps them current. The on-console Switch app and the Android app read this same database directly.
 
 > Only use the tool with your **own** CheatSlips account. All cheat codes belong to their original authors/uploaders.
 
 <p align="center"><img src="screenshots/windows-tool.png" width="900" alt="Switch Cheats Scraper & Downloader (Windows)"></p>
 
 **How it works (Windows):**
-1. **Collect** — scrape CheatSlips and/or import 9+ community sources into a local **SQLite database** (game names, covers, regions, versions, descriptions).
-2. **Browse** — search and filter everything in the GUI.
-3. **Export** — one click to your SD card (Atmosphère / Breeze / EdiZon layout) or as ZIP. The merged dataset is also published as the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data), so nobody *has* to scrape.
+1. **Get the data** — the fast way: click **★ Download Complete** to pull the ready-made [Nintendo Switch Cheats Database](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) (all games + all cheat files) in one go. The thorough way: scrape CheatSlips and/or import any of the **9+ community sources** yourself. Enrich names, cover art, regions, versions and descriptions with one click.
+2. **Browse & manage** — search and filter as a **table or a cover gallery**, open a **per-game page**, and **view/edit the codes** in the built-in editor (syntax-highlighted, validated). Mark **⭐ favourites**, search inside cheat names, save filter presets, or jump anywhere with **Ctrl+K**.
+3. **Export** — one click into the right layout for your **Switch SD card** (Atmosphère / Breeze / EdiZon), for **Switch emulators** (Eden / Suyu / Sudachi / Yuzu / Ryujinx), or as a **ZIP**.
+4. **Stay current** — the app **updates itself** (silent, SHA-256-verified, no admin) and can keep the cheat data fresh automatically; a **Repair** menu recounts, cleans and fixes files, incl. a scan for invalid code lines.
 
 ## 🆕 What's new in v1.3
 
@@ -61,36 +83,47 @@ The desktop tool has a **counterpart that runs directly on the Switch**: a stand
 
 Source & developer docs: [`SwitchCheatsNRO/`](SwitchCheatsNRO/) — build with devkitPro, see its [README](SwitchCheatsNRO/README.md).
 
+## 📱 Android app (emulator companion)
+
+There's also an **Android downloader** for Switch **emulators** (Eden / Suyu / Sudachi): it fetches the always-current cheats and unpacks them into a **public folder** on your device, ready to import — no PC needed.
+
+<p align="center"><img src="screenshots/android-app.png" width="320" alt="Switch Cheats Downloader on Android"></p>
+
+**What it does:** one tap on **Download & unpack** pulls the latest emulator-ready cheats and extracts them to a public folder (`/SwitchCheats` by default) in the `<TitleID>/<GameName>/cheats/<BuildID>.txt` layout emulators read. Then in your emulator (Eden / Suyu / Sudachi) you long-press the game → **Add-ons → "Mods and cheats"** → pick the matching folder, and the emulator copies the cheats into its own storage. *(Android 11+ blocks third-party apps from writing into an emulator's private `Android/data`, so the app hands you a public folder to import from — the same for all three emulators.)* Same "re-upload without version bump" update detection as the desktop tool, the app can **update itself**, and the UI speaks **6 languages** (auto-detected).
+
+**Install:** download [`SwitchCheatsDownloader-Android.apk`](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/latest/download/SwitchCheatsDownloader-Android.apk) from the latest release, copy it to your phone and install it (allow installation from unknown sources). Requires a Switch emulator on the device. The Windows tool's **Download Android App** button fetches the newest `.apk` for you (SHA-256-verified).
+
+Source & developer docs: [`SwitchCheatsAndroid/`](SwitchCheatsAndroid/) — see its [README](SwitchCheatsAndroid/README.md).
+
 ## 📦 Always-current cheats & database
 
 You don't have to scrape anything yourself: a **continuously updated** cheats archive and full GUI database are kept in the repo's **[`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data)**. Whenever new cheats appear, these files are refreshed — so grabbing them always gives you the **latest** dataset.
 
 | Asset | What it is | Direct link |
 |---|---|---|
-| `switch-cheats.zip` | All cheat files (Atmosphère layout) | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip) |
-| `database.db` | Complete GUI database (names, regions, versions, descriptions, cover **URLs**) | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/database.db) |
+| `switch-cheats.zip` | All cheat files (Atmosphère layout) — ~4 MB | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip) |
+| `database.db` | Complete cheat database — game names, regions, versions, cover **URLs** (copyright-clean: no box art, no publisher descriptions) — ~10 MB | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/database.db) |
 
-In the app, the **★ Get Everything from DevCatSKZ** card downloads these with one click (**Download Cheats** / **Download Database** / **★ Download Complete**), and **Check Updates** notices when they were refreshed and re-imports them — nothing is removed, existing entries are merged and enriched.
+In the app, the **★ Download Complete** card downloads these with one click (**Download Cheats** / **Download Database** / **★ Download Complete**), and **Check Updates** notices when they were refreshed and re-imports them — nothing is removed, existing entries are merged and enriched. The Switch and Android companion apps read this same data on the device.
 
 ## ✨ Highlights
 
-- **"Prisma (Holo-Glass)" signature look** — the default theme on Windows *and* the Switch app: deep petrol-black, teal-mint accents, gradient highlights. Switchable to classic Dark/Light via the theme dropdown.
-- **Get the Switch app with one click** — the **Download Switch App** button fetches the always-latest homebrew `.nro` and can copy it straight onto your (auto-detected) Switch SD card.
-- **Everything from DevCatSKZ in one click** — no scraping needed: pull the ready-made cheat archive and the complete database straight from the [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) (the database stores only cover *URLs*, never cover images). Kept up to date as new cheats come in.
-- **Self-update via "Check Updates"** — checks [GitHub](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/latest) for a newer program build **and** newer cheats/database packages. Detects both a new version (e.g. 1.2) **and** a re-upload of the current release/data (a fix without a version bump, via the upload date). Program updates install themselves (the app restarts); data updates are downloaded and imported. Optional automatic check at startup.
-- **Multi-language (6 languages)** — the whole interface in **English, Deutsch, Español, Français, Italiano and 日本語**. Switch it via the language selector next to the dark/light toggle; also selectable **in the installer**. Default is English. *(→ [Language](#-language))*
-- **Many cheat sources** in one tool: cheatslips.com (scrape + official API), GBATempArchive, HamletDuFromage, Sthetix, Breeze, Chansey (60 FPS/Res/GFX), MyNXCheats, ibnux, titledb.
-- **One-click complete dataset** (★ Scrape & Download Everything) plus targeted single actions.
-- **SD-card export** (auto-detects the drive) and **ZIP export/import** in exactly the layout Atmosphère/Breeze/EdiZon expect.
-- **Robust browser fallback** (Playwright) for cheats the API won't deliver, with automatic login handling and quota reset.
-- **Searchable database GUI** with cover display, regions, versions, descriptions and live disk reconciliation.
-- **Dark mode by default**, with a one-click toggle between light and dark — applies to the **whole program**: main window, table, detail panel, log, menus and **all sub-windows**. The choice is remembered between runs.
+- **Modern "Holo-Glass" GUI (default)** — a sidebar-navigated shell: a live **dashboard** (games / cheats / downloaded % / DB size), a **Library** you can browse as a table *or* a **cover gallery**, per-game **detail pages**, a **⌘ Ctrl+K command palette**, quick-filter chips, saved presets, empty states, a notification bell and a busy indicator. The proven **classic** single-window UI is still one flag away (`--classic`).
+- **Built-in cheat editor** — double-click any build to view/edit its codes with **syntax highlighting and validation** (malformed Atmosphère lines flagged red before they reach your console), a "＋ New cheat" scaffold and per-cheat duplicate/delete. Saves to the file **and** the database.
+- **⭐ Favourites & watchlist + cheat-name search** — mark games, filter to them, search *inside* cheat names across the whole library, and get a toast when a favourite gains new cheats after a data update.
+- **Nintendo Switch Cheats Database in one click** — the ready-made, always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data); no scraping needed. The database stores cover **URLs** only (never the images) and no publisher descriptions — nothing copyrighted is redistributed.
+- **Silent self-update** — per-user install (**no admin / no UAC**), so a found update **downloads, SHA-256-verifies, installs and restarts** on its own. Optional "keep the cheat data up to date automatically" does the same for the cheats. Rotating DB safety backups guard the destructive actions.
+- **9+ cheat sources** in one tool: cheatslips.com (scrape + official API + browser fallback with auto login & quota reset), GBATempArchive, HamletDuFromage, Sthetix, Breeze, Chansey (60 FPS/Res/GFX), MyNXCheats, ibnux, titledb — merged per build so nothing is ever lost.
+- **Export anywhere** — Switch **SD card** (Atmosphère / Breeze / EdiZon, auto-detected), **Switch emulators** (Eden / Suyu / Sudachi / Yuzu / Ryujinx) or a **ZIP** (re-importable). Plus a **share-safe DB export** that strips publisher text for copyright-clean redistribution.
+- **Companion apps** — a one-click **Download Switch App** (homebrew `.nro`) and **Download Android App** (`.apk`, SHA-256-verified) that fetch the same cheats on the device.
+- **6 languages** (EN/DE/ES/FR/IT/JA, also chosen in the installer) and **three themes** — the signature **Prisma (Holo-Glass)** plus classic **Dark** and **Light**, applied to the whole program including every dialog, remembered between runs.
+- **Windows notifications** for finished long tasks, a **Repair** menu (recount, clean, fix IDs, **find invalid code lines**…), CSV export and live disk reconciliation with a fast file cache.
 
 ## 🌍 Language
 
 The interface is available in **6 languages**: **English** (default), **Deutsch**, **Español**, **Français**, **Italiano** and **日本語 (Japanese)**.
 
-- **In the program:** choose the language from the **language selector** at the bottom-right of the *Search* bar (next to the dark/light toggle). The app **restarts** to apply it; the choice is stored in `settings.json`.
+- **In the program:** pick the language from the **language selector in the top-right header** (next to the theme dropdown — *Prisma / Dark / Light*; in the classic UI it sits at the right of the *Search* bar). The app **restarts** to apply it; the choice is stored in `settings.json`.
 - **In the installer:** pick the start language on the **"Program language"** page (pre-selected from the setup language). Choosing e.g. German setup makes the program **start in German** — stored via `default_lang.txt` next to the app.
 - Translations are **natural** rather than literal; common tech terms stay in English (Download, Scrape, API, Token, ZIP, Title/Build ID, …). Missing translations fall back cleanly to English.
 
