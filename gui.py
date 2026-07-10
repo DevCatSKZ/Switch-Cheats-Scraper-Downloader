@@ -250,6 +250,7 @@ THEMES = {
         "log_bg":      "#0e1014",
         "log_fg":      "#c6ccd6",
         "accent_fg":   "#ffffff",  # text ON accent buttons
+        "accent2":     "#a78bfa",  # soft violet secondary (harmonises with blue)
     },
     # Clean light — soft neutral canvas with white cards/controls, crisp borders
     # and a confident blue accent. Calm, high-contrast, professional.
@@ -280,9 +281,11 @@ THEMES = {
         "nonbase_bg":  "#fde8e8",
         "tooltip_bg":  "#20242c",  # dark tooltip on light UI (modern)
         "tooltip_fg":  "#f0f2f5",
-        "log_bg":      "#0e1014",
-        "log_fg":      "#c6ccd6",
+        # A LIGHT console in the light theme — a black block looked out of place.
+        "log_bg":      "#f3f5f8",
+        "log_fg":      "#2b3440",
         "accent_fg":   "#ffffff",
+        "accent2":     "#7c3aed",  # violet secondary, readable on white
     },
     # "Prisma (Holo-Glas)" — deep petrol-black signature theme with a teal-mint
     # primary accent, electric-violet secondary and gold highlights. Tk has no
@@ -324,6 +327,7 @@ THEMES = {
         "log_bg":      "#050d13",
         "log_fg":      "#bfd9d2",
         "accent_fg":   "#04211c",  # dark petrol on the bright accent — never white
+        "accent2":     "#7c5cff",  # electric-violet secondary (landing page)
         # Buttons exakt wie auf der Switch-Version: sehr dunkles Panel-Glas
         # (#0B141C) mit dezenter Haarlinie; Hover in Akzent-Glas.
         "btn_bg":      "#0b141c",  # = kColItem der Switch-App

@@ -764,7 +764,8 @@ class ModernApp(ScraperGUI):
         st.configure("StatBig.TLabel", background=c["surface"],
                      foreground=c["accent"], font=("Segoe UI Semibold", 15))
         st.configure("StatBigV.TLabel", background=c["surface"],
-                     foreground=_VIOLET, font=("Segoe UI Semibold", 15))
+                     foreground=c.get("accent2", _VIOLET),
+                     font=("Segoe UI Semibold", 15))
         st.configure("StatSub.TLabel", background=c["surface"],
                      foreground=c["fg_muted"], font=("Segoe UI", 9))
         st.configure("Eyebrow.TLabel", background=c["bg"],
