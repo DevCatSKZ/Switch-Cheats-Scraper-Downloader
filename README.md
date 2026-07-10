@@ -6,7 +6,6 @@
   <img src="https://img.shields.io/badge/version-1.3-blue" alt="Version">
   <img src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows" alt="Platform">
   <img src="https://img.shields.io/badge/homebrew-Nintendo%20Switch-e60012?logo=nintendoswitch&logoColor=white" alt="Switch">
-  <img src="https://img.shields.io/badge/Android-Eden%20%C2%B7%20Suyu%20%C2%B7%20Sudachi-3DDC84?logo=android&logoColor=white" alt="Android">
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
@@ -24,6 +23,19 @@ A tool to **scrape and download** Nintendo Switch cheat codes from **[CheatSlips
 2. **Browse** — search and filter everything in the GUI.
 3. **Export** — one click to your SD card (Atmosphère / Breeze / EdiZon layout) or as ZIP. The merged dataset is also published as the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data), so nobody *has* to scrape.
 
+## 🆕 What's new in v1.3
+
+The Windows tool grew from a manager into a full **control centre** with a modern shell. Everything below is shared 1:1 with the proven classic UI.
+
+- **Modern "Holo-Glass" GUI (default)** — a sidebar-navigated shell: **Home** (live dashboard: games / total cheats / downloaded % / DB size + "Recently updated"), **Library**, **Sources**, **CheatSlips**, **Settings** (every option in one place) and **Log**, plus a per-game **detail page** (cover, facts, all builds as cards with expandable cheats). Opens in an optimal windowed size. The classic single-window UI is still there: `SwitchCheatsScraper.exe --classic` (or `python gui.py`).
+- **Cheat viewer/editor** — double-click any build to view/edit its codes with **syntax highlighting** and **validation** (malformed Atmosphère lines flagged red + a save warning), a "＋ New cheat" scaffold and right-click duplicate/delete of a cheat block. Saves back to the `.txt` file **and** the DB.
+- **⭐ Favourites / watchlist** — mark games (persisted, survive data updates); a quick-filter chip; after a data update a toast tells you which favourites gained new cheats.
+- **Library power tools** — quick-filter chips (⭐ Favorites · ⚡ Has cheats · 🖼 No cover · 🔎 **Search in cheats** = match cheat names across all games), a **Columns** show/hide menu and named **filter presets**.
+- **Repair → "Find invalid code lines"** — scans every downloaded file with the editor's rules and lists the broken ones; a click opens the file in the editor with the bad lines already marked.
+- **Silent self-update** — the installer is now **per-user (no admin / no UAC)**, so a found update downloads, is **SHA-256-verified** and installs silently, then the app restarts. Also: first-run welcome (one-click complete download), rotating DB safety backups before destructive actions, Windows toast notifications, and an opt-in "keep the cheat data up to date automatically".
+- **Share-safe DB export** — "Export DB" can strip the publisher eShop text (game descriptions/intros) so a database you redistribute is smaller and copyright-clean (`scraper.export_shared_db`).
+- **Android companion** — a "Download Android App" button fetches the latest, SHA-256-verified `.apk`.
+
 ## ⬇️ Download (Windows)
 
 Ready-made builds are on the **[Releases](../../releases/latest)** page:
@@ -32,7 +44,7 @@ Ready-made builds are on the **[Releases](../../releases/latest)** page:
 
 | Variant | Description |
 |---|---|
-| **Installer** (`SwitchCheatsScraper-Setup.exe`) | Classic install (default path `C:\Program Files (x86)\Switch Cheats Scraper & Downloader`, freely choosable/creatable in the wizard; needs admin rights; adds Start-menu/Desktop shortcuts). Lets you pick the program language. |
+| **Installer** (`SwitchCheatsScraper-Setup.exe`) | **Per-user install — no admin rights, no UAC prompt** (default path `%LOCALAPPDATA%\Programs\Switch Cheats Scraper & Downloader`, freely choosable in the wizard; adds Start-menu/Desktop shortcuts). This is what lets updates install **silently**. Lets you pick the program language. |
 | **Portable** (`SwitchCheatsScraper-portable.zip`) | Unzip and run `SwitchCheatsScraper.exe` — no install needed. Data lives **next to the EXE**. |
 
 No Python required — the EXE is self-contained. (The built-in Chromium ships with the app; Firefox/Chrome for the optional browser download are fetched on demand when selected.)
@@ -49,20 +61,6 @@ The desktop tool has a **counterpart that runs directly on the Switch**: a stand
 
 Source & developer docs: [`SwitchCheatsNRO/`](SwitchCheatsNRO/) — build with devkitPro, see its [README](SwitchCheatsNRO/README.md).
 
-## 🤖 Android app (emulators)
-
-The same downloader also runs on **Android**, for the Switch emulators **Eden, Suyu and Sudachi** (`SwitchCheatsDownloader-Android.apk`). It fetches the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) **on the phone**, unpacks the cheats into a public folder, and you import them per game via the emulator's own **Add-ons → Mods and cheats** — no PC needed.
-
-<p align="center"><img src="screenshots/android-app.png" width="340" alt="Switch Cheats Downloader (Android)"></p>
-
-**What it does:** tap **Download & unpack** — it downloads every cheat and unpacks it into a public folder as `.../SwitchCheats/<TitleID>/<GameName>/cheats/<BuildID>.txt`, each folder named after the real game (baked into the `switch-cheats-emulator.zip` package). Then in **Eden, Suyu or Sudachi** you long-press the game → **Add-ons → “Mods and cheats”** → pick the matching folder, and the emulator copies them into its own storage. Interrupted downloads **resume**, the app checks this repo for **updates** (a newer APK *and* refreshed cheats, same re-upload detection as the desktop tool), shows a live online status, and speaks the same **6 languages** (EN/DE/ES/FR/IT/JA, auto-detected from the device). Same **Holo-Glass** look as the Windows and Switch apps.
-
-**Why a public folder?** On Android 11+ no third-party app can write into an emulator's private `Android/data/…` — neither “All files access” nor the folder picker reach it. So the app unpacks into a **public** folder (default `/storage/emulated/0/SwitchCheats`, changeable) and the emulator imports from there itself. Writing many small files fast needs **All files access** (`MANAGE_EXTERNAL_STORAGE`), which the app asks for once on Android 11+.
-
-**Install:** download [`SwitchCheatsDownloader-Android.apk`](../../releases/latest) from the latest release, allow installation from unknown sources, and grant **All files access** on first launch. Requires Android 8.0 (API 26)+.
-
-Source & developer docs: [`SwitchCheatsAndroid/`](SwitchCheatsAndroid/) — build with Gradle (`gradlew assembleRelease`), see its [README](SwitchCheatsAndroid/README.md).
-
 ## 📦 Always-current cheats & database
 
 You don't have to scrape anything yourself: a **continuously updated** cheats archive and full GUI database are kept in the repo's **[`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data)**. Whenever new cheats appear, these files are refreshed — so grabbing them always gives you the **latest** dataset.
@@ -70,7 +68,6 @@ You don't have to scrape anything yourself: a **continuously updated** cheats ar
 | Asset | What it is | Direct link |
 |---|---|---|
 | `switch-cheats.zip` | All cheat files (Atmosphère layout) | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip) |
-| `switch-cheats-emulator.zip` | All cheat files in the **emulator load layout** (`<TitleID>/<GameName>/cheats/<BuildID>.txt`) — drop the contents into an emulator's `load` folder (Yuzu · Suyu · Sudachi · Torzu · Eden) or Ryujinx's `mods` | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats-emulator.zip) |
 | `database.db` | Complete GUI database (names, regions, versions, descriptions, cover **URLs**) | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/database.db) |
 
 In the app, the **★ Get Everything from DevCatSKZ** card downloads these with one click (**Download Cheats** / **Download Database** / **★ Download Complete**), and **Check Updates** notices when they were refreshed and re-imports them — nothing is removed, existing entries are merged and enriched.
@@ -112,7 +109,9 @@ The interface is available in **6 languages**: **English** (default), **Deutsch*
 - **Two decoupled scrape toggles** (stored in `settings.json`):
   - **"full catalog (all games)"** (default ON): discovery over the complete game catalog `/games`. Off = fast `/entry` feed (only recently uploaded cheats).
   - **"skip 0-cheat builds"** (default OFF): when on, builds with 0 cheats are dropped during the scrape. **Off by default**, so **all** listed builds enter the DB — even ones the API/HTML (temporarily) reports 0 cheats for. Those appear under the **"Not downloaded"** filter instead of silently missing. Both toggles combine independently.
-- **HTML cheat count from the "Game releases" table**: the "Available cheats" column is read directly, so a build shows its true cheat count even when the API doesn't include that build (instead of a wrong 0).- **Fully maintained SQLite database** (`cheats.db`) with all fields: name, Title ID, Build ID, version, upload date, cheat names, credits, description, cover image, banner, **region** (US/EU/AU/JP/KR/HK/CN/Homebrew) and **source**.
+- **HTML cheat count from the "Game releases" table**: the "Available cheats" column is read directly, so a build shows its true cheat count even when the API doesn't include that build (instead of a wrong 0).
+- **0-cheat protection**: a re-scrape that returns 0/no cheats for a build no longer overwrites an already-known (real) cheat count.
+- **Fully maintained SQLite database** (`cheats.db`) with all fields: name, Title ID, Build ID, version, upload date, cheat names, credits, description, cover image, banner, **region** (US/EU/AU/JP/KR/HK/CN/Homebrew) and **source**.
 - **Metadata enrichment** via **individually callable buttons** (Get Names / Get Region / Get Versions from TitleDB / Get Versions Cheatslips / Get Descriptions / Download Covers): game names + covers from all titledb regions, switchbrew, tinfoil.io, GitHub name lists and the CheatSlips API; **region** tagging with several fallbacks (titledb → base game → switchbrew → homebrew tag → script heuristic); versions from titledb or cheatslips; descriptions from titledb.
 - **Streaming scrape**: detail scraping starts immediately, in parallel with listing.
 - **Disk reconciliation**: shows which builds are already downloaded and which are missing. A **file cache** (`.scan_cache.json`, mtime+size per file) makes repeated live scans many times faster (~5000 files: from ~45 s to ~1 s) — changed files are still re-checked.
@@ -190,7 +189,7 @@ That's the single, obvious start command. (The old `python gui.py` / `python scr
 
 **As a ready Windows EXE with installer:** the program can be built into a self-contained `SwitchCheatsScraper.exe` (+ setup installer) — see **[BUILD.md](BUILD.md)** (`build.ps1` does everything automatically). When run as an EXE, it stores all data (database, downloads, settings, login profile) **in the same folder as the EXE** (portable) — so the app stays copyable/movable together with its data. Only if that folder is read-only (e.g. installed under Program Files with admin rights) it automatically falls back to `%LOCALAPPDATA%\SwitchCheatsScraper`. The bundled installer defaults to `C:\Program Files (x86)\Switch Cheats Scraper & Downloader` — in the wizard you can pick any other folder via **"Browse…"** or **create a new folder**. For a Program Files install the runtime data automatically lands in `%LOCALAPPDATA%\SwitchCheatsScraper` (that folder is writable); the **Portable** variant stays entirely next to the EXE.
 
-On the **first launch** the window opens **maximized** (full screen); the window state is remembered afterwards, so it reopens the way you left it. It is freely resizable and, on a fresh start, sized for Full HD. Between the table and the **log window** there is a **drag handle** — you can enlarge/shrink the log as you like (with its own scrollbar). **Shortcuts:** **F11** full-screen on/off, **Esc** leave full-screen, **Ctrl+M** maximize/restore; in all text fields **Ctrl+A** (select all), **Ctrl+C/X/V** (copy/cut/paste).
+The **modern GUI is the default**: `python SwitchCheatsScraper.py` (or the EXE) opens the sidebar shell in an **optimal windowed size**, centered. On the **first launch with an empty database** a friendly **welcome dialog** offers a one-click "★ Download complete database (~25 MB)". The **classic** single-window UI (grouped toolbar + table + resizable log with an F11/Esc/Ctrl+M full-screen workflow) is still available via `SwitchCheatsScraper.exe --classic` or `python gui.py`. In every text field the standard **Ctrl+A / Ctrl+C/X/V** shortcuts work. The toolbar/section descriptions below apply to **both** UIs — the modern shell just arranges the same widgets into sidebar pages.
 
 The toolbar is grouped into workflow areas:
 
@@ -264,7 +263,7 @@ The toolbar is grouped into workflow areas:
 - **"Refresh"**: first reconciles each build's cheat count with the actual `.txt` file on disk (in the background) and then refreshes the table — so the shown count always matches the file content. This also runs **automatically after a single download** (*Download this / via API / via browser*), so a just-downloaded build flips to "downloaded" and shows its real count without pressing it.
 - **"Add Entry"** (manual build: Title ID, Build ID, cheat content, name, version).
 - **"Export CSV"**: database as CSV with all columns (Excel-compatible, UTF-8).
-- **"Export DB"**: backs up the whole `cheats.db` as a consistent copy (SQLite backup) to a location you choose (default file name `database.db`, matching the data-release asset).
+- **"Export DB"**: backs up the whole `cheats.db` as a consistent copy (SQLite backup) to a location you choose (default file name `database.db`, matching the data-release asset). A prompt offers a **SHARE mode** that strips the publisher eShop text (game descriptions/intros) so a database you redistribute is **smaller (~half) and copyright-clean** — cheats, names, versions and community credits are kept; your live database is never modified (`scraper.export_shared_db`). The publicly shared `database.db` in the `data` release is exported this way.
 - **"Import DB"**: imports a previously exported database (`.db`). A dialog lets you choose: **Merge** into the current database (adds/updates builds, nothing removed, existing entries keep their data and never lose a real cheat count) or **Replace** — replace the current database entirely (a timestamped backup of the current database is saved first). Runs in the background and refreshes the table afterwards.
 - **"Export to SD"**: copies the downloaded cheat files **straight to the Switch SD card** in the right format. A dialog lets you:
   - pick the **SD-card root** (navigate via **Browse…** or **Auto-detect** — finds the drive automatically by the CFW folders `atmosphere/`, `switch/`, `Nintendo/`, `bootloader/`, `emummc/`),
@@ -421,8 +420,9 @@ Each `.txt` contains all cheat codes for that Build ID in the standard format:
 ```
 .
 ├── SwitchCheatsScraper.py  # ► start launcher (python SwitchCheatsScraper.py)
-├── scraper.py          # main script (metadata, download, package, db, gui) + quota-reset loop
-├── gui.py              # graphical interface (scrape, DB view, download, CSV)
+├── scraper.py          # main script (metadata, download, package, db, gui) + quota-reset loop + export_shared_db
+├── gui.py              # classic single-window UI + all shared widgets/handlers, dialogs, cheat editor
+├── gui_modern.py       # modern "Holo-Glass" sidebar shell (DEFAULT UI) — composes gui.py's sections into pages
 ├── i18n.py             # multi-language (6 languages) + auto-translation of the Tk UI
 ├── playwright_scrape.py # browser fallback (Playwright): Build-ID resolution, quota reset, download
 ├── browser_scrape.py   # HTML cheat extraction (extract_cheat_text_from_html)
@@ -437,6 +437,7 @@ Each `.txt` contains all cheat codes for that Build ID in the standard format:
 
 # Created automatically at runtime (excluded via .gitignore):
 #   cheats.db           – persistent SQLite database (WAL mode: plus .db-wal/.db-shm)
+#   cheats.db.bak/.bak2 – rotating safety backups taken before destructive actions
 #   cheatsdownload/      – downloaded cheat files (titles/, by_bid/, meta/, ZIP)
 #   cheatsdownload/.downloaded_cache.json – cache of already-present Build IDs
 #   cheatsdownload/.scan_cache.json – file-validity cache (mtime+size) for fast scans
