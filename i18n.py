@@ -5263,6 +5263,145 @@ _merge({
         "ja": "ワンクリックで GitHub の「data」リリースを最新に保ちます。3 ファイルすべてを一度に「exportall」フォルダーに作成します — database.db（著作権クリーン）、switch-cheats.zip（Atmosphère SD レイアウト）、switch-cheats-emulator.zip（エミュレーター load レイアウト）。その後リリースにアップロードしてください。"},
 })
 
+# ---- Reset / clean downloaded data ------------------------------------------
+_merge({
+    "Reset / Clean": {
+        "de": "Zurücksetzen / Säubern", "es": "Restablecer / Limpiar",
+        "fr": "Réinitialiser / Nettoyer", "it": "Reimposta / Pulisci",
+        "ja": "リセット / クリーン"},
+    "Reset / clean downloaded data": {
+        "de": "Heruntergeladene Daten zurücksetzen / säubern",
+        "es": "Restablecer / limpiar los datos descargados",
+        "fr": "Réinitialiser / nettoyer les données téléchargées",
+        "it": "Reimposta / pulisci i dati scaricati",
+        "ja": "ダウンロードしたデータをリセット / クリーン"},
+    "Choose what to remove": {
+        "de": "Wähle, was entfernt werden soll", "es": "Elige qué eliminar",
+        "fr": "Choisis ce qu'il faut supprimer", "it": "Scegli cosa rimuovere",
+        "ja": "削除する項目を選択"},
+    "Everything the program downloaded or generated is listed below. Ticked items are permanently deleted.\nYour settings and login stay untouched unless you tick \"Browser login & debug\".": {
+        "de": "Alles, was das Programm heruntergeladen oder erzeugt hat, steht unten. Angehakte Einträge werden dauerhaft gelöscht.\nDeine Einstellungen und dein Login bleiben unberührt, außer du hakst „Browser-Login & Debug\" an.",
+        "es": "Abajo se lista todo lo que el programa descargó o generó. Los elementos marcados se eliminan de forma permanente.\nTus ajustes y tu sesión quedan intactos salvo que marques «Sesión del navegador y depuración».",
+        "fr": "Tout ce que le programme a téléchargé ou généré est listé ci-dessous. Les éléments cochés sont supprimés définitivement.\nTes réglages et ta connexion restent intacts, sauf si tu coches « Connexion navigateur & débogage ».",
+        "it": "Qui sotto c'è tutto ciò che il programma ha scaricato o generato. Gli elementi spuntati vengono eliminati definitivamente.\nLe impostazioni e l'accesso restano intatti a meno che tu non spunti «Login browser e debug».",
+        "ja": "プログラムがダウンロード・生成したものすべてを以下に一覧表示します。チェックした項目は完全に削除されます。\n「ブラウザーログイン & デバッグ」をチェックしない限り、設定とログインはそのまま残ります。"},
+    "nothing": {
+        "de": "nichts", "es": "nada", "fr": "rien", "it": "niente", "ja": "なし"},
+    "This CANNOT be undone.": {
+        "de": "Das kann NICHT rückgängig gemacht werden.",
+        "es": "Esto NO se puede deshacer.", "fr": "Ceci est IRRÉVERSIBLE.",
+        "it": "Questa operazione NON può essere annullata.",
+        "ja": "この操作は元に戻せません。"},
+    "Delete selected": {
+        "de": "Ausgewählte löschen", "es": "Eliminar seleccionados",
+        "fr": "Supprimer la sélection", "it": "Elimina selezionati",
+        "ja": "選択項目を削除"},
+    "Total to free: {size}": {
+        "de": "Freizugeben gesamt: {size}", "es": "Total a liberar: {size}",
+        "fr": "Total à libérer : {size}", "it": "Totale da liberare: {size}",
+        "ja": "解放される合計: {size}"},
+    "Downloaded cheat files": {
+        "de": "Heruntergeladene Cheat-Dateien", "es": "Archivos de cheats descargados",
+        "fr": "Fichiers de cheats téléchargés", "it": "File di cheat scaricati",
+        "ja": "ダウンロード済みチートファイル"},
+    "Every scraped cheat .txt (titles/, by_bid/), packaged ZIPs and the download/scan cache.": {
+        "de": "Jede gescrapte Cheat-.txt (titles/, by_bid/), gepackte ZIPs und der Download-/Scan-Cache.",
+        "es": "Cada .txt de cheats extraído (titles/, by_bid/), los ZIP empaquetados y la caché de descarga/escaneo.",
+        "fr": "Chaque .txt de cheat récupéré (titles/, by_bid/), les ZIP packagés et le cache de téléchargement/scan.",
+        "it": "Ogni .txt di cheat estratto (titles/, by_bid/), gli ZIP pacchettizzati e la cache di download/scansione.",
+        "ja": "取得した各チート .txt（titles/、by_bid/）、パッケージ ZIP、ダウンロード/スキャンキャッシュ。"},
+    "Database entries": {
+        "de": "Datenbank-Einträge", "es": "Entradas de la base de datos",
+        "fr": "Entrées de la base de données", "it": "Voci del database",
+        "ja": "データベースのエントリ"},
+    "Empty the database (all games, builds and cheats). The file stays but becomes empty; a backup is made first.": {
+        "de": "Leert die Datenbank (alle Spiele, Builds und Cheats). Die Datei bleibt, wird aber leer; vorher wird ein Backup erstellt.",
+        "es": "Vacía la base de datos (todos los juegos, builds y cheats). El archivo permanece pero queda vacío; antes se hace una copia de seguridad.",
+        "fr": "Vide la base de données (tous les jeux, builds et cheats). Le fichier reste mais devient vide ; une sauvegarde est faite d'abord.",
+        "it": "Svuota il database (tutti i giochi, build e cheat). Il file resta ma diventa vuoto; prima viene creato un backup.",
+        "ja": "データベースを空にします（すべてのゲーム・ビルド・チート）。ファイルは残りますが空になります。先にバックアップを作成します。"},
+    "Downloaded covers": {
+        "de": "Heruntergeladene Cover", "es": "Carátulas descargadas",
+        "fr": "Jaquettes téléchargées", "it": "Copertine scaricate",
+        "ja": "ダウンロード済みカバー"},
+    "Cached cover images (coversdownload/).": {
+        "de": "Zwischengespeicherte Cover-Bilder (coversdownload/).",
+        "es": "Imágenes de carátula en caché (coversdownload/).",
+        "fr": "Images de jaquette en cache (coversdownload/).",
+        "it": "Immagini di copertina in cache (coversdownload/).",
+        "ja": "キャッシュされたカバー画像（coversdownload/）。"},
+    "Title & name caches": {
+        "de": "Titel- & Namens-Caches", "es": "Cachés de títulos y nombres",
+        "fr": "Caches de titres & noms", "it": "Cache di titoli e nomi",
+        "ja": "タイトル & 名前キャッシュ"},
+    "Re-downloadable lookup data: titledb_*.json, games.md, nx_gfx_readme.md, switchbrew_games.txt.": {
+        "de": "Erneut herunterladbare Nachschlagedaten: titledb_*.json, games.md, nx_gfx_readme.md, switchbrew_games.txt.",
+        "es": "Datos de consulta redescargables: titledb_*.json, games.md, nx_gfx_readme.md, switchbrew_games.txt.",
+        "fr": "Données de recherche re-téléchargeables : titledb_*.json, games.md, nx_gfx_readme.md, switchbrew_games.txt.",
+        "it": "Dati di lookup riscaricabili: titledb_*.json, games.md, nx_gfx_readme.md, switchbrew_games.txt.",
+        "ja": "再ダウンロード可能な参照データ: titledb_*.json、games.md、nx_gfx_readme.md、switchbrew_games.txt。"},
+    "Browser login & debug": {
+        "de": "Browser-Login & Debug", "es": "Sesión del navegador y depuración",
+        "fr": "Connexion navigateur & débogage", "it": "Login browser e debug",
+        "ja": "ブラウザーログイン & デバッグ"},
+    "The logged-in browser profile (you would sign in again next time) and browser_debug/ dumps.": {
+        "de": "Das eingeloggte Browser-Profil (du müsstest dich erneut anmelden) und browser_debug/-Dumps.",
+        "es": "El perfil del navegador con sesión iniciada (tendrías que iniciar sesión de nuevo) y los volcados de browser_debug/.",
+        "fr": "Le profil de navigateur connecté (tu devrais te reconnecter la prochaine fois) et les dumps browser_debug/.",
+        "it": "Il profilo del browser con accesso effettuato (dovresti accedere di nuovo) e i dump di browser_debug/.",
+        "ja": "ログイン済みのブラウザープロファイル（次回は再ログインが必要）と browser_debug/ のダンプ。"},
+    "App logs": {
+        "de": "App-Protokolle", "es": "Registros de la app",
+        "fr": "Journaux de l'app", "it": "Log dell'app", "ja": "アプリのログ"},
+    "scraper.log and any other .log files.": {
+        "de": "scraper.log und alle anderen .log-Dateien.",
+        "es": "scraper.log y cualquier otro archivo .log.",
+        "fr": "scraper.log et tout autre fichier .log.",
+        "it": "scraper.log e qualsiasi altro file .log.",
+        "ja": "scraper.log およびその他の .log ファイル。"},
+    "Nothing to clean — no downloaded data found.": {
+        "de": "Nichts zu säubern — keine heruntergeladenen Daten gefunden.",
+        "es": "Nada que limpiar: no se encontraron datos descargados.",
+        "fr": "Rien à nettoyer — aucune donnée téléchargée trouvée.",
+        "it": "Niente da pulire — nessun dato scaricato trovato.",
+        "ja": "クリーンする対象がありません — ダウンロード済みデータが見つかりません。"},
+    "Permanently delete the selected data ({size})?\n\n{items}\n\nThis CANNOT be undone.": {
+        "de": "Die ausgewählten Daten dauerhaft löschen ({size})?\n\n{items}\n\nDas kann NICHT rückgängig gemacht werden.",
+        "es": "¿Eliminar permanentemente los datos seleccionados ({size})?\n\n{items}\n\nEsto NO se puede deshacer.",
+        "fr": "Supprimer définitivement les données sélectionnées ({size}) ?\n\n{items}\n\nCeci est IRRÉVERSIBLE.",
+        "it": "Eliminare definitivamente i dati selezionati ({size})?\n\n{items}\n\nQuesta operazione NON può essere annullata.",
+        "ja": "選択したデータ（{size}）を完全に削除しますか？\n\n{items}\n\nこの操作は元に戻せません。"},
+    "Cleaning downloaded data...": {
+        "de": "Säubere heruntergeladene Daten...",
+        "es": "Limpiando los datos descargados...",
+        "fr": "Nettoyage des données téléchargées...",
+        "it": "Pulizia dei dati scaricati...", "ja": "ダウンロードしたデータをクリーン中..."},
+    "Reset done — {n} item(s) removed, {size} freed": {
+        "de": "Zurücksetzen fertig — {n} Element(e) entfernt, {size} frei",
+        "es": "Restablecimiento hecho — {n} elemento(s) eliminados, {size} liberados",
+        "fr": "Réinitialisation terminée — {n} élément(s) supprimés, {size} libérés",
+        "it": "Reset completato — {n} elemento/i rimossi, {size} liberati",
+        "ja": "リセット完了 — {n} 項目を削除、{size} を解放"},
+    "  - {n} item(s) deleted\n  - {size} freed": {
+        "de": "  - {n} Element(e) gelöscht\n  - {size} frei",
+        "es": "  - {n} elemento(s) eliminados\n  - {size} liberados",
+        "fr": "  - {n} élément(s) supprimés\n  - {size} libérés",
+        "it": "  - {n} elemento/i eliminati\n  - {size} liberati",
+        "ja": "  - {n} 項目を削除\n  - {size} を解放"},
+    "  - database emptied ({n} entries)": {
+        "de": "  - Datenbank geleert ({n} Einträge)",
+        "es": "  - base de datos vaciada ({n} entradas)",
+        "fr": "  - base de données vidée ({n} entrées)",
+        "it": "  - database svuotato ({n} voci)",
+        "ja": "  - データベースを空に（{n} 件）"},
+    "Cleanup finished:\n\n{lines}\n\nThe program is back to a clean state.": {
+        "de": "Säuberung abgeschlossen:\n\n{lines}\n\nDas Programm ist wieder in einem sauberen Zustand.",
+        "es": "Limpieza finalizada:\n\n{lines}\n\nEl programa vuelve a un estado limpio.",
+        "fr": "Nettoyage terminé :\n\n{lines}\n\nLe programme est revenu à un état propre.",
+        "it": "Pulizia completata:\n\n{lines}\n\nIl programma è tornato a uno stato pulito.",
+        "ja": "クリーンアップが完了しました:\n\n{lines}\n\nプログラムはクリーンな状態に戻りました。"},
+})
+
 # --------------------------------------------------------------------------
 _build()
 

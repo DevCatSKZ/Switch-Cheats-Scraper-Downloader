@@ -1408,6 +1408,102 @@ class ExportEmulatorDialog:
         self.top.destroy()
 
 
+def _human_size(n) -> str:
+    """Human-readable byte size: '0 B', '4.5 MB', '1.2 GB'."""
+    try:
+        n = float(n or 0)
+    except Exception:
+        return "0 B"
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if n < 1024 or unit == "TB":
+            return (f"{int(n)} {unit}" if unit == "B" else f"{n:.1f} {unit}")
+        n /= 1024
+    return f"{n:.1f} TB"
+
+
+class ResetDataDialog:
+    """Modal dialog: pick which downloaded/generated data to purge, then reset.
+
+    ``categories`` is a list of dicts ``{key,label,desc,size,default}``; each maps
+    to a checkbox pre-selected per ``default``. ``result`` is the set of selected
+    keys (or None if cancelled). The heavy lifting (deleting/emptying) is done by
+    the caller so this dialog only collects the choice."""
+
+    def __init__(self, parent, categories):
+        self.result = None
+        self.categories = categories
+        self._vars = {}
+
+        self.top = tk.Toplevel(parent)
+        self.top.title(t("Reset / clean downloaded data"))
+        self.top.transient(parent)
+        self.top.grab_set()
+        self.top.resizable(False, False)
+        self.top.configure(bg=theme()["bg"])
+        frm = ttk.Frame(self.top, padding=14)
+        frm.pack(fill="both", expand=True)
+
+        ttk.Label(frm, text=t("Choose what to remove"),
+                  font=("Segoe UI", 11, "bold")).grid(row=0, column=0, sticky="w")
+        ttk.Label(frm, text=t("Everything the program downloaded or generated is "
+                              "listed below. Ticked items are permanently deleted.\n"
+                              "Your settings and login stay untouched unless you tick "
+                              "\"Browser login & debug\"."),
+                  foreground=theme()["fg_muted"], font=("Segoe UI", 8),
+                  justify="left").grid(row=1, column=0, sticky="w", pady=(2, 10))
+
+        box = ttk.Frame(frm)
+        box.grid(row=2, column=0, sticky="we")
+        for i, c in enumerate(categories):
+            var = tk.BooleanVar(value=bool(c["default"]) and c["size"] >= 0)
+            self._vars[c["key"]] = var
+            state = "normal" if c["size"] >= 0 else "disabled"
+            cb = ttk.Checkbutton(
+                box, variable=var, state=state,
+                text=f"{c['label']}   ({_human_size(c['size']) if c['size'] >= 0 else t('nothing')})")
+            cb.grid(row=i * 2, column=0, sticky="w", pady=(2, 0))
+            ttk.Label(box, text=c["desc"], foreground=theme()["fg_muted"],
+                      font=("Segoe UI", 8), justify="left").grid(
+                row=i * 2 + 1, column=0, sticky="w", padx=(24, 0), pady=(0, 4))
+
+        self._total_var = tk.StringVar()
+        ttk.Label(frm, textvariable=self._total_var,
+                  font=("Segoe UI", 9, "bold")).grid(row=3, column=0, sticky="w", pady=(6, 0))
+        ttk.Label(frm, text=t("This CANNOT be undone."),
+                  foreground="#e0555f", font=("Segoe UI", 9, "bold")).grid(
+            row=4, column=0, sticky="w", pady=(2, 10))
+
+        btns = ttk.Frame(frm)
+        btns.grid(row=5, column=0, sticky="e")
+        ttk.Button(btns, text=t("Cancel"), command=self.top.destroy).pack(
+            side="right", padx=(6, 0))
+        self._go_btn = ttk.Button(btns, text=t("Delete selected"), command=self._on_go)
+        self._go_btn.pack(side="right")
+
+        for v in self._vars.values():
+            v.trace_add("write", lambda *_: self._recalc())
+        self._recalc()
+        self.top.bind("<Escape>", lambda _e: self.top.destroy())
+        _center_dialog(self.top, parent)
+
+    def _recalc(self):
+        total = sum(c["size"] for c in self.categories
+                    if c["size"] > 0 and self._vars[c["key"]].get())
+        any_sel = any(self._vars[c["key"]].get() for c in self.categories)
+        self._total_var.set(t("Total to free: {size}", size=_human_size(total)))
+        try:
+            self._go_btn.config(state="normal" if any_sel else "disabled")
+        except Exception:
+            pass
+
+    def _on_go(self):
+        sel = {k for k, v in self._vars.items() if v.get()}
+        if not sel:
+            return
+        self.result = sel
+        self.top.destroy()
+
+
 class ImportDBDialog:
     """Modal dialog to import a previously exported cheats.db: merge or replace."""
 
@@ -3717,6 +3813,9 @@ class ScraperGUI:
         self.clear_btn = ttk.Button(left2, text="Clear DB", command=self.on_clear_db)
         self.clear_btn.pack(side="left", padx=(0, 4))
 
+        self.reset_btn = ttk.Button(left2, text="Reset / Clean", command=self.on_reset_data)
+        self.reset_btn.pack(side="left", padx=(0, 4))
+
         ttk.Label(left2, textvariable=self.total_games_var).pack(side="left", padx=(12, 0))
 
         self.nonbase_btn = ttk.Button(left2, text="Update/DLC IDs", command=self._toggle_nonbase,
@@ -3736,7 +3835,13 @@ class ScraperGUI:
                                  self.exportnames_btn,
                                  self.importdb_btn, self.exportsd_btn, self.exportzip_btn,
                                  self.exportall_btn, self.exportemu_btn,
-                                 self.repair_btn, self.clear_btn]
+                                 self.repair_btn, self.clear_btn, self.reset_btn]
+        _Tooltip(self.reset_btn,
+                 "Clean the program of everything it downloaded or generated — "
+                 "cheat files, covers, the database, re-downloadable title caches "
+                 "and (optionally) the browser login and logs. A dialog lets you "
+                 "pick exactly what to remove, with sizes. Settings and login are "
+                 "kept unless you tick them.")
         _Tooltip(self.exportall_btn,
                  "One click keeps the GitHub 'data' release current: builds all "
                  "three files at once into an 'exportall' folder — database.db "
@@ -6743,6 +6848,224 @@ class ScraperGUI:
             sys.stdout = old_stdout
             self._log_queue.put(("download_done",))
 
+    # ----------------------------------- full reset / clean downloaded data
+    def _delete_path(self, p: Path):
+        """Delete a file or folder tree; return bytes freed, or None if absent."""
+        try:
+            if p.is_dir():
+                freed = sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
+                shutil.rmtree(p, ignore_errors=True)
+                print(f"Removed folder: {p}")
+                return freed
+            if p.exists():
+                freed = p.stat().st_size
+                p.unlink()
+                print(f"Removed file: {p.name}")
+                return freed
+        except Exception as exc:
+            print(f"Could not remove {p}: {exc}")
+        return None
+
+    def _reset_targets(self):
+        """Ordered purge categories with on-disk sizes (bytes; -1 = nothing).
+
+        Each item: {key, label, desc, size, default, paths}. The 'db' category
+        has no paths — it empties the database instead of deleting files."""
+        out = Path(self.dl_output.get())
+        data = Path(DATA_DIR)
+
+        def size_of(paths):
+            total, found = 0, False
+            for p in paths:
+                try:
+                    if p.is_dir():
+                        found = True
+                        total += sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
+                    elif p.exists():
+                        found = True
+                        total += p.stat().st_size
+                except Exception:
+                    pass
+            return total if found else -1
+
+        cheat_paths = [out / "titles", out / "by_bid", out / "meta",
+                       out / "cheatsdownload.zip", out / "switch-cheats.zip",
+                       out / "switch-cheats-emulator.zip",
+                       out / ".downloaded_cache.json", out / ".scan_cache.json",
+                       out / "unavailable_builds.txt", out / "quota_skipped.txt"]
+        cover_paths = [Path(COVERS_DIR)]
+        cache_paths = sorted(data.glob("titledb_*.json")) + [
+            data / "games.md", data / "nx_gfx_readme.md", data / "switchbrew_games.txt"]
+        browser_paths = [data / "browser_profile", data / "browser_debug",
+                         Path("browser_debug")]
+        log_paths = [Path(LOG_FILE)] + [p for p in sorted(data.glob("*.log"))
+                                        if p != Path(LOG_FILE)]
+
+        # DB "size" for display: the file size when it still holds builds.
+        db_size = -1
+        try:
+            dbp = Path(self.db_path.get())
+            if dbp.exists() and dbp.stat().st_size and self._db_build_count() > 0:
+                db_size = dbp.stat().st_size
+        except Exception:
+            pass
+
+        return [
+            {"key": "cheats", "label": t("Downloaded cheat files"),
+             "desc": t("Every scraped cheat .txt (titles/, by_bid/), packaged ZIPs "
+                       "and the download/scan cache."),
+             "size": size_of(cheat_paths), "default": True, "paths": cheat_paths},
+            {"key": "db", "label": t("Database entries"),
+             "desc": t("Empty the database (all games, builds and cheats). The file "
+                       "stays but becomes empty; a backup is made first."),
+             "size": db_size, "default": True, "paths": []},
+            {"key": "covers", "label": t("Downloaded covers"),
+             "desc": t("Cached cover images (coversdownload/)."),
+             "size": size_of(cover_paths), "default": True, "paths": cover_paths},
+            {"key": "caches", "label": t("Title & name caches"),
+             "desc": t("Re-downloadable lookup data: titledb_*.json, games.md, "
+                       "nx_gfx_readme.md, switchbrew_games.txt."),
+             "size": size_of(cache_paths), "default": True, "paths": cache_paths},
+            {"key": "browser", "label": t("Browser login & debug"),
+             "desc": t("The logged-in browser profile (you would sign in again next "
+                       "time) and browser_debug/ dumps."),
+             "size": size_of(browser_paths), "default": False, "paths": browser_paths},
+            {"key": "logs", "label": t("App logs"),
+             "desc": t("scraper.log and any other .log files."),
+             "size": size_of(log_paths), "default": False, "paths": log_paths},
+        ]
+
+    def on_reset_data(self):
+        """Let the user purge everything the program downloaded/generated.
+
+        A dialog offers per-category checkboxes (with sizes) so the user can do a
+        targeted clean or a full factory-style reset. Settings and the login are
+        kept unless the browser category is ticked."""
+        if self._busy:
+            return
+        cats = self._reset_targets()
+        if all(c["size"] < 0 for c in cats):
+            messagebox.showinfo(t("Reset / clean downloaded data"),
+                                t("Nothing to clean — no downloaded data found."),
+                                parent=self.root)
+            return
+        dlg = ResetDataDialog(self.root, cats)
+        self.root.wait_window(dlg.top)
+        if not dlg.result:
+            return
+        sel = dlg.result
+        chosen = [c for c in cats if c["key"] in sel]
+        total = sum(c["size"] for c in chosen if c["size"] > 0)
+        items = "\n".join(f"  - {c['label']}" for c in chosen)
+        if not messagebox.askyesno(
+            t("Reset / clean downloaded data"),
+            t("Permanently delete the selected data ({size})?\n\n{items}\n\n"
+              "This CANNOT be undone.", size=_human_size(total), items=items),
+            icon="warning", default="no", parent=self.root):
+            return
+        if "db" in sel:
+            self._backup_db("Reset")
+        self._save_settings()
+        self._stop_event.clear()
+        self._set_busy(True)
+        self.status_var.set(t("Cleaning downloaded data..."))
+        cfg = {"db_path": self.db_path.get(), "sel": sel,
+               "targets": {c["key"]: [str(p) for p in c.get("paths", [])] for c in cats}}
+        threading.Thread(target=self._reset_data_worker, args=(cfg,), daemon=True).start()
+
+    def _reset_data_worker(self, cfg):
+        old_stdout = sys.stdout
+        sys.stdout = _QueueWriter(self._log_queue, mirror=self._log_writer)
+        summary = {"removed": 0, "freed": 0, "db_entries": 0, "cats": [], "errors": 0}
+        try:
+            sel = cfg["sel"]
+            targets = cfg["targets"]
+            print("=== Reset / clean downloaded data ===")
+
+            if "db" in sel:
+                try:
+                    db = GameDatabase(Path(cfg["db_path"]))
+                    n = db.clear()
+                    db.close()
+                    summary["db_entries"] = n
+                    summary["cats"].append("db")
+                    print(f"Emptied database: {n} entr{'y' if n == 1 else 'ies'} removed.")
+                except Exception as exc:
+                    summary["errors"] += 1
+                    print(f"Could not empty database: {exc}")
+
+            for key in ("cheats", "covers", "caches", "browser"):
+                if key not in sel:
+                    continue
+                cat_removed = 0
+                for sp in targets.get(key, []):
+                    freed = self._delete_path(Path(sp))
+                    if freed is not None:
+                        cat_removed += 1
+                        summary["removed"] += 1
+                        summary["freed"] += freed
+                if cat_removed:
+                    summary["cats"].append(key)
+                print(f"[{key}] removed {cat_removed} item(s).")
+
+            if "logs" in sel:
+                cleared = 0
+                for sp in targets.get("logs", []):
+                    p = Path(sp)
+                    try:
+                        if p.exists():
+                            before = p.stat().st_size
+                            # Truncate rather than delete: the live log may be open.
+                            with open(p, "w", encoding="utf-8"):
+                                pass
+                            summary["freed"] += before
+                            summary["removed"] += 1
+                            cleared += 1
+                    except Exception as exc:
+                        print(f"Could not clear log {p.name}: {exc}")
+                if cleared:
+                    summary["cats"].append("logs")
+                print(f"[logs] cleared {cleared} file(s).")
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            print(f"FATAL: {exc}")
+            self._log_queue.put(("error", f"Reset failed:\n{exc}"))
+        finally:
+            self._img_refs.clear()
+            sys.stdout.flush()
+            sys.stdout = old_stdout
+            self._log_queue.put(("reset_done", summary))
+
+    def _finish_reset(self, summary):
+        self._set_busy(False)
+        self._img_refs.clear()
+        try:
+            self.refresh_table(force_scan=True)
+        except Exception:
+            pass
+        if hasattr(self, "_refresh_dashboard"):
+            try:
+                self._refresh_dashboard()
+            except Exception:
+                pass
+        n = summary.get("removed", 0)
+        freed = _human_size(summary.get("freed", 0))
+        dbn = summary.get("db_entries", 0)
+        self.status_var.set(
+            t("Reset done — {n} item(s) removed, {size} freed", n=n, size=freed))
+        lines = t("  - {n} item(s) deleted\n  - {size} freed", n=n, size=freed)
+        if dbn:
+            lines = t("  - database emptied ({n} entries)", n=dbn) + "\n" + lines
+        try:
+            self.root.lift(); self.root.focus_force()
+        except Exception:
+            pass
+        self.root.after(10, lambda: messagebox.showinfo(
+            t("Reset / clean downloaded data"),
+            t("Cleanup finished:\n\n{lines}\n\nThe program is back to a clean state.",
+              lines=lines), parent=self.root))
+
     def _browser_kind(self):
         """Canonical browser kind for the chosen entry: builtin/chrome/edge/firefox."""
         return _BROWSER_KINDS.get(self.browser_choice.get(), "builtin")
@@ -9063,6 +9386,8 @@ class ScraperGUI:
             self._finish_emulator_export(msg[1], msg[2], msg[3])
         elif kind == "export_all_done":
             self._finish_export_all(msg[1])
+        elif kind == "reset_done":
+            self._finish_reset(msg[1])
         elif kind == "import_db_done":
             self._finish_import_db(msg[1])
         elif kind == "devcat_done":

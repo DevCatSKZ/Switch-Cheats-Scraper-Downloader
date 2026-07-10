@@ -114,6 +114,18 @@ pro Spiel im Emulator (Add-ons → „Mods and cheats"), weil Android 11+ fremde
   weißem Popup — in `index.html` **und** `privacy.html`. *(Demo-GIF später wieder
   entfernt.)*
 
+**Reset / Clean (`on_reset_data`):** Button „Reset / Clean" (DB-Leiste,
+`reset_btn`) öffnet `ResetDataDialog` — Checkbox-Kategorien MIT Größenanzeige und
+Live-„Total to free": Cheat-Dateien (`titles/`/`by_bid/`/ZIPs/Cache), DB leeren
+(`db.clear()`, vorher `_backup_db`), Cover (`coversdownload/`), Titel-/Namens-
+Caches (`titledb_*.json`, `games.md`, `nx_gfx_readme.md`, `switchbrew_games.txt`),
+Browser-Login+Debug (`browser_profile/`+`browser_debug/`, default AUS), Logs
+(`scraper.log`, default AUS). `_reset_targets()` liefert die Kategorien+Größen,
+`_reset_data_worker` löscht die gewählten (`_delete_path`; Logs werden
+**truncatet** statt gelöscht, weil das Live-Log-Handle offen ist) → Queue
+`reset_done` → `_finish_reset` (refresh + Zusammenfassung). Zwei Bestätigungen.
+Settings/Login bleiben unangetastet (außer man hakt Browser an). 6-sprachig.
+
 **Ein-Klick-Daten-Release-Export (`on_export_all_release`):** Ein Button „Export
 data release" (DB-Leiste, `exportall_btn`) baut alle drei GitHub-`data`-Assets
 auf einmal in einen `exportall`-Ordner: `database.db` (copyright-sauber via

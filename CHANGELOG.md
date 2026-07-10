@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-11 (reset / clean downloaded data)
+
+### Added
+- **“Reset / Clean” button** (Database bar) — lets the user purge everything the
+  program downloaded or generated, so they can return it to a clean state
+  themselves. A dialog lists each category **with its on-disk size** and a
+  running “total to free”, so the clean can be targeted or a full factory reset:
+  - **Downloaded cheat files** — `titles/`, `by_bid/`, packaged ZIPs, the
+    download/scan cache (ticked);
+  - **Database entries** — empties `cheats.db` (a backup is made first) (ticked);
+  - **Downloaded covers** — `coversdownload/` (ticked);
+  - **Title & name caches** — `titledb_*.json`, `games.md`, `nx_gfx_readme.md`,
+    `switchbrew_games.txt` (ticked);
+  - **Browser login & debug** — the logged-in profile + `browser_debug/`
+    (unticked — protects your login);
+  - **App logs** — `scraper.log` etc. (unticked; logs are *truncated*, not
+    deleted, so the live log handle keeps working).
+  Two confirmations, runs off-thread with progress, then reports how many items
+  were removed and how much space was freed and refreshes the table. Your
+  settings and login are never touched unless you tick the browser category.
+  Fully localised in all 6 languages.
+
 ## v1.3 — 2026-07-10 (one-click data-release export)
 
 ### Added
