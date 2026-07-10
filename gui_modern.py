@@ -436,10 +436,207 @@ class ModernApp(ScraperGUI):
         self._page_title(page, "Browse", "Library",
                          "Search, browse and manage every cheat in your database.")
         # Order matters: filters on top, database bar reserved at the BOTTOM,
-        # the table fills whatever height remains (same trick as classic).
+        # the table/gallery fills whatever height remains.
         self._build_filter_section(page, with_pickers=False)
+        # View toggle: table ⇄ cover gallery.
+        self.library_view = tk.StringVar(value="table")
+        vrow = ttk.Frame(page, style="Body.TFrame")
+        vrow.pack(fill="x", pady=(4, 0))
+        tb = ttk.Checkbutton(vrow, text="▤ " + t("Table"), style="Toolbutton",
+                             command=lambda: self._set_library_view("table"))
+        tb.pack(side="left")
+        gb = ttk.Checkbutton(vrow, text="⊞ " + t("Gallery"), style="Toolbutton",
+                             command=lambda: self._set_library_view("gallery"))
+        gb.pack(side="left", padx=(4, 0))
+        self._view_toggle = {"table": tb, "gallery": gb}
+        _Tooltip(gb, "Browse your games as cover tiles — click one for its page. "
+                     "Covers you've downloaded show here; the rest use a "
+                     "placeholder.")
         self._build_database_bar(page, compact=True)
-        self._build_main(page)
+        # Host holding both views stacked; raise the active one.
+        host = ttk.Frame(page, style="Body.TFrame")
+        host.pack(fill="both", expand=True, pady=(6, 0))
+        host.rowconfigure(0, weight=1)
+        host.columnconfigure(0, weight=1)
+        self._lib_table_host = ttk.Frame(host, style="Body.TFrame")
+        self._lib_table_host.grid(row=0, column=0, sticky="nsew")
+        self._lib_gallery_host = ttk.Frame(host, style="Body.TFrame")
+        self._lib_gallery_host.grid(row=0, column=0, sticky="nsew")
+        self._build_main(self._lib_table_host)
+        self._build_gallery(self._lib_gallery_host)
+        self._set_library_view("table")
+
+    # ------------------------------------------------------- cover gallery
+    def _set_library_view(self, mode):
+        self.library_view.set(mode)
+        for m, btn in getattr(self, "_view_toggle", {}).items():
+            try:
+                (btn.state(["selected"]) if m == mode
+                 else btn.state(["!selected"]))
+            except Exception:
+                pass
+        if mode == "gallery":
+            self._lib_gallery_host.tkraise()
+            self._populate_gallery()
+        else:
+            self._lib_table_host.tkraise()
+
+    def _build_gallery(self, parent):
+        c = theme()
+        canvas = tk.Canvas(parent, highlightthickness=0, bd=0, bg=c["bg"])
+        vsb = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        inner = ttk.Frame(canvas, style="Body.TFrame")
+        win = canvas.create_window((0, 0), window=inner, anchor="nw")
+        canvas.configure(yscrollcommand=vsb.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
+        inner.bind("<Configure>",
+                   lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>",
+                    lambda e: canvas.itemconfigure(win, width=e.width))
+        canvas.bind("<MouseWheel>",
+                    lambda e: canvas.yview_scroll(-e.delta // 120, "units"))
+        inner.bind("<MouseWheel>",
+                   lambda e: canvas.yview_scroll(-e.delta // 120, "units"))
+        self._gallery_canvas = canvas
+        self._gallery_inner = inner
+        self._gallery_imgs = {}     # title_id -> PhotoImage (kept alive)
+        self._gallery_gen = 0
+
+    _GALLERY_CAP = 120
+    _GALLERY_COLS = 6
+
+    def _populate_gallery(self):
+        import sqlite3 as _sq
+        inner = getattr(self, "_gallery_inner", None)
+        if inner is None:
+            return
+        for w in inner.winfo_children():
+            w.destroy()
+        self._gallery_imgs.clear()
+        self._gallery_gen += 1
+        gen = self._gallery_gen
+        c = theme()
+        term = self.search_var.get().strip()
+        rows, total = [], 0
+        try:
+            con = _sq.connect(f"file:{Path(self.db_path.get())}?mode=ro", uri=True)
+            where = "WHERE game_title IS NOT NULL AND game_title<>''"
+            params = []
+            if term:
+                where += " AND game_title LIKE ?"
+                params.append(f"%{term}%")
+            total = con.execute(
+                f"SELECT COUNT(DISTINCT substr(title_id,1,13)||'000') "
+                f"FROM builds {where}", params).fetchone()[0]
+            rows = con.execute(
+                f"SELECT MAX(title_id), MAX(game_title), MAX(image), "
+                f"COALESCE(SUM(cheat_count),0) FROM builds {where} "
+                f"GROUP BY substr(title_id,1,13)||'000' "
+                f"ORDER BY game_title COLLATE NOCASE LIMIT ?",
+                params + [self._GALLERY_CAP]).fetchall()
+            con.close()
+        except Exception as exc:
+            self._append_log(f"Gallery query failed: {exc}")
+            return
+        if not rows:
+            ttk.Label(inner, text="🔍  " + t("No matches for “{term}”.", term=term)
+                      if term else t("Your database is empty — open Home and "
+                                     "click ★ Download complete database."),
+                      style="PageSub.TLabel").grid(row=0, column=0, padx=20, pady=20)
+            return
+        cols = self._GALLERY_COLS
+        for ci in range(cols):
+            inner.columnconfigure(ci, weight=1, uniform="gtile")
+        tiles = []
+        for i, (tid, name, image, cc) in enumerate(rows):
+            tile = self._gallery_tile(inner, tid, name, cc, i // cols, i % cols)
+            tiles.append((tid, image, tile))
+        if total > len(rows):
+            more = total - len(rows)
+            ttk.Label(inner, text=t("+{n} more — refine your search to see them.",
+                                    n=more), style="StatSub.TLabel").grid(
+                row=(len(rows) // cols) + 1, column=0, columnspan=cols,
+                sticky="w", pady=(8, 4))
+        # Load covers in the background (cache-first; network only if allowed).
+        self._gallery_load_covers(tiles, gen)
+
+    def _gallery_tile(self, parent, tid, name, cc, r, col):
+        c = theme()
+        border, card = self._glass_card(parent, padding=(0, 0))
+        border.grid(row=r, column=col, sticky="nsew", padx=5, pady=5)
+        card.configure(cursor="hand2")
+        cover = tk.Label(card, bd=0, highlightthickness=0, bg=c["surface"],
+                         width=13, height=8, anchor="center",
+                         fg=c["fg_muted"], font=("Segoe UI Semibold", 20),
+                         text=(name or "?")[:1].upper())
+        cover.pack(fill="x")
+        nm = ttk.Label(card, text=(name or tid or "?"), style="Glass.TLabel",
+                       wraplength=150, justify="center", anchor="center",
+                       font=("Segoe UI", 9))
+        nm.pack(fill="x", padx=6, pady=(4, 1))
+        ttk.Label(card, text=t("{n} cheat(s)", n=cc), style="StatSub.TLabel",
+                  anchor="center").pack(fill="x", pady=(0, 6))
+        for w in (card, cover, nm):
+            w.bind("<Button-1>", lambda _e, t_=tid: self.open_game_page(t_))
+        return cover
+
+    def _gallery_load_covers(self, tiles, gen):
+        """Fill tile covers from the on-disk cache first; optionally fetch the
+        rest (throttled, sequential) when the user keeps covers. A generation
+        guard cancels the run when the gallery is repopulated."""
+        try:
+            from PIL import Image, ImageTk
+        except Exception:
+            return
+        import io
+        import threading as _th
+        allow_net = bool(self.cache_covers.get())
+
+        def work():
+            for tid, image, label in tiles:
+                if gen != self._gallery_gen:
+                    return
+                if not image:
+                    continue
+                cache = self._cover_cache_path(image, (tid or "").upper())
+                raw = None
+                try:
+                    if cache.exists():
+                        raw = cache.read_bytes()
+                    elif allow_net:
+                        import requests
+                        raw = requests.get(self._normalize_url(image), timeout=12).content
+                        try:
+                            cache.parent.mkdir(parents=True, exist_ok=True)
+                            cache.write_bytes(raw)
+                        except Exception:
+                            pass
+                except Exception:
+                    raw = None
+                if not raw:
+                    continue
+                try:
+                    img = Image.open(io.BytesIO(raw))
+                    img.thumbnail((150, 150))
+                except Exception:
+                    continue
+
+                def apply(t_=tid, im=img, lb=label, g=gen):
+                    if g != self._gallery_gen:
+                        return
+                    try:
+                        photo = ImageTk.PhotoImage(im)
+                        self._gallery_imgs[t_] = photo
+                        lb.configure(image=photo, text="", height=160)
+                    except Exception:
+                        pass
+                try:
+                    self.root.after(0, apply)
+                except Exception:
+                    return
+
+        _th.Thread(target=work, daemon=True).start()
 
     def _build_sources_page(self, page):
         self._page_title(page, "Collect", "Sources",
@@ -873,6 +1070,10 @@ class ModernApp(ScraperGUI):
         # The async chunked insert finishes a moment later — re-check a few times.
         for delay in (250, 700, 1500):
             self.root.after(delay, self._update_empty_state)
+        # Keep the cover gallery in sync with the search when it's the active view.
+        if getattr(self, "library_view", None) and \
+                self.library_view.get() == "gallery":
+            self.root.after(120, self._populate_gallery)
 
     def _ensure_empty_overlay(self):
         if getattr(self, "_empty_overlay", None) is not None:
@@ -1034,6 +1235,10 @@ class ModernApp(ScraperGUI):
                 txt.configure(bg=c["log_bg"], fg=c["log_fg"])
             except Exception:
                 pass
+        try:
+            self._gallery_canvas.configure(bg=c["bg"])
+        except Exception:
+            pass
         self._paint_nav()
         self._paint_busy()
         self._paint_bell()

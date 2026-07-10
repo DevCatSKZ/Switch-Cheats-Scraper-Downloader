@@ -1688,6 +1688,17 @@ _merge({
         "de": "v{ver} — aktuell", "es": "v{ver} — al día",
         "fr": "v{ver} — à jour", "it": "v{ver} — aggiornato",
         "ja": "v{ver} — 最新"},
+    # -- Library cover gallery --
+    "Table": {"de": "Tabelle", "es": "Tabla", "fr": "Tableau", "it": "Tabella",
+              "ja": "テーブル"},
+    "Gallery": {"de": "Galerie", "es": "Galería", "fr": "Galerie", "it": "Galleria",
+                "ja": "ギャラリー"},
+    "+{n} more — refine your search to see them.": {
+        "de": "+{n} weitere — grenze die Suche ein, um sie zu sehen.",
+        "es": "+{n} más — afina la búsqueda para verlos.",
+        "fr": "+{n} de plus — affinez la recherche pour les voir.",
+        "it": "+{n} altri — affina la ricerca per vederli.",
+        "ja": "他 {n} 件 — 検索を絞ると表示されます。"},
     # -- Sources / CheatSlips card redesign --
     "Community sources": {
         "de": "Community-Quellen", "es": "Fuentes de la comunidad",

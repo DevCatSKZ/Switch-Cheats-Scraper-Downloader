@@ -65,9 +65,31 @@
   /* Scrollspy: the section currently in view is highlighted in the bar. */
   .nav-links a.active{color:var(--teal); background:rgba(45,225,194,.10)}
   /* language dropdown + GitHub button — one uniform chip style */
-  .lang-sel,.nav-links a.nav-gh{color:var(--text); border:1px solid var(--border); border-radius:9px;
+  .lang-sel,.lang-btn,.nav-links a.nav-gh{color:var(--text); border:1px solid var(--border); border-radius:9px;
     padding:8px 12px; font-family:var(--sans); font-size:13px; font-weight:600; line-height:1.2;
     cursor:pointer; transition:.15s; background:rgba(8,20,32,.6)}
+  /* Custom language dropdown — fully theme-styled (the native popup could not be). */
+  .lang-dd{position:relative}
+  .lang-btn{display:inline-flex; align-items:center; gap:7px}
+  .lang-btn:hover{border-color:var(--teal); background-color:rgba(45,225,194,.10)}
+  .lang-caret{font-size:10px; color:var(--muted); transition:transform .15s}
+  .lang-dd.open .lang-caret{transform:rotate(180deg); color:var(--teal)}
+  .lang-menu{position:absolute; top:calc(100% + 6px); right:0; min-width:168px; margin:0; padding:6px;
+    list-style:none; background:var(--panel-solid); border:1px solid var(--border-hi); border-radius:11px;
+    box-shadow:0 16px 40px rgba(0,0,0,.55); z-index:60; display:none;
+    opacity:0; transform:translateY(-6px); transition:opacity .14s, transform .14s}
+  .lang-dd.open .lang-menu{display:block; opacity:1; transform:translateY(0)}
+  .lang-menu li{padding:9px 11px; border-radius:7px; cursor:pointer; color:var(--text);
+    font-size:13.5px; white-space:nowrap; display:flex; align-items:center; gap:8px}
+  .lang-menu li:hover{background:rgba(45,225,194,.12)}
+  .lang-menu li[aria-selected="true"]{color:var(--teal)}
+  .lang-menu li[aria-selected="true"]::after{content:"✓"; margin-left:auto; color:var(--teal)}
+  /* Hero demo — an animated, neutral tour of the Windows app. */
+  .hero-demo{margin:34px 0 0; max-width:920px}
+  .hero-demo img{display:block; width:100%; height:auto; border-radius:14px;
+    border:1px solid var(--border-hi); box-shadow:0 24px 70px rgba(0,0,0,.5), 0 0 0 1px rgba(45,225,194,.06);
+    background:var(--ground2)}
+  .hero-demo figcaption{margin-top:10px; color:var(--muted); font-size:12.5px; letter-spacing:.02em}
   .lang-sel{appearance:none; -webkit-appearance:none; padding-right:30px;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237e9b9b' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat:no-repeat; background-position:right 10px center}
@@ -307,14 +329,19 @@
       <a href="#platforms" data-i18n="nav_platforms">Platforms</a>
       <a href="#features" data-i18n="nav_features">Features</a>
       <a href="#data" class="nav-dbl"><span class="lbl-l" data-i18n="nav_data">Nintendo Switch Cheats Database</span><span class="lbl-s" data-i18n="nav_data_s">Cheats DB</span></a>
-      <select class="lang-sel" id="lang" aria-label="Language">
-        <option value="en">EN</option>
-        <option value="de">DE</option>
-        <option value="es">ES</option>
-        <option value="fr">FR</option>
-        <option value="it">IT</option>
-        <option value="ja">日本語</option>
-      </select>
+      <div class="lang-dd" id="langdd">
+        <button type="button" class="lang-btn" id="langbtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Language">
+          <span id="langcur">EN</span><span class="lang-caret" aria-hidden="true">▾</span>
+        </button>
+        <ul class="lang-menu" id="langmenu" role="listbox" aria-label="Language">
+          <li role="option" data-val="en">EN — English</li>
+          <li role="option" data-val="de">DE — Deutsch</li>
+          <li role="option" data-val="es">ES — Español</li>
+          <li role="option" data-val="fr">FR — Français</li>
+          <li role="option" data-val="it">IT — Italiano</li>
+          <li role="option" data-val="ja">日本語</li>
+        </ul>
+      </div>
       <a class="nav-gh" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader">GitHub ↗</a>
     </div>
   </div>
@@ -349,6 +376,11 @@
       <span data-i18n="meta_mit">MIT licensed</span>
       <span data-i18n="meta_langs">6 languages</span>
     </div>
+
+    <figure class="hero-demo">
+      <img src="demo.gif" alt="A tour of the Switch Cheats Scraper &amp; Downloader Windows app" loading="lazy">
+      <figcaption data-i18n="hero_demo_cap">A quick tour of the Windows app — dashboard, library, cover gallery, sources, CheatSlips and the per-game page.</figcaption>
+    </figure>
   </div>
 </header>
 
@@ -635,6 +667,7 @@ const I18N = {
     hero_eyebrow:`Scrapen · Herunterladen · Verwalten`,
     hero_title:`Jeder Switch-Cheat, <span class="g">auf jedem Gerät.</span>`,
     hero_lede:`Ein Toolkit, das Cheat-Codes aus <b>9+ Quellen</b> zusammenträgt, in einer durchsuchbaren Datenbank verwaltet — Einträge anlegen, bearbeiten und ergänzen — und direkt im passenden Format ablegt, unter <b>Windows</b>, auf der <b>Switch</b> selbst und in <b>Android</b>-Emulatoren.`,
+    hero_demo_cap:`Ein kurzer Rundgang durch die Windows-App — Dashboard, Bibliothek, Cover-Galerie, Quellen, CheatSlips und die Spielseite.`,
     cta_win:`Für Windows herunterladen`, cta_android:`Für Android herunterladen`, cta_switch:`Für Switch herunterladen`, cta_all:`Alle Plattformen & Portable`,
     meta_mit:`MIT-Lizenz`, meta_langs:`6 Sprachen`, meta_noacct:`Zum Stöbern kein Konto nötig`,
     emb_win_s:`Scraper · Downloader · Manager`, emb_sw_s:`Cheats für die Nintendo Switch laden`,
@@ -690,6 +723,7 @@ const I18N = {
     hero_eyebrow:`Extraer · Descargar · Gestionar`,
     hero_title:`Cada truco de Switch, <span class="g">en cada dispositivo.</span>`,
     hero_lede:`Un kit que reúne códigos de trucos de <b>9+ fuentes</b>, los gestiona en una base de datos con búsqueda — crear, editar y enriquecer entradas — y los escribe en el formato correcto, en <b>Windows</b>, en la propia <b>Switch</b> y en emuladores de <b>Android</b>.`,
+    hero_demo_cap:`Un recorrido rapido por la app de Windows: panel, biblioteca, galeria de caratulas, fuentes, CheatSlips y la pagina por juego.`,
     cta_win:`Descargar para Windows`, cta_android:`Descargar para Android`, cta_switch:`Descargar para Switch`, cta_all:`Todas las plataformas y portable`,
     meta_mit:`Licencia MIT`, meta_langs:`6 idiomas`, meta_noacct:`No hace falta cuenta para explorar`,
     emb_win_s:`Scraper · Descargador · Gestor`, emb_sw_s:`Descargar trucos para Nintendo Switch`,
@@ -745,6 +779,7 @@ const I18N = {
     hero_eyebrow:`Extraire · Télécharger · Gérer`,
     hero_title:`Chaque code Switch, <span class="g">sur chaque appareil.</span>`,
     hero_lede:`Une boîte à outils qui récupère les codes de triche depuis <b>9+ sources</b>, les gère dans une base de données consultable — créer, modifier et enrichir des entrées — et les écrit directement au bon format, sur <b>Windows</b>, sur la <b>Switch</b> elle-même et sur les émulateurs <b>Android</b>.`,
+    hero_demo_cap:`Un apercu rapide de l app Windows — tableau de bord, bibliotheque, galerie de jaquettes, sources, CheatSlips et la page par jeu.`,
     cta_win:`Télécharger pour Windows`, cta_android:`Télécharger pour Android`, cta_switch:`Télécharger pour Switch`, cta_all:`Toutes les plateformes & portable`,
     meta_mit:`Licence MIT`, meta_langs:`6 langues`, meta_noacct:`Aucun compte requis pour parcourir`,
     emb_win_s:`Scraper · Téléchargeur · Gestionnaire`, emb_sw_s:`Télécharger des codes pour Nintendo Switch`,
@@ -800,6 +835,7 @@ const I18N = {
     hero_eyebrow:`Estrai · Scarica · Gestisci`,
     hero_title:`Ogni trucco per Switch, <span class="g">su ogni dispositivo.</span>`,
     hero_lede:`Un toolkit che raccoglie i codici trucco da <b>9+ fonti</b>, li gestisce in un database consultabile — creare, modificare e arricchire le voci — e li scrive nel formato giusto, su <b>Windows</b>, sulla <b>Switch</b> stessa e sugli emulatori <b>Android</b>.`,
+    hero_demo_cap:`Un rapido tour dell app Windows — dashboard, libreria, galleria delle copertine, fonti, CheatSlips e la pagina per gioco.`,
     cta_win:`Scarica per Windows`, cta_android:`Scarica per Android`, cta_switch:`Scarica per Switch`, cta_all:`Tutte le piattaforme e portable`,
     meta_mit:`Licenza MIT`, meta_langs:`6 lingue`, meta_noacct:`Nessun account per sfogliare`,
     emb_win_s:`Scraper · Downloader · Gestore`, emb_sw_s:`Scarica trucchi per Nintendo Switch`,
@@ -855,6 +891,7 @@ const I18N = {
     hero_eyebrow:`収集 · ダウンロード · 管理`,
     hero_title:`すべてのSwitchチートを、<span class="g">あらゆるデバイスで。</span>`,
     hero_lede:`<b>9つ以上のソース</b>からチートコードを集め、検索できるデータベースで管理し（エントリの追加・編集・情報の補完）、正しいレイアウトで書き出すツールキット —— <b>Windows</b>、<b>Switch</b>本体、そして<b>Android</b>エミュレーターで。`,
+    hero_demo_cap:`Windows アプリのクイックツアー —— ダッシュボード、ライブラリ、カバーギャラリー、ソース、CheatSlips、ゲームページ。`,
     cta_win:`Windows版をダウンロード`, cta_android:`Android版をダウンロード`, cta_switch:`Switch版をダウンロード`, cta_all:`全プラットフォーム & ポータブル`,
     meta_mit:`MITライセンス`, meta_langs:`6言語対応`, meta_noacct:`閲覧にアカウント不要`,
     emb_win_s:`スクレイパー · ダウンローダー · マネージャー`, emb_sw_s:`Nintendo Switch用のチートをダウンロード`,
@@ -908,7 +945,12 @@ const I18N = {
 };
 
 (function(){
-  const sel = document.getElementById('lang');
+  const dd = document.getElementById('langdd');
+  const btn = document.getElementById('langbtn');
+  const cur = document.getElementById('langcur');
+  const menu = document.getElementById('langmenu');
+  const items = Array.from(menu.querySelectorAll('li'));
+  const SHORT = {en:'EN', de:'DE', es:'ES', fr:'FR', it:'IT', ja:'日本語'};
   const nodes = document.querySelectorAll('[data-i18n]');
   const EN = {};
   nodes.forEach(el => EN[el.dataset.i18n] = el.innerHTML); // capture English defaults
@@ -921,8 +963,18 @@ const I18N = {
     });
     document.documentElement.lang = lang;
     try { localStorage.setItem('scd_lang', lang); } catch(e){}
-    sel.value = lang;
+    cur.textContent = SHORT[lang] || lang.toUpperCase();
+    items.forEach(li => li.setAttribute('aria-selected', li.dataset.val === lang ? 'true' : 'false'));
   }
+  function close(){ dd.classList.remove('open'); btn.setAttribute('aria-expanded','false'); }
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = dd.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  items.forEach(li => li.addEventListener('click', () => { apply(li.dataset.val); close(); }));
+  document.addEventListener('click', close);
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') close(); });
   let lang = 'en';
   try { lang = localStorage.getItem('scd_lang') || ''; } catch(e){}
   if(!I18N[lang]){
@@ -930,7 +982,6 @@ const I18N = {
     lang = I18N[nav] ? nav : 'en';
   }
   apply(lang);
-  sel.addEventListener('change', () => apply(sel.value));
 })();
 
 /* ---- ambient hex drift ---- */

@@ -45,9 +45,24 @@
   .nav-links a{color:var(--muted); font-size:14px; padding:8px 12px; border-radius:8px; transition:.15s;
     white-space:nowrap}
   .nav-links a:hover{color:var(--text); background:rgba(45,225,194,.08); text-decoration:none}
-  .lang-sel,.nav-links a.nav-gh{color:var(--text); border:1px solid var(--border); border-radius:9px;
+  .lang-sel,.lang-btn,.nav-links a.nav-gh{color:var(--text); border:1px solid var(--border); border-radius:9px;
     padding:8px 12px; font-family:var(--sans); font-size:13px; font-weight:600; line-height:1.2; cursor:pointer;
     transition:.15s; background:rgba(8,20,32,.6)}
+  .lang-dd{position:relative}
+  .lang-btn{display:inline-flex; align-items:center; gap:7px}
+  .lang-btn:hover{border-color:var(--teal); background-color:rgba(45,225,194,.10)}
+  .lang-caret{font-size:10px; color:var(--muted); transition:transform .15s}
+  .lang-dd.open .lang-caret{transform:rotate(180deg); color:var(--teal)}
+  .lang-menu{position:absolute; top:calc(100% + 6px); right:0; min-width:168px; margin:0; padding:6px;
+    list-style:none; background:var(--panel-solid); border:1px solid var(--border-hi); border-radius:11px;
+    box-shadow:0 16px 40px rgba(0,0,0,.55); z-index:60; display:none; opacity:0; transform:translateY(-6px);
+    transition:opacity .14s, transform .14s}
+  .lang-dd.open .lang-menu{display:block; opacity:1; transform:translateY(0)}
+  .lang-menu li{padding:9px 11px; border-radius:7px; cursor:pointer; color:var(--text); font-size:13.5px;
+    white-space:nowrap; display:flex; align-items:center; gap:8px}
+  .lang-menu li:hover{background:rgba(45,225,194,.12)}
+  .lang-menu li[aria-selected="true"]{color:var(--teal)}
+  .lang-menu li[aria-selected="true"]::after{content:"✓"; margin-left:auto; color:var(--teal)}
   .lang-sel{appearance:none; -webkit-appearance:none; padding-right:30px;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237e9b9b' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat:no-repeat; background-position:right 10px center}
@@ -97,10 +112,19 @@
       <a href="index.html#platforms" data-i18n="nav_platforms">Platforms</a>
       <a href="index.html#features" data-i18n="nav_features">Features</a>
       <a href="index.html#data" class="nav-dbl"><span class="lbl-l" data-i18n="nav_data">Nintendo Switch Cheats Database</span><span class="lbl-s" data-i18n="nav_data_s">Cheats DB</span></a>
-      <select class="lang-sel" id="lang" aria-label="Language">
-        <option value="en">EN</option><option value="de">DE</option><option value="es">ES</option>
-        <option value="fr">FR</option><option value="it">IT</option><option value="ja">日本語</option>
-      </select>
+      <div class="lang-dd" id="langdd">
+        <button type="button" class="lang-btn" id="langbtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Language">
+          <span id="langcur">EN</span><span class="lang-caret" aria-hidden="true">▾</span>
+        </button>
+        <ul class="lang-menu" id="langmenu" role="listbox" aria-label="Language">
+          <li role="option" data-val="en">EN — English</li>
+          <li role="option" data-val="de">DE — Deutsch</li>
+          <li role="option" data-val="es">ES — Español</li>
+          <li role="option" data-val="fr">FR — Français</li>
+          <li role="option" data-val="it">IT — Italiano</li>
+          <li role="option" data-val="ja">日本語</li>
+        </ul>
+      </div>
       <a class="nav-gh" href="https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader">GitHub ↗</a>
     </div>
   </div>
@@ -313,7 +337,12 @@ const I18N = {
 };
 
 (function(){
-  const sel = document.getElementById('lang');
+  const dd = document.getElementById('langdd');
+  const btn = document.getElementById('langbtn');
+  const cur = document.getElementById('langcur');
+  const menu = document.getElementById('langmenu');
+  const items = Array.from(menu.querySelectorAll('li'));
+  const SHORT = {en:'EN', de:'DE', es:'ES', fr:'FR', it:'IT', ja:'日本語'};
   const nodes = document.querySelectorAll('[data-i18n]');
   const EN = {};
   nodes.forEach(el => EN[el.dataset.i18n] = el.innerHTML);
@@ -323,8 +352,15 @@ const I18N = {
     nodes.forEach(el => { const k = el.dataset.i18n; el.innerHTML = (dict[k] != null) ? dict[k] : EN[k]; });
     document.documentElement.lang = lang;
     try { localStorage.setItem('scd_lang', lang); } catch(e){}
-    sel.value = lang;
+    cur.textContent = SHORT[lang] || lang.toUpperCase();
+    items.forEach(li => li.setAttribute('aria-selected', li.dataset.val === lang ? 'true' : 'false'));
   }
+  function close(){ dd.classList.remove('open'); btn.setAttribute('aria-expanded','false'); }
+  btn.addEventListener('click', e => { e.stopPropagation();
+    const open = dd.classList.toggle('open'); btn.setAttribute('aria-expanded', open ? 'true' : 'false'); });
+  items.forEach(li => li.addEventListener('click', () => { apply(li.dataset.val); close(); }));
+  document.addEventListener('click', close);
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') close(); });
   let lang = '';
   try { lang = localStorage.getItem('scd_lang') || ''; } catch(e){}
   if(!I18N[lang] && lang !== 'en'){
@@ -332,7 +368,6 @@ const I18N = {
     lang = I18N[nav] ? nav : 'en';
   }
   apply(lang);
-  sel.addEventListener('change', () => apply(sel.value));
 })();
 </script>
 </body>

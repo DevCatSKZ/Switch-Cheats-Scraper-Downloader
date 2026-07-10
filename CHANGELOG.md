@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-10 (gallery + website polish)
+
+### Added
+- **Cover gallery view** in the Library — a ▤ Table / ⊞ Gallery toggle switches
+  the games into a scrollable grid of cover tiles (cover, name, cheat count;
+  click for the game page). Covers load from the local cache first (network
+  only if you keep covers), with a clean placeholder otherwise; the grid tracks
+  your search and is capped for smoothness.
+
+### Website
+- **Animated demo** in the hero — a neutral tour of the Windows app (dashboard,
+  library, gallery, sources, CheatSlips, game page), recorded without any box
+  art or copyrighted description.
+- **Custom language dropdown** — the native `<select>` (whose popup couldn't be
+  themed) is replaced by a fully theme-styled dropdown with a ✓ on the active
+  language; applied to the landing and privacy pages.
+
 ## v1.3 — 2026-07-10 (localisation + tooltips)
 
 ### Improved
