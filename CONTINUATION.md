@@ -111,7 +111,20 @@ pro Spiel im Emulator (Add-ons → „Mods and cheats"), weil Android 11+ fremde
 - **Website (`docs/`):** neutrales Demo-GIF im Hero (`hero-demo`/`demo.gif`,
   `hero_demo_cap`) + **custom Sprach-Dropdown** (`.lang-dd`/`.lang-btn`/
   `.lang-menu`, aria-selected ✓, schließt bei Außenklick/Esc) statt nativem
-  weißem Popup — in `index.html` **und** `privacy.html`.
+  weißem Popup — in `index.html` **und** `privacy.html`. *(Demo-GIF später wieder
+  entfernt.)*
+
+**Ein-Klick-Daten-Release-Export (`on_export_all_release`):** Ein Button „Export
+data release" (DB-Leiste, `exportall_btn`) baut alle drei GitHub-`data`-Assets
+auf einmal in einen `exportall`-Ordner: `database.db` (copyright-sauber via
+`export_shared_db`), `switch-cheats.zip` (Atmosphère,
+`export_cheats_to_zip(mode="atmosphere")`) und `switch-cheats-emulator.zip`
+(Emulator-Layout, `export_cheats_for_emulator(prefix="", as_zip=True)` +
+`build_title_name_map`). Worker `_export_all_worker` → Queue `export_all_done` →
+`_finish_export_all` (Zusammenfassung + `_open_folder`). Zielordner gemerkt
+(`exportall_dir` in settings.json). `export_shared_db` erzwingt nun
+`PRAGMA journal_mode=DELETE` → die exportierte DB ist eine saubere Einzeldatei
+(keine `-wal`/`-shm`-Sidecars). Alles in 6 Sprachen lokalisiert.
 
 **Merkzettel:** Details/Fallstricke stehen in den Memory-Notizen
 (`modern-gui-architecture`, `windows-auto-update`, `android-cheat-delivery`,

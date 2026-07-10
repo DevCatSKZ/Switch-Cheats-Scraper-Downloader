@@ -1975,6 +1975,8 @@ class ScraperGUI:
         self.sd_export_root = tk.StringVar(value="")
         self.sd_export_mode = tk.StringVar(value="atmosphere")
         self.export_zip_path = tk.StringVar(value="")
+        # One-click "export data release" target folder (remembered).
+        self.exportall_dir = tk.StringVar(value="")
         # download/login settings
         self.dl_output = tk.StringVar(value=DEFAULT_OUTPUT)
         self.email_var = tk.StringVar()
@@ -2272,6 +2274,7 @@ class ScraperGUI:
         self.sd_export_root.set(data.get("sd_export_root", ""))
         self.sd_export_mode.set(data.get("sd_export_mode", "atmosphere"))
         self.export_zip_path.set(data.get("export_zip_path", ""))
+        self.exportall_dir.set(data.get("exportall_dir", ""))
         if data.get("output"):
             self.dl_output.set(self._abs_path(data["output"], DEFAULT_OUTPUT))
         if data.get("db_path"):
@@ -2317,6 +2320,7 @@ class ScraperGUI:
             "sd_export_root": self.sd_export_root.get(),
             "sd_export_mode": self.sd_export_mode.get(),
             "export_zip_path": self.export_zip_path.get(),
+            "exportall_dir": self.exportall_dir.get(),
             "output": self.dl_output.get(),
             "db_path": self.db_path.get(),
         }
@@ -3685,6 +3689,9 @@ class ScraperGUI:
         self.exportsd_btn.pack(side="left", padx=(0, 4))
         self.exportzip_btn = ttk.Button(left, text="Export to ZIP", command=self.on_export_zip)
         self.exportzip_btn.pack(side="left", padx=(0, 4))
+        self.exportall_btn = ttk.Button(left2, text="Export data release",
+                                        command=self.on_export_all_release)
+        self.exportall_btn.pack(side="left", padx=(0, 4))
         self.exportemu_btn = ttk.Button(left2, text="Export for Emulators",
                                         command=self.on_export_emulator)
         self.exportemu_btn.pack(side="left", padx=(0, 4))
@@ -3728,8 +3735,14 @@ class ScraperGUI:
         self._action_buttons += [self.add_btn, self.csv_btn, self.exportdb_btn,
                                  self.exportnames_btn,
                                  self.importdb_btn, self.exportsd_btn, self.exportzip_btn,
-                                 self.exportemu_btn,
+                                 self.exportall_btn, self.exportemu_btn,
                                  self.repair_btn, self.clear_btn]
+        _Tooltip(self.exportall_btn,
+                 "One click keeps the GitHub 'data' release current: builds all "
+                 "three files at once into an 'exportall' folder — database.db "
+                 "(copyright-clean), switch-cheats.zip (Atmosphère SD layout) and "
+                 "switch-cheats-emulator.zip (emulator load layout). Then upload "
+                 "them to the release.")
         _Tooltip(self.importdb_btn,
                  "Import a previously exported database (.db). Merge it into the "
                  "current database (nothing removed) or replace the current one "
@@ -4775,6 +4788,199 @@ class ScraperGUI:
               exported=stats['exported'], games=stats['games'],
               stubs=stats['skipped_stub'], missing=stats['missing'],
               errors=stats['errors']), parent=self.root))
+
+    # ---------------------------------- one-click data-release export (all 3)
+    def on_export_all_release(self):
+        """Build all three GitHub 'data' release files at once into /exportall.
+
+        Produces, in one folder, exactly what the public data release ships, so
+        keeping the GitHub download page current is a single click:
+          • database.db                — the GUI database, copyright-clean
+                                         (game descriptions/intros stripped)
+          • switch-cheats.zip          — every cheat in the Atmosphère SD layout
+          • switch-cheats-emulator.zip — every cheat in the emulator load layout
+        The live database and downloaded files are never modified."""
+        if self._busy:
+            return
+        src = Path(self.db_path.get())
+        if not src.exists():
+            messagebox.showwarning(t("Export data release"),
+                                   t("No database file yet. Scrape first."))
+            return
+        # Default target: an 'exportall' folder next to the data (remembered).
+        target = self.exportall_dir.get().strip() or str(DATA_DIR / "exportall")
+        ans = messagebox.askyesnocancel(
+            t("Export data release"),
+            t("Create the three GitHub data-release files in one go?\n\n"
+              "Folder:\n{dir}\n\n"
+              "  • database.db  (copyright-clean — descriptions removed)\n"
+              "  • switch-cheats.zip  (Atmosphère SD-card layout)\n"
+              "  • switch-cheats-emulator.zip  (emulator load layout)\n\n"
+              "YES — export into this folder\n"
+              "NO — choose a different folder\n"
+              "CANCEL — abort", dir=target),
+            parent=self.root)
+        if ans is None:
+            return
+        if ans is False:
+            chosen = filedialog.askdirectory(
+                title=t("Export data release"), initialdir=str(DATA_DIR))
+            if not chosen:
+                return
+            target = str(Path(chosen) / "exportall") if Path(chosen).name != "exportall" else chosen
+        self.exportall_dir.set(target)
+        self._save_settings()
+        self._stop_event.clear()
+        self._set_busy(True)
+        self.status_var.set(t("Exporting data release..."))
+        cfg = {"db_path": self.db_path.get(), "output": self.dl_output.get(),
+               "dir": target}
+        threading.Thread(target=self._export_all_worker, args=(cfg,), daemon=True).start()
+
+    def _export_all_worker(self, cfg):
+        old_stdout = sys.stdout
+        sys.stdout = _QueueWriter(self._log_queue, mirror=self._log_writer)
+        res = {"dir": cfg["dir"], "ok": [], "failed": [],
+               "db": None, "sd": None, "emu": None}
+
+        def _prog(tag):
+            tr = ProgressTracker(tag)
+            def cb(done, total):
+                tr.update(done, total)
+                self._log_queue.put(("progress", done, total,
+                    f"{tag}: {done}/{total} ({tr.pct()}%) | ~{tr.eta_str()} remaining"))
+            return cb
+
+        try:
+            out_dir = Path(cfg["dir"])
+            out_dir.mkdir(parents=True, exist_ok=True)
+            src = Path(cfg["db_path"])
+            print(f"=== Export data release → {out_dir} ===")
+
+            # 1/3 — copyright-clean database.db
+            db_dst = out_dir / "database.db"
+            try:
+                print(f"[1/3] database.db (copyright-clean) → {db_dst}")
+                info = export_shared_db(src, db_dst, strip_publisher_text=True)
+                res["db"] = {"path": str(db_dst),
+                             "size": db_dst.stat().st_size,
+                             "stripped": info.get("game_description", 0)}
+                res["ok"].append("database.db")
+            except Exception as exc:
+                import traceback
+                traceback.print_exc()
+                print(f"  database.db FAILED: {exc}")
+                res["failed"].append(("database.db", str(exc)))
+
+            # Shared DB connection for the two cheat-ZIP exports.
+            db = GameDatabase(src)
+            try:
+                # 2/3 — switch-cheats.zip (Atmosphère SD layout)
+                if not self._stop_event.is_set():
+                    sd_zip = out_dir / "switch-cheats.zip"
+                    try:
+                        print(f"[2/3] switch-cheats.zip (Atmosphère) → {sd_zip}")
+                        st = export_cheats_to_zip(
+                            db, Path(cfg["output"]), sd_zip, mode="atmosphere",
+                            progress_cb=_prog("switch-cheats.zip"),
+                            should_stop=self._stop_event.is_set)
+                        res["sd"] = {"path": str(sd_zip), "stats": st,
+                                     "size": sd_zip.stat().st_size if sd_zip.exists() else 0}
+                        res["ok"].append("switch-cheats.zip")
+                    except Exception as exc:
+                        import traceback
+                        traceback.print_exc()
+                        print(f"  switch-cheats.zip FAILED: {exc}")
+                        res["failed"].append(("switch-cheats.zip", str(exc)))
+
+                # 3/3 — switch-cheats-emulator.zip (generic emulator load layout)
+                if not self._stop_event.is_set():
+                    emu_zip = out_dir / "switch-cheats-emulator.zip"
+                    try:
+                        print(f"[3/3] switch-cheats-emulator.zip (emulator) → {emu_zip}")
+                        name_map = build_title_name_map(db._conn)
+                        st = export_cheats_for_emulator(
+                            db, Path(cfg["output"]), emu_zip, name_map, prefix="",
+                            as_zip=True, progress_cb=_prog("switch-cheats-emulator.zip"),
+                            should_stop=self._stop_event.is_set)
+                        res["emu"] = {"path": str(emu_zip), "stats": st,
+                                      "size": emu_zip.stat().st_size if emu_zip.exists() else 0}
+                        res["ok"].append("switch-cheats-emulator.zip")
+                    except Exception as exc:
+                        import traceback
+                        traceback.print_exc()
+                        print(f"  switch-cheats-emulator.zip FAILED: {exc}")
+                        res["failed"].append(("switch-cheats-emulator.zip", str(exc)))
+            finally:
+                db.close()
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            print(f"FATAL: {exc}")
+            self._log_queue.put(("error", f"Export data release failed:\n{exc}"))
+        finally:
+            sys.stdout.flush()
+            sys.stdout = old_stdout
+            self._log_queue.put(("export_all_done", res))
+
+    def _finish_export_all(self, res):
+        self._set_busy(False)
+        if not res:
+            self.status_var.set("Data-release export failed — see log.")
+            return
+        ok = res.get("ok", [])
+        failed = res.get("failed", [])
+        out_dir = res.get("dir", "")
+
+        def _mb(n):
+            return f"{(n or 0) / (1024 * 1024):.1f} MB"
+
+        lines = []
+        if res.get("db"):
+            d = res["db"]
+            lines.append(t("  - database.db - {size}, {n} description(s) removed",
+                           size=_mb(d["size"]), n=d["stripped"]))
+        if res.get("sd"):
+            s = res["sd"]; st = s["stats"]
+            lines.append(t("  - switch-cheats.zip - {size}, {exported} file(s), {games} game(s)",
+                           size=_mb(s["size"]), exported=st["exported"], games=st["games"]))
+        if res.get("emu"):
+            e = res["emu"]; st = e["stats"]
+            lines.append(t("  - switch-cheats-emulator.zip - {size}, {exported} file(s), {games} game(s)",
+                           size=_mb(e["size"]), exported=st["exported"], games=st["games"]))
+        for name, err in failed:
+            lines.append(t("  x {name} - FAILED: {err}", name=name, err=err))
+
+        if failed:
+            self.status_var.set(t("Data release: {ok}/3 exported -> {dir}",
+                                  ok=len(ok), dir=out_dir))
+        else:
+            self.status_var.set(t("Data release exported (3/3) -> {dir}", dir=out_dir))
+        try:
+            self.root.lift(); self.root.focus_force()
+        except Exception:
+            pass
+        body = t("Data-release export finished:\n{dir}\n\n{lines}\n\n"
+                 "Upload these to the GitHub 'data' release to keep the download "
+                 "page current.", dir=out_dir, lines="\n".join(lines))
+        self.root.after(10, lambda: (
+            messagebox.showinfo(t("Export data release"), body, parent=self.root),
+            self._open_folder(out_dir)))
+
+    def _open_folder(self, path):
+        """Open a folder in the system file explorer (best-effort)."""
+        try:
+            import os
+            p = Path(path)
+            p.mkdir(parents=True, exist_ok=True)
+            if hasattr(os, "startfile"):            # Windows
+                os.startfile(str(p))
+            else:                                   # macOS / Linux fallback
+                import subprocess, sys as _sys
+                opener = "open" if _sys.platform == "darwin" else "xdg-open"
+                subprocess.Popen([opener, str(p)])
+        except Exception:
+            pass
 
     def _finish_import_db(self, summary):
         self._set_busy(False)
@@ -8855,6 +9061,8 @@ class ScraperGUI:
             self._finish_zip_export(msg[1], msg[2], msg[3])
         elif kind == "emu_export_done":
             self._finish_emulator_export(msg[1], msg[2], msg[3])
+        elif kind == "export_all_done":
+            self._finish_export_all(msg[1])
         elif kind == "import_db_done":
             self._finish_import_db(msg[1])
         elif kind == "devcat_done":

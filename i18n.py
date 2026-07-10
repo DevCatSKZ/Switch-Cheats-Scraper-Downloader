@@ -5197,6 +5197,72 @@ _merge({
         "ja": "エミュレーターエクスポート完了（{kind}）：\n{dest}\n\n  • {games} ゲームの {exported} チートファイル\n  • {stubs} 個の空/スタブファイルをスキップ\n  • {missing} 個のビルドは未ダウンロード（コピー対象なし）\n  • {errors} 件のエラー\n\n<TitleID>/<GameName>/cheats/… 構造をエミュレーターの load フォルダーにコピーしてください。"},
 })
 
+# ---- One-click data-release export (all three files at once) ----------------
+_merge({
+    "Export data release": {
+        "de": "Daten-Release exportieren", "es": "Exportar publicación de datos",
+        "fr": "Exporter la publication de données", "it": "Esporta release dati",
+        "ja": "データリリースをエクスポート"},
+    "Exporting data release...": {
+        "de": "Exportiere Daten-Release...", "es": "Exportando publicación de datos...",
+        "fr": "Exportation de la publication de données...",
+        "it": "Esportazione release dati...", "ja": "データリリースをエクスポート中..."},
+    "Create the three GitHub data-release files in one go?\n\nFolder:\n{dir}\n\n  • database.db  (copyright-clean — descriptions removed)\n  • switch-cheats.zip  (Atmosphère SD-card layout)\n  • switch-cheats-emulator.zip  (emulator load layout)\n\nYES — export into this folder\nNO — choose a different folder\nCANCEL — abort": {
+        "de": "Die drei GitHub-Daten-Release-Dateien in einem Rutsch erstellen?\n\nOrdner:\n{dir}\n\n  • database.db  (copyright-sauber — Beschreibungen entfernt)\n  • switch-cheats.zip  (Atmosphère-SD-Karten-Layout)\n  • switch-cheats-emulator.zip  (Emulator-load-Layout)\n\nJA — in diesen Ordner exportieren\nNEIN — anderen Ordner wählen\nABBRECHEN — abbrechen",
+        "es": "¿Crear los tres archivos de la publicación de datos de GitHub de una vez?\n\nCarpeta:\n{dir}\n\n  • database.db  (sin copyright — descripciones eliminadas)\n  • switch-cheats.zip  (estructura de tarjeta SD Atmosphère)\n  • switch-cheats-emulator.zip  (estructura load de emulador)\n\nSÍ — exportar a esta carpeta\nNO — elegir otra carpeta\nCANCELAR — cancelar",
+        "fr": "Créer les trois fichiers de la publication de données GitHub d'un coup ?\n\nDossier :\n{dir}\n\n  • database.db  (sans copyright — descriptions retirées)\n  • switch-cheats.zip  (structure carte SD Atmosphère)\n  • switch-cheats-emulator.zip  (structure load d'émulateur)\n\nOUI — exporter dans ce dossier\nNON — choisir un autre dossier\nANNULER — annuler",
+        "it": "Creare i tre file della release dati GitHub in una volta?\n\nCartella:\n{dir}\n\n  • database.db  (senza copyright — descrizioni rimosse)\n  • switch-cheats.zip  (layout scheda SD Atmosphère)\n  • switch-cheats-emulator.zip  (layout load emulatore)\n\nSÌ — esporta in questa cartella\nNO — scegli un'altra cartella\nANNULLA — annulla",
+        "ja": "GitHub のデータリリース 3 ファイルを一度に作成しますか？\n\nフォルダー:\n{dir}\n\n  • database.db  （著作権クリーン — 説明を除去）\n  • switch-cheats.zip  （Atmosphère SD カードレイアウト）\n  • switch-cheats-emulator.zip  （エミュレーター load レイアウト）\n\nはい — このフォルダーにエクスポート\nいいえ — 別のフォルダーを選択\nキャンセル — 中止"},
+    "  - database.db - {size}, {n} description(s) removed": {
+        "de": "  - database.db - {size}, {n} Beschreibung(en) entfernt",
+        "es": "  - database.db - {size}, {n} descripción(es) eliminada(s)",
+        "fr": "  - database.db - {size}, {n} description(s) retirée(s)",
+        "it": "  - database.db - {size}, {n} descrizione/i rimossa/e",
+        "ja": "  - database.db - {size}、説明 {n} 件を除去"},
+    "  - switch-cheats.zip - {size}, {exported} file(s), {games} game(s)": {
+        "de": "  - switch-cheats.zip - {size}, {exported} Datei(en), {games} Spiel(e)",
+        "es": "  - switch-cheats.zip - {size}, {exported} archivo(s), {games} juego(s)",
+        "fr": "  - switch-cheats.zip - {size}, {exported} fichier(s), {games} jeu(x)",
+        "it": "  - switch-cheats.zip - {size}, {exported} file, {games} gioco/i",
+        "ja": "  - switch-cheats.zip - {size}、{exported} ファイル、{games} ゲーム"},
+    "  - switch-cheats-emulator.zip - {size}, {exported} file(s), {games} game(s)": {
+        "de": "  - switch-cheats-emulator.zip - {size}, {exported} Datei(en), {games} Spiel(e)",
+        "es": "  - switch-cheats-emulator.zip - {size}, {exported} archivo(s), {games} juego(s)",
+        "fr": "  - switch-cheats-emulator.zip - {size}, {exported} fichier(s), {games} jeu(x)",
+        "it": "  - switch-cheats-emulator.zip - {size}, {exported} file, {games} gioco/i",
+        "ja": "  - switch-cheats-emulator.zip - {size}、{exported} ファイル、{games} ゲーム"},
+    "  x {name} - FAILED: {err}": {
+        "de": "  x {name} - FEHLGESCHLAGEN: {err}",
+        "es": "  x {name} - FALLÓ: {err}",
+        "fr": "  x {name} - ÉCHEC : {err}",
+        "it": "  x {name} - NON RIUSCITO: {err}",
+        "ja": "  x {name} - 失敗: {err}"},
+    "Data release: {ok}/3 exported -> {dir}": {
+        "de": "Daten-Release: {ok}/3 exportiert -> {dir}",
+        "es": "Publicación de datos: {ok}/3 exportados -> {dir}",
+        "fr": "Publication de données : {ok}/3 exportés -> {dir}",
+        "it": "Release dati: {ok}/3 esportati -> {dir}",
+        "ja": "データリリース: {ok}/3 をエクスポート -> {dir}"},
+    "Data release exported (3/3) -> {dir}": {
+        "de": "Daten-Release exportiert (3/3) -> {dir}",
+        "es": "Publicación de datos exportada (3/3) -> {dir}",
+        "fr": "Publication de données exportée (3/3) -> {dir}",
+        "it": "Release dati esportata (3/3) -> {dir}",
+        "ja": "データリリースをエクスポート (3/3) -> {dir}"},
+    "Data-release export finished:\n{dir}\n\n{lines}\n\nUpload these to the GitHub 'data' release to keep the download page current.": {
+        "de": "Daten-Release-Export fertig:\n{dir}\n\n{lines}\n\nLade diese ins GitHub-„data\"-Release hoch, um die Download-Seite aktuell zu halten.",
+        "es": "Exportación de la publicación de datos finalizada:\n{dir}\n\n{lines}\n\nSúbelos a la publicación «data» de GitHub para mantener actualizada la página de descargas.",
+        "fr": "Export de la publication de données terminé :\n{dir}\n\n{lines}\n\nTéléverse-les dans la publication « data » de GitHub pour garder la page de téléchargement à jour.",
+        "it": "Esportazione della release dati completata:\n{dir}\n\n{lines}\n\nCaricali nella release «data» di GitHub per mantenere aggiornata la pagina dei download.",
+        "ja": "データリリースのエクスポートが完了しました:\n{dir}\n\n{lines}\n\nダウンロードページを最新に保つため、GitHub の「data」リリースにアップロードしてください。"},
+    "One click keeps the GitHub 'data' release current: builds all three files at once into an 'exportall' folder — database.db (copyright-clean), switch-cheats.zip (Atmosphère SD layout) and switch-cheats-emulator.zip (emulator load layout). Then upload them to the release.": {
+        "de": "Ein Klick hält das GitHub-„data\"-Release aktuell: erstellt alle drei Dateien auf einmal in einem „exportall\"-Ordner — database.db (copyright-sauber), switch-cheats.zip (Atmosphère-SD-Layout) und switch-cheats-emulator.zip (Emulator-load-Layout). Danach ins Release hochladen.",
+        "es": "Un clic mantiene actualizada la publicación «data» de GitHub: crea los tres archivos de una vez en una carpeta «exportall» — database.db (sin copyright), switch-cheats.zip (estructura SD Atmosphère) y switch-cheats-emulator.zip (estructura load de emulador). Luego súbelos a la publicación.",
+        "fr": "Un clic garde la publication « data » de GitHub à jour : crée les trois fichiers d'un coup dans un dossier « exportall » — database.db (sans copyright), switch-cheats.zip (structure SD Atmosphère) et switch-cheats-emulator.zip (structure load d'émulateur). Téléverse-les ensuite dans la publication.",
+        "it": "Un clic mantiene aggiornata la release «data» di GitHub: crea tutti e tre i file in una volta in una cartella «exportall» — database.db (senza copyright), switch-cheats.zip (layout SD Atmosphère) e switch-cheats-emulator.zip (layout load emulatore). Poi caricali nella release.",
+        "ja": "ワンクリックで GitHub の「data」リリースを最新に保ちます。3 ファイルすべてを一度に「exportall」フォルダーに作成します — database.db（著作権クリーン）、switch-cheats.zip（Atmosphère SD レイアウト）、switch-cheats-emulator.zip（エミュレーター load レイアウト）。その後リリースにアップロードしてください。"},
+})
+
 # --------------------------------------------------------------------------
 _build()
 

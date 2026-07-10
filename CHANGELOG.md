@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-10 (one-click data-release export)
+
+### Added
+- **“Export data release” button** — builds all three GitHub `data`-release
+  files in one click into an `exportall` folder, so keeping the download page
+  current is a single step:
+  - `database.db` — the GUI database, **copyright-clean** (game descriptions /
+    intros stripped, VACUUMed to a single self-contained file — no `-wal`/`-shm`
+    sidecars);
+  - `switch-cheats.zip` — every downloaded cheat in the **Atmosphère** SD-card
+    layout (`atmosphere/contents/<TID>/cheats/<BID>.txt`);
+  - `switch-cheats-emulator.zip` — every cheat in the **emulator** load layout
+    (`<TID>/<GameName>/cheats/<BID>.txt`, read by Eden/Suyu/Sudachi/yuzu/Ryujinx
+    and the Android app).
+  The target folder is remembered; the confirm dialog offers Yes (export here) /
+  No (choose another folder) / Cancel. The live database and downloads are never
+  modified. Progress and a per-file summary (size, files, games, descriptions
+  removed) are reported, then the folder opens. Fully localised in all 6
+  languages.
+
+### Fixed
+- `export_shared_db` now normalises the copied database's journal mode
+  (`PRAGMA journal_mode=DELETE`) so a shared/exported `database.db` is always a
+  clean **single file**, even when the live DB is in WAL mode.
+
 ## v1.3 — 2026-07-10 (gallery + website polish)
 
 ### Added

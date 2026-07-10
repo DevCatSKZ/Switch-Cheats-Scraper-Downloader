@@ -95,6 +95,18 @@ def export_shared_db(src_db, dst_db, strip_publisher_text: bool = True) -> dict:
                 result[col] = n
             con.commit()
             con.execute("VACUUM")
+            # Ship a single self-contained file: checkpoint and leave WAL mode so
+            # no -wal/-shm sidecars linger next to the redistributed database.db
+            # (the source may be in WAL mode, which the backup copies over).
+            con.execute("PRAGMA journal_mode=DELETE")
+        finally:
+            con.close()
+    else:
+        # Full 1:1 copy: normalise the journal mode too, so a shared copy is a
+        # clean single file regardless of the source's journal mode.
+        con = sqlite3.connect(str(dst))
+        try:
+            con.execute("PRAGMA journal_mode=DELETE")
         finally:
             con.close()
     result["_after"] = dst.stat().st_size
