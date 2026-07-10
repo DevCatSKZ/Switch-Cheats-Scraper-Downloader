@@ -3353,16 +3353,25 @@ class ScraperGUI:
                 command=self._apply_column_visibility_from_menu)
         self.columns_btn["menu"] = colmenu
         self.columns_btn.pack(side="left", padx=(0, 10))
+        _Tooltip(self.columns_btn,
+                 "Show or hide table columns. The choice is remembered.")
         # Filter presets.
         ttk.Label(power, text=t("Preset:")).pack(side="left", padx=(0, 3))
         self.preset_combo = ttk.Combobox(power, state="readonly", width=16,
                                          values=self._preset_names())
         self.preset_combo.pack(side="left", padx=(0, 3))
         self.preset_combo.bind("<<ComboboxSelected>>", self._apply_selected_preset)
-        ttk.Button(power, text=t("Save…"), width=7,
-                   command=self._save_current_preset).pack(side="left", padx=(0, 2))
-        ttk.Button(power, text=t("Delete"), width=7,
-                   command=self._delete_selected_preset).pack(side="left")
+        _Tooltip(self.preset_combo,
+                 "Saved filter combinations — pick one to apply all its filters "
+                 "at once.")
+        save_pre = ttk.Button(power, text=t("Save…"), width=7,
+                              command=self._save_current_preset)
+        save_pre.pack(side="left", padx=(0, 2))
+        _Tooltip(save_pre, "Save the current filter combination under a name.")
+        del_pre = ttk.Button(power, text=t("Delete"), width=7,
+                             command=self._delete_selected_preset)
+        del_pre.pack(side="left")
+        _Tooltip(del_pre, "Delete the selected saved preset.")
 
         if with_pickers:
             self._build_theme_lang_pickers(search_group)
@@ -5138,7 +5147,7 @@ class ScraperGUI:
             return
         self._update_checking = True
         if not startup:
-            self.update_status_lbl.config(text="checking…",
+            self.update_status_lbl.config(text=t("checking…"),
                                           foreground=theme()["checking"])
         threading.Thread(target=self._check_updates_worker,
                          args=(startup,), daemon=True).start()
@@ -5193,15 +5202,15 @@ class ScraperGUI:
         self._update_checking = False
         prog = info.get("program")
         has_data = bool(info.get("cheats") or info.get("db"))
-        t = theme()
+        th = theme()
         if prog and info["cheats"] and info["db"]:
-            label, colour = "update + data available", t["warn"]
+            label, colour = t("update + data available"), th["warn"]
         elif prog:
-            label, colour = f"update available ({prog['version']})", t["warn"]
+            label, colour = t("update available ({ver})", ver=prog['version']), th["warn"]
         elif has_data:
-            label, colour = "new data available", t["warn"]
+            label, colour = t("new data available"), th["warn"]
         else:
-            label, colour = f"v{APP_VERSION} — up to date", t["ok"]
+            label, colour = t("v{ver} — up to date", ver=APP_VERSION), th["ok"]
         self.update_status_lbl.config(text=label, foreground=colour)
         # --- Auto-update runs ONLY on the automatic startup check: a found program
         #     update installs itself silently (no dialog, no clicks) when enabled
@@ -5215,7 +5224,7 @@ class ScraperGUI:
         #    enabled AND doable without a UAC prompt (writable frozen build). A
         #    manual "Check Updates" click never lands here.
         if startup and prog and self.auto_update.get() and can_silent:
-            self.update_status_lbl.config(text="installing update…",
+            self.update_status_lbl.config(text=t("installing update…"),
                                           foreground=theme()["checking"])
             self.start_program_update(info)
             return
@@ -5238,7 +5247,7 @@ class ScraperGUI:
 
     def _handle_update_error(self, msg: str, startup: bool):
         self._update_checking = False
-        self.update_status_lbl.config(text="check failed",
+        self.update_status_lbl.config(text=t("check failed"),
                                       foreground=theme()["fg_muted"])
         self._append_log(f"Update check failed: {msg}")
         if not startup:

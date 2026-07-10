@@ -1662,6 +1662,32 @@ _merge({
                   "it": "Lingue", "ja": "言語"},
     "Rating": {"de": "Freigabe", "es": "Clasificación", "fr": "Classification",
                "it": "Classificazione", "ja": "レーティング"},
+    # -- Update status label (next to Check Updates) --
+    "checking…": {"de": "prüfe…", "es": "comprobando…", "fr": "vérification…",
+                  "it": "controllo…", "ja": "確認中…"},
+    "installing update…": {
+        "de": "Update wird installiert…", "es": "instalando actualización…",
+        "fr": "installation de la mise à jour…",
+        "it": "installazione aggiornamento…", "ja": "更新をインストール中…"},
+    "check failed": {"de": "Prüfung fehlgeschlagen", "es": "comprobación fallida",
+                     "fr": "échec de la vérification", "it": "controllo fallito",
+                     "ja": "確認に失敗"},
+    "update + data available": {
+        "de": "Update + Daten verfügbar", "es": "actualización + datos disponibles",
+        "fr": "mise à jour + données dispo", "it": "aggiornamento + dati disponibili",
+        "ja": "更新＋データあり"},
+    "update available ({ver})": {
+        "de": "Update verfügbar ({ver})", "es": "actualización disponible ({ver})",
+        "fr": "mise à jour dispo ({ver})", "it": "aggiornamento disponibile ({ver})",
+        "ja": "更新あり（{ver}）"},
+    "new data available": {
+        "de": "Neue Daten verfügbar", "es": "nuevos datos disponibles",
+        "fr": "nouvelles données dispo", "it": "nuovi dati disponibili",
+        "ja": "新しいデータあり"},
+    "v{ver} — up to date": {
+        "de": "v{ver} — aktuell", "es": "v{ver} — al día",
+        "fr": "v{ver} — à jour", "it": "v{ver} — aggiornato",
+        "ja": "v{ver} — 最新"},
     # -- Sources / CheatSlips card redesign --
     "Community sources": {
         "de": "Community-Quellen", "es": "Fuentes de la comunidad",

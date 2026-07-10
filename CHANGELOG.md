@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-10 (localisation + tooltips)
+
+### Improved
+- **100% localised** — an AST audit found the last 7 English strings (the
+  "checking… / update available / up to date / installing…" status labels) and
+  they are now translated in all 6 languages. 371/371 UI strings covered.
+- **More tooltips** — hover hints added to the sidebar entries (with their
+  Alt+n shortcut), the notification bell, the Ctrl+K hint, the game-page action
+  buttons (favorite / download / export / edit) and the library's Columns and
+  filter-preset controls.
+
 ## v1.3 — 2026-07-10 (UX polish 2)
 
 ### Improved — Sources & CheatSlips pages redesigned as cards

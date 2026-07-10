@@ -32,6 +32,16 @@ _NAV = [
     ("log",      "≡",  "Log"),
 ]
 
+# Short "what's on this page" hints for the sidebar (Alt+n shortcut appended).
+_NAV_TIPS = {
+    "home":     "Dashboard: your library at a glance, one-click downloads and updates.",
+    "library":  "Search, browse and manage every cheat; double-click a game for its page.",
+    "sources":  "Import cheats from 9+ community archives and enrich the metadata.",
+    "scrape":   "Scrape cheatslips.com and download the cheat files.",
+    "settings": "Updates, downloads, covers and paths — all in one place.",
+    "log":      "Everything the app did this session.",
+}
+
 # The Holo-Glass secondary accent (electric violet), straight from the
 # project's landing page — used sparingly for highlights next to the teal.
 _VIOLET = "#7c5cff"
@@ -178,10 +188,16 @@ class ModernApp(ScraperGUI):
         self._notif_unseen = 0
         self._hdr_busy = ttk.Label(self._header, text="●", style="HdrBusy.TLabel")
         self._hdr_busy.pack(side="right", padx=(10, 10))
+        _Tooltip(self._hdr_busy, "Lights up while a task (scrape, download, "
+                                 "import…) is running.")
         self._bell_btn = ttk.Label(self._header, text="🔔", style="HdrBell.TLabel",
                                    cursor="hand2")
         self._bell_btn.pack(side="right", padx=(6, 0))
         self._bell_btn.bind("<Button-1>", lambda _e: self._open_notifications())
+        _Tooltip(self._bell_btn, "Notifications — every toast this session "
+                                 "(scrape done, updates, favourites…).")
+        _Tooltip(self._hdr_hint, "Open the command palette: jump to any game or "
+                                 "run an action. Shortcut: Ctrl+K.")
         # 1px accent hairline under the header.
         self._hdr_line = tk.Frame(root, height=1, bd=0, highlightthickness=0)
         self._hdr_line.pack(fill="x")
@@ -223,6 +239,9 @@ class ModernApp(ScraperGUI):
                             font=("Segoe UI", 11), padx=10, pady=9,
                             command=lambda k=key: self._select_page(k))
             btn.pack(side="left", fill="x", expand=True)
+            tip = _NAV_TIPS.get(key, "")
+            if tip:
+                _Tooltip(btn, tip + f"  (Alt+{len(self._nav_btns) + 1})")
             # A count badge (currently only the Library shows the games total).
             badge = tk.Label(row, text="", bd=0, font=("Segoe UI", 8),
                              padx=6, highlightthickness=0)
@@ -544,17 +563,26 @@ class ModernApp(ScraperGUI):
         """Static skeleton — the body is rebuilt per game in open_game_page."""
         bar = ttk.Frame(page, style="Body.TFrame")
         bar.pack(fill="x", pady=(0, 8))
-        ttk.Button(bar, text="←  " + t("Back to Library"),
-                   command=lambda: self._select_page("library")).pack(side="left")
+        back = ttk.Button(bar, text="←  " + t("Back to Library"),
+                          command=lambda: self._select_page("library"))
+        back.pack(side="left")
+        _Tooltip(back, "Return to the library table (or press Esc).")
         self._detail_fav_btn = ttk.Button(bar, text="⭐",
                                           command=self._detail_toggle_fav)
         self._detail_fav_btn.pack(side="right")
+        _Tooltip(self._detail_fav_btn,
+                 "Add / remove this game from your ⭐ favourites — a data update "
+                 "then notifies you when it gains new cheats.")
         self._detail_export_btn = ttk.Button(
             bar, text=t("Export as ZIP"), command=self._detail_export)
         self._detail_export_btn.pack(side="right", padx=(0, 6))
+        _Tooltip(self._detail_export_btn,
+                 "Export this game's cheats as a ZIP in the SD-card layout.")
         self._detail_dl_btn = ttk.Button(
             bar, text="⬇ " + t("Download cheats"), command=self._detail_download)
         self._detail_dl_btn.pack(side="right", padx=(0, 6))
+        _Tooltip(self._detail_dl_btn,
+                 "Download every cheat file for this game (API + browser fallback).")
         self._detail_body = ttk.Frame(page, style="Body.TFrame")
         self._detail_body.pack(fill="both", expand=True)
         self._detail_tid = None
@@ -739,8 +767,11 @@ class ModernApp(ScraperGUI):
 
         btns = ttk.Frame(card, style="Glass.TFrame")
         btns.pack(fill="x")
-        ttk.Button(btns, text="✏ " + t("Edit codes"),
-                   command=lambda: self._detail_edit(tid, bid)).pack(side="left")
+        edit_btn = ttk.Button(btns, text="✏ " + t("Edit codes"),
+                              command=lambda: self._detail_edit(tid, bid))
+        edit_btn.pack(side="left")
+        _Tooltip(edit_btn, "Open this build's codes in the cheat editor "
+                           "(syntax-highlighted, validated).")
         try:
             names = _json.loads(r["cheat_names"] or "[]")
         except Exception:
