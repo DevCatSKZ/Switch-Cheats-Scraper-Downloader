@@ -52,9 +52,15 @@
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237e9b9b' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat:no-repeat; background-position:right 10px center}
   .lang-sel:hover,.nav-links a.nav-gh:hover{border-color:var(--teal); background-color:rgba(45,225,194,.10); color:var(--text); text-decoration:none}
+  /* Theme the expanded language dropdown list (default is white). */
+  .lang-sel option{background-color:#0a141d; color:var(--text)}
+  .nav-dbl .lbl-s{display:none}
   @media(max-width:1000px){.nav-links a:not(.nav-gh){font-size:12.5px; padding:7px 8px}
-    .nav-in{gap:8px}}
-  @media(max-width:760px){.nav-links a:not(.nav-gh){display:none}}
+    .nav-in{gap:8px}
+    .nav-dbl .lbl-l{display:none} .nav-dbl .lbl-s{display:inline}}
+  @media(max-width:760px){.nav-links a:not(.nav-gh):not(.nav-dbl){display:none}}
+  @media(max-width:560px){.nav-links a.nav-gh{display:none}
+    .nav-in{padding:10px 12px; gap:6px}}
 
   /* document */
   .doc{padding:60px 0 40px}
@@ -90,7 +96,7 @@
     <div class="nav-links">
       <a href="index.html#platforms" data-i18n="nav_platforms">Platforms</a>
       <a href="index.html#features" data-i18n="nav_features">Features</a>
-      <a href="index.html#data" data-i18n="nav_data">Nintendo Switch Cheats Database</a>
+      <a href="index.html#data" class="nav-dbl"><span class="lbl-l" data-i18n="nav_data">Nintendo Switch Cheats Database</span><span class="lbl-s" data-i18n="nav_data_s">Cheats DB</span></a>
       <select class="lang-sel" id="lang" aria-label="Language">
         <option value="en">EN</option><option value="de">DE</option><option value="es">ES</option>
         <option value="fr">FR</option><option value="it">IT</option><option value="ja">日本語</option>
@@ -175,7 +181,7 @@
 <script>
 const I18N = {
   de:{
-    nav_home:`Startseite`, foot_repo:`Repository`, nav_platforms:`Plattformen`, nav_features:`Funktionen`, nav_data:`Nintendo Switch Cheats Database`,
+    nav_home:`Startseite`, foot_repo:`Repository`, nav_platforms:`Plattformen`, nav_features:`Funktionen`, nav_data:`Nintendo Switch Cheats Database`, nav_data_s:`Cheats DB`,
     pp_eyebrow:`Rechtliches`, pp_title:`Datenschutzerklärung`,
     pp_updated:`Zuletzt aktualisiert: 9. Juli 2026`,
     pp_intro:`Switch Cheats Scraper & Downloader („das Projekt“) ist eine Sammlung quelloffener Tools von DevCatSKZ — eine Windows-App, eine Nintendo-Switch-Homebrew-App, eine Android-App und diese Website. Das Projekt erhebt keine personenbezogenen Daten: keine Analyse, kein Tracking, keine Werbung und keine Benutzerkonten auf unserer Seite. Nachfolgend genau, womit sich die Tools verbinden und warum.`,
@@ -201,7 +207,7 @@ const I18N = {
     pp_s10_p:`Verantwortlich für dieses Projekt: <b>DevCatSKZ</b>. Fragen zum Datenschutz? Schreib an <a href="mailto:devcatskz@gmail.com">devcatskz@gmail.com</a>.`,
   },
   es:{
-    nav_home:`Inicio`, foot_repo:`Repositorio`, nav_platforms:`Plataformas`, nav_features:`Funciones`, nav_data:`Nintendo Switch Cheats Database`,
+    nav_home:`Inicio`, foot_repo:`Repositorio`, nav_platforms:`Plataformas`, nav_features:`Funciones`, nav_data:`Nintendo Switch Cheats Database`, nav_data_s:`Cheats DB`,
     pp_eyebrow:`Legal`, pp_title:`Política de privacidad`,
     pp_updated:`Última actualización: 9 de julio de 2026`,
     pp_intro:`Switch Cheats Scraper & Downloader («el proyecto») es un conjunto de herramientas de código abierto de DevCatSKZ — una app de Windows, una app homebrew para Nintendo Switch, una app de Android y este sitio web. El proyecto no recopila datos personales: sin analíticas, sin rastreadores, sin publicidad y sin cuentas de usuario por nuestra parte. A continuación, exactamente a qué se conectan las herramientas y por qué.`,
@@ -227,7 +233,7 @@ const I18N = {
     pp_s10_p:`Responsable de este proyecto: <b>DevCatSKZ</b>. ¿Preguntas sobre privacidad? Escribe a <a href="mailto:devcatskz@gmail.com">devcatskz@gmail.com</a>.`,
   },
   fr:{
-    nav_home:`Accueil`, foot_repo:`Dépôt`, nav_platforms:`Plateformes`, nav_features:`Fonctions`, nav_data:`Nintendo Switch Cheats Database`,
+    nav_home:`Accueil`, foot_repo:`Dépôt`, nav_platforms:`Plateformes`, nav_features:`Fonctions`, nav_data:`Nintendo Switch Cheats Database`, nav_data_s:`Cheats DB`,
     pp_eyebrow:`Mentions légales`, pp_title:`Politique de confidentialité`,
     pp_updated:`Dernière mise à jour : 9 juillet 2026`,
     pp_intro:`Switch Cheats Scraper & Downloader (« le projet ») est un ensemble d’outils open source de DevCatSKZ — une app Windows, une app homebrew Nintendo Switch, une app Android et ce site web. Le projet ne collecte aucune donnée personnelle : aucune analyse, aucun traceur, aucune publicité et aucun compte utilisateur de notre côté. Voici précisément ce à quoi les outils se connectent, et pourquoi.`,
@@ -253,7 +259,7 @@ const I18N = {
     pp_s10_p:`Responsable de ce projet : <b>DevCatSKZ</b>. Des questions sur la confidentialité ? Écrivez à <a href="mailto:devcatskz@gmail.com">devcatskz@gmail.com</a>.`,
   },
   it:{
-    nav_home:`Home`, foot_repo:`Repository`, nav_platforms:`Piattaforme`, nav_features:`Funzioni`, nav_data:`Nintendo Switch Cheats Database`,
+    nav_home:`Home`, foot_repo:`Repository`, nav_platforms:`Piattaforme`, nav_features:`Funzioni`, nav_data:`Nintendo Switch Cheats Database`, nav_data_s:`Cheats DB`,
     pp_eyebrow:`Note legali`, pp_title:`Informativa sulla privacy`,
     pp_updated:`Ultimo aggiornamento: 9 luglio 2026`,
     pp_intro:`Switch Cheats Scraper & Downloader («il progetto») è un insieme di strumenti open source di DevCatSKZ — un’app Windows, un’app homebrew per Nintendo Switch, un’app Android e questo sito. Il progetto non raccoglie dati personali: nessuna analitica, nessun tracker, nessuna pubblicità e nessun account utente da parte nostra. Di seguito esattamente a cosa si collegano gli strumenti e perché.`,
@@ -279,7 +285,7 @@ const I18N = {
     pp_s10_p:`Responsabile di questo progetto: <b>DevCatSKZ</b>. Domande sulla privacy? Scrivi a <a href="mailto:devcatskz@gmail.com">devcatskz@gmail.com</a>.`,
   },
   ja:{
-    nav_home:`ホーム`, foot_repo:`リポジトリ`, nav_platforms:`対応環境`, nav_features:`機能`, nav_data:`Nintendo Switch Cheats Database`,
+    nav_home:`ホーム`, foot_repo:`リポジトリ`, nav_platforms:`対応環境`, nav_features:`機能`, nav_data:`Nintendo Switch Cheats Database`, nav_data_s:`Cheats DB`,
     pp_eyebrow:`法的事項`, pp_title:`プライバシーポリシー`,
     pp_updated:`最終更新：2026年7月9日`,
     pp_intro:`Switch Cheats Scraper & Downloader（「本プロジェクト」）は、DevCatSKZ によるオープンソースのツール群です —— Windows アプリ、Nintendo Switch 向けホームブリューアプリ、Android アプリ、そしてこのウェブサイト。本プロジェクトは個人データを一切収集しません。解析もトラッキングも広告もなく、私たち側にユーザーアカウントもありません。以下に、ツールが何に接続し、なぜ接続するのかを正確に記します。`,
