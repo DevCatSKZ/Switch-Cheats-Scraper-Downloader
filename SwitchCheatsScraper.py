@@ -64,7 +64,13 @@ def main() -> None:
         # download would fail).
         os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "0")
 
-    from gui import run_gui
+    # The modern Holo-Glass shell is the default UI. The classic single-window
+    # UI stays fully functional as a fallback: `SwitchCheatsScraper.exe --classic`
+    # (or `python gui.py` from source).
+    if "--classic" in sys.argv[1:]:
+        from gui import run_gui
+    else:
+        from gui_modern import run_gui
     run_gui()
 
 

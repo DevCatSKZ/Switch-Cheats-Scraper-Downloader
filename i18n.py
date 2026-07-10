@@ -1175,6 +1175,134 @@ _merge({
         "ja": "チートとデータベースは最新です。"},
 })
 
+# ---- Modern shell (gui_modern.py): nav, eyebrows, page subtitles ------------
+_merge({
+    "Home": {"de": "Start", "es": "Inicio", "fr": "Accueil", "it": "Home",
+             "ja": "ホーム"},
+    "Library": {"de": "Bibliothek", "es": "Biblioteca", "fr": "Bibliothèque",
+                "it": "Libreria", "ja": "ライブラリ"},
+    "Sources": {"de": "Quellen", "es": "Fuentes", "fr": "Sources",
+                "it": "Fonti", "ja": "ソース"},
+    "Log": {"de": "Protokoll", "es": "Registro", "fr": "Journal",
+            "it": "Registro", "ja": "ログ"},
+    "Overview": {"de": "Überblick", "es": "Resumen", "fr": "Aperçu",
+                 "it": "Panoramica", "ja": "概要"},
+    "Browse": {"de": "Stöbern", "es": "Explorar", "fr": "Parcourir",
+               "it": "Sfoglia", "ja": "閲覧"},
+    "Collect": {"de": "Sammeln", "es": "Recopilar", "fr": "Collecter",
+                "it": "Raccogli", "ja": "収集"},
+    "Scraping": {"de": "Scraping", "es": "Scraping", "fr": "Scraping",
+                 "it": "Scraping", "ja": "スクレイピング"},
+    "Session": {"de": "Sitzung", "es": "Sesión", "fr": "Session",
+                "it": "Sessione", "ja": "セッション"},
+    "Everything for your Switch cheats — collected, managed, delivered.": {
+        "de": "Alles für deine Switch-Cheats — gesammelt, verwaltet, geliefert.",
+        "es": "Todo para tus cheats de Switch: recopilados, gestionados, entregados.",
+        "fr": "Tout pour vos cheats Switch — collectés, gérés, livrés.",
+        "it": "Tutto per i tuoi cheat Switch: raccolti, gestiti, consegnati.",
+        "ja": "Switchチートのすべて — 収集・管理・配信。"},
+    "Search, browse and manage every cheat in your database.": {
+        "de": "Durchsuche, stöbere und verwalte jeden Cheat in deiner Datenbank.",
+        "es": "Busca, explora y gestiona cada cheat de tu base de datos.",
+        "fr": "Recherchez, parcourez et gérez chaque cheat de votre base.",
+        "it": "Cerca, sfoglia e gestisci ogni cheat del tuo database.",
+        "ja": "データベース内のすべてのチートを検索・閲覧・管理します。"},
+    "Import cheats from 9+ community sources, then enrich the metadata.": {
+        "de": "Importiere Cheats aus 9+ Community-Quellen und ergänze dann die Metadaten.",
+        "es": "Importa cheats de más de 9 fuentes de la comunidad y enriquece los metadatos.",
+        "fr": "Importez des cheats depuis 9+ sources communautaires, puis enrichissez les métadonnées.",
+        "it": "Importa cheat da oltre 9 fonti della community, poi arricchisci i metadati.",
+        "ja": "9つ以上のコミュニティソースからチートを取り込み、メタデータを補完します。"},
+    "Scrape cheatslips.com and download the cheat files.": {
+        "de": "Scrape cheatslips.com und lade die Cheat-Dateien herunter.",
+        "es": "Scrapea cheatslips.com y descarga los archivos de cheats.",
+        "fr": "Scrapez cheatslips.com et téléchargez les fichiers de cheats.",
+        "it": "Esegui lo scraping di cheatslips.com e scarica i file dei cheat.",
+        "ja": "cheatslips.com をスクレイプしてチートファイルをダウンロードします。"},
+    "Everything the app did this session.": {
+        "de": "Alles, was die App in dieser Sitzung getan hat.",
+        "es": "Todo lo que la app hizo en esta sesión.",
+        "fr": "Tout ce que l'app a fait pendant cette session.",
+        "it": "Tutto ciò che l'app ha fatto in questa sessione.",
+        "ja": "このセッションでアプリが行ったすべて。"},
+    "in your database": {
+        "de": "in deiner Datenbank", "es": "en tu base de datos",
+        "fr": "dans votre base", "it": "nel tuo database",
+        "ja": "データベース内"},
+    "program version": {
+        "de": "Programmversion", "es": "versión del programa",
+        "fr": "version du programme", "it": "versione del programma",
+        "ja": "プログラムのバージョン"},
+})
+
+# ---- Android companion app download -----------------------------------------
+_merge({
+    "Download Android App": {
+        "de": "Android-App herunterladen", "es": "Descargar app de Android",
+        "fr": "Télécharger l'app Android", "it": "Scarica l'app Android",
+        "ja": "Androidアプリをダウンロード"},
+    "Save Android app as...": {
+        "de": "Android-App speichern unter...", "es": "Guardar app de Android como...",
+        "fr": "Enregistrer l'app Android sous...", "it": "Salva l'app Android come...",
+        "ja": "Androidアプリの保存先..."},
+    "Android app": {
+        "de": "Android-App", "es": "App de Android", "fr": "App Android",
+        "it": "App Android", "ja": "Androidアプリ"},
+    "Downloading Android app...": {
+        "de": "Lade Android-App herunter...", "es": "Descargando la app de Android...",
+        "fr": "Téléchargement de l'app Android...", "it": "Download dell'app Android...",
+        "ja": "Androidアプリをダウンロード中..."},
+    "Android app v{ver} downloaded.": {
+        "de": "Android-App v{ver} heruntergeladen.",
+        "es": "App de Android v{ver} descargada.",
+        "fr": "App Android v{ver} téléchargée.",
+        "it": "App Android v{ver} scaricata.",
+        "ja": "Androidアプリ v{ver} をダウンロードしました。"},
+    "Android app download failed — see log.": {
+        "de": "Android-App-Download fehlgeschlagen — siehe Protokoll.",
+        "es": "Falló la descarga de la app de Android — mira el registro.",
+        "fr": "Échec du téléchargement de l'app Android — voir le journal.",
+        "it": "Download dell'app Android non riuscito — vedi il registro.",
+        "ja": "Androidアプリのダウンロードに失敗しました — ログを確認してください。"},
+    "Android app v{ver} saved to:\n{path}\n\nCopy the .apk onto your phone "
+    "and install it (allow installation from unknown sources).": {
+        "de": "Android-App v{ver} gespeichert unter:\n{path}\n\nKopiere die .apk "
+              "auf dein Handy und installiere sie (Installation aus unbekannten "
+              "Quellen erlauben).",
+        "es": "App de Android v{ver} guardada en:\n{path}\n\nCopia el .apk a tu "
+              "teléfono e instálalo (permite la instalación de orígenes desconocidos).",
+        "fr": "App Android v{ver} enregistrée dans :\n{path}\n\nCopiez le .apk sur "
+              "votre téléphone et installez-le (autorisez les sources inconnues).",
+        "it": "App Android v{ver} salvata in:\n{path}\n\nCopia il file .apk sul "
+              "telefono e installalo (consenti l'installazione da origini sconosciute).",
+        "ja": "Androidアプリ v{ver} を保存しました：\n{path}\n\n.apk をスマホにコピーして"
+              "インストールしてください（提供元不明のアプリを許可）。"},
+    "Download the Android companion app (SwitchCheatsDownloader-"
+    "Android.apk) — you pick where to save it. Always downloads "
+    "the LATEST app version (SHA-256 verified). Copy the .apk onto "
+    "your phone and install it.": {
+        "de": "Lädt die Android-Begleit-App (SwitchCheatsDownloader-Android.apk) "
+              "herunter — du wählst den Speicherort. Lädt immer die NEUESTE "
+              "App-Version (SHA-256-geprüft). Kopiere die .apk auf dein Handy "
+              "und installiere sie.",
+        "es": "Descarga la app complementaria de Android (SwitchCheatsDownloader-"
+              "Android.apk): tú eliges dónde guardarla. Siempre descarga la "
+              "versión MÁS RECIENTE (verificada con SHA-256). Copia el .apk a tu "
+              "teléfono e instálalo.",
+        "fr": "Télécharge l'app compagnon Android (SwitchCheatsDownloader-"
+              "Android.apk) — vous choisissez l'emplacement. Télécharge toujours "
+              "la DERNIÈRE version (vérifiée SHA-256). Copiez le .apk sur votre "
+              "téléphone et installez-le.",
+        "it": "Scarica l'app companion per Android (SwitchCheatsDownloader-"
+              "Android.apk): scegli tu dove salvarla. Scarica sempre la versione "
+              "PIÙ RECENTE (verificata SHA-256). Copia il file .apk sul telefono "
+              "e installalo.",
+        "ja": "Android用コンパニオンアプリ（SwitchCheatsDownloader-Android.apk）を"
+              "ダウンロードします。保存先は自由に選べます。常に最新バージョン"
+              "（SHA-256検証済み）を取得します。.apk をスマホにコピーして"
+              "インストールしてください。"},
+})
+
 # ---- Messagebox titles -----------------------------------------------------
 _merge({
     "Download": {"de": "Download", "es": "Descargar", "fr": "Télécharger",

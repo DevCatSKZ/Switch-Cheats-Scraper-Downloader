@@ -1550,20 +1550,7 @@ class ScraperGUI:
         self._all_menus = []          # tk.Menu widgets to recolour on theme change
         self._apply_theme(self.theme_name)
 
-        self._build_toolbar()
-        # Vertical splitter: table + database bar on top, log at the bottom.
-        # The user can drag the sash to make the log panel as large as they want.
-        self.vpaned = ttk.Panedwindow(self.root, orient="vertical")
-        self.vpaned.pack(fill="both", expand=True)
-        self._top_container = ttk.Frame(self.vpaned)
-        self.vpaned.add(self._top_container, weight=5)
-        # Pack the fixed database bar at the BOTTOM first so it always keeps its
-        # space, then let the table fill whatever height remains. If the table
-        # were packed first with expand=True, a short window or an enlarged log
-        # panel would clip the bar and its buttons would disappear.
-        self._build_database_bar()
-        self._build_main()
-        self._build_log()
+        self._compose_ui()
         self._install_edit_shortcuts()
         # Re-apply now that every widget (log, tree, menus, toggle button) exists
         # so the classic tk widgets and menus pick up the theme colours too.
@@ -2213,32 +2200,63 @@ class ScraperGUI:
         os._exit(0)
 
     # ------------------------------------------------------------------ UI
+    # ------------------------------------------------------------ UI compose
+    def _compose_ui(self):
+        """Assemble the CLASSIC single-window layout from the section builders.
+
+        The modern shell (gui_modern.ModernApp) overrides this method and places
+        the very same sections into a sidebar-paged layout instead — every
+        widget, handler and behaviour is shared between both UIs.
+        """
+        self._build_toolbar()
+        # Vertical splitter: table + database bar on top, log at the bottom.
+        # The user can drag the sash to make the log panel as large as they want.
+        self.vpaned = ttk.Panedwindow(self.root, orient="vertical")
+        self.vpaned.pack(fill="both", expand=True)
+        self._top_container = ttk.Frame(self.vpaned)
+        self.vpaned.add(self._top_container, weight=5)
+        # Pack the fixed database bar at the BOTTOM first so it always keeps its
+        # space, then let the table fill whatever height remains. If the table
+        # were packed first with expand=True, a short window or an enlarged log
+        # panel would clip the bar and its buttons would disappear.
+        self._build_database_bar()
+        self._build_main()
+        self._build_log()
+
     def _build_toolbar(self):
         # Action buttons get collected here so _set_busy can disable them all.
         self._action_buttons = []
         toolbar = ttk.Frame(self.root, padding=(10, 8))
         toolbar.pack(fill="x")
+        self._build_sources_section(toolbar)
+        self._build_info_section(toolbar)
+        self._build_cheatslips_section(toolbar)
+        self._build_filter_section(toolbar)
 
-        # ---- Featured: get everything from DevCatSKZ (headline action) ----
-        # A compact, refined card, right-aligned in the top row so it stands out
-        # as the fastest way to get all data without dominating the toolbar.
-        # Styles (Featured.*/Accent.TButton) adapt to light/dark in _apply_theme.
+    def _build_sources_section(self, parent):
         # ---- Section 1: External cheat sources (+ featured DevCat card) --
         # The group wraps TIGHTLY around its content (no fill="x"), so the box is
         # only as wide as the sources grid + DevCat card — it doesn't stretch
         # edge-to-edge and waste the rest of the row.
-        get_group = ttk.LabelFrame(toolbar, text="External Cheat Sources", padding=(8, 4))
+        get_group = ttk.LabelFrame(parent, text="External Cheat Sources", padding=(8, 4))
         get_group.pack(anchor="w", pady=(0, 6))
         gcontent = ttk.Frame(get_group)
         gcontent.pack()
         combo = ttk.Frame(gcontent)
         combo.pack()
+        self._build_devcat_card(combo, beside_grid=True)
+        self._build_sources_grid(combo)
 
-        # Featured "Get everything from DevCatSKZ" card — the fastest, best
-        # source, highlighted on the RIGHT of the other external sources so it
-        # sits naturally among them without dominating the whole toolbar.
-        border = ttk.Frame(combo, style="FeaturedBorder.TFrame")
-        border.pack(side="right", anchor="n", padx=(12, 0))
+    def _build_devcat_card(self, parent, beside_grid=False):
+        # ---- Featured: get everything from DevCatSKZ (headline action) ----
+        # A compact, refined card — in the classic layout right-aligned BESIDE
+        # the sources grid; in the modern shell a standalone card on the Start
+        # page. Styles (Featured.*/Accent.TButton) adapt per theme.
+        border = ttk.Frame(parent, style="FeaturedBorder.TFrame")
+        if beside_grid:
+            border.pack(side="right", anchor="n", padx=(12, 0))
+        else:
+            border.pack(anchor="nw")
         feat = ttk.Frame(border, style="Featured.TFrame", padding=(14, 10))
         feat.pack(padx=1, pady=1)   # 1px accent border shows around the card
         devcat_title = ttk.Label(feat, text="★  Get Everything from DevCatSKZ Github Repo",
@@ -2317,7 +2335,16 @@ class ScraperGUI:
             srow, text="Copy to SD card", variable=self.nroapp_copy_sd,
             style="Featured.TCheckbutton", command=self._save_settings)
         nroapp_cb.pack(side="left", padx=(8, 0))
-        self._action_buttons += [self.nroapp_btn]
+        self.androidapp_btn = ttk.Button(
+            srow, text="Download Android App", style="FeaturedSec.TButton",
+            command=self.on_download_android_app)
+        self.androidapp_btn.pack(side="left", padx=(12, 0))
+        self._action_buttons += [self.nroapp_btn, self.androidapp_btn]
+        _Tooltip(self.androidapp_btn,
+                 "Download the Android companion app (SwitchCheatsDownloader-"
+                 "Android.apk) — you pick where to save it. Always downloads "
+                 "the LATEST app version (SHA-256 verified). Copy the .apk onto "
+                 "your phone and install it.")
         _Tooltip(self.nroapp_btn,
                  "Download the Switch homebrew app (SwitchCheatsDownloader.nro) — "
                  "the on-console counterpart of this tool. It fetches the "
@@ -2349,10 +2376,11 @@ class ScraperGUI:
                  "— the fastest way to get everything. Tick 'Download Covers' "
                  "below to fetch the cover images as well.")
 
+    def _build_sources_grid(self, parent):
         # Grid of the other sources on the LEFT. A 3-column x 4-row layout keeps
         # the block a sensible width (not edge-to-edge) and about as tall as the
         # DevCat card beside it, so the two read as one balanced unit.
-        src_grid = ttk.Frame(combo)
+        src_grid = ttk.Frame(parent)
         # Center the button grid vertically so its gap to the frame border is the
         # same top and bottom (the DevCatSKZ card on the right is taller).
         src_grid.pack(side="left", anchor="center")
@@ -2448,8 +2476,9 @@ class ScraperGUI:
                  "MyNXCheats, titledb, ibnux), then names/covers/region/versions, "
                  "download all cheat files and covers. Long-running; Stop anytime.")
 
-        # ---- Section 2: Get cheat information (enrich) + Search ------------
-        row2 = ttk.Frame(toolbar)
+    def _build_info_section(self, parent):
+        # ---- Section 2: Get cheat information (enrich) ---------------------
+        row2 = ttk.Frame(parent)
         row2.pack(fill="x", pady=(0, 6))
 
         enrich_group = ttk.LabelFrame(row2, text="Get Cheat Information", padding=(8, 4))
@@ -2494,8 +2523,9 @@ class ScraperGUI:
                  "Download the cover images of all database entries to "
                  "coversdownload/ (already-saved covers are skipped).")
 
+    def _build_cheatslips_section(self, parent):
         # ---- Section 3: Download cheat files (own area) --------------------
-        dl_group = ttk.LabelFrame(toolbar, text="Scrape & Download Cheat Files · cheatslips.com", padding=(8, 6))
+        dl_group = ttk.LabelFrame(parent, text="Scrape & Download Cheat Files · cheatslips.com", padding=(8, 6))
         dl_group.pack(fill="x")
 
         auth = ttk.Frame(dl_group)
@@ -2654,9 +2684,9 @@ class ScraperGUI:
                  "file (API + optional browser fallback), then fill names/region/"
                  "versions, fix ID names and fix 0-cheat entries.")
 
-        # ---- Search + table filters: last toolbar row, sits directly above the
-        # database table columns (below the download buttons). --------------
-        search_row = ttk.Frame(toolbar)
+    def _build_filter_section(self, parent, with_pickers=True):
+        # ---- Search + table filters: sits directly above the table columns --
+        search_row = ttk.Frame(parent)
         search_row.pack(fill="x", pady=(8, 0))
         search_group = ttk.LabelFrame(search_row, text="Search", padding=(8, 4))
         search_group.pack(side="left", fill="both", expand=True)
@@ -2677,33 +2707,38 @@ class ScraperGUI:
                         command=self._on_select_row).pack(side="left", padx=(0, 4))
         ttk.Checkbutton(search_group, text="Show Description", variable=self.show_description,
                         command=self._on_select_row).pack(side="left")
-        # Dark/light toggle, far right of the filter row. Label shows the mode
-        # you'll switch TO; _apply_theme keeps it in sync.
+        if with_pickers:
+            self._build_theme_lang_pickers(search_group)
+
+    def _build_theme_lang_pickers(self, parent, side="right"):
+        """Theme + language comboboxes (classic: far right of the filter row;
+        modern shell: in the header bar). Creates self.theme_combo/lang_combo."""
+        # Theme picker. Label shows the current theme; _apply_theme keeps it in sync.
         self.theme_combo = ttk.Combobox(
-            search_group, width=11, state="readonly",
+            parent, width=11, state="readonly",
             values=self._theme_display_names())
         try:
             self.theme_combo.current(self._THEME_ORDER.index(self.theme_name))
         except Exception:
             self.theme_combo.current(0)
         self.theme_combo.bind("<<ComboboxSelected>>", self.on_theme_selected)
-        self.theme_combo.pack(side="right", padx=(6, 2))
+        self.theme_combo.pack(side=side, padx=(6, 2))
         _Tooltip(self.theme_combo, "Choose the theme (saved between runs).")
 
         # Language picker (native names, so each is readable in its own script).
         # Changing it saves the choice and restarts the app in the new language.
         self.lang_display = tk.StringVar(value=i18n.language_name(self.language))
         self.lang_combo = ttk.Combobox(
-            search_group, width=11, state="readonly", textvariable=self.lang_display,
+            parent, width=11, state="readonly", textvariable=self.lang_display,
             values=list(i18n.LANGUAGES.values()))
-        self.lang_combo.pack(side="right", padx=(6, 2))
+        self.lang_combo.pack(side=side, padx=(6, 2))
         self.lang_combo.bind("<<ComboboxSelected>>", self._on_language_selected)
         _Tooltip(self.lang_combo,
                  "Choose the program language. The app restarts to apply it.")
 
-    def _build_main(self):
+    def _build_main(self, parent=None):
         # Table (left) + cheat-names panel (right), resizable.
-        paned = ttk.Panedwindow(self._top_container, orient="horizontal")
+        paned = ttk.Panedwindow(parent or self._top_container, orient="horizontal")
         paned.pack(side="top", fill="both", expand=True, padx=10)
 
         left = ttk.Frame(paned)
@@ -2802,15 +2837,24 @@ class ScraperGUI:
         self._apply_cheat_text_style()
         paned.add(right, weight=1)
 
-    def _build_database_bar(self):
+    def _build_database_bar(self, parent=None, compact=False):
         # Bottom row under the table: database actions + DB path. Packed at the
         # bottom BEFORE the table so its height is always reserved (never
         # clipped when the window/log leaves the table little room).
-        bar = ttk.LabelFrame(self._top_container, text="Database", padding=(8, 4))
+        # compact=True (modern windowed shell): wrap onto TWO rows so nothing is
+        # cut off at ~1560px window width.
+        bar = ttk.LabelFrame(parent or self._top_container, text="Database", padding=(8, 4))
         bar.pack(side="bottom", fill="x", padx=10, pady=(6, 0))
 
-        left = ttk.Frame(bar)
-        left.pack(side="left")
+        if compact:
+            left = ttk.Frame(bar)
+            left.pack(fill="x", anchor="w")
+            left2 = ttk.Frame(bar)
+            left2.pack(fill="x", anchor="w", pady=(4, 0))
+        else:
+            left = ttk.Frame(bar)
+            left.pack(side="left")
+            left2 = left
         self.refresh_btn = ttk.Button(left, text="Refresh", command=self.on_refresh)
         self.refresh_btn.pack(side="left", padx=(0, 4))
         self.add_btn = ttk.Button(left, text="Add Entry", command=self.on_add_entry)
@@ -2828,12 +2872,12 @@ class ScraperGUI:
         self.exportsd_btn.pack(side="left", padx=(0, 4))
         self.exportzip_btn = ttk.Button(left, text="Export to ZIP", command=self.on_export_zip)
         self.exportzip_btn.pack(side="left", padx=(0, 4))
-        self.exportemu_btn = ttk.Button(left, text="Export for Emulators",
+        self.exportemu_btn = ttk.Button(left2, text="Export for Emulators",
                                         command=self.on_export_emulator)
         self.exportemu_btn.pack(side="left", padx=(0, 4))
 
         # Rarely-used repairs tucked into a small dropdown menu.
-        self.repair_btn = ttk.Menubutton(left, text="Repair ▾")
+        self.repair_btn = ttk.Menubutton(left2, text="Repair ▾")
         repair_menu = tk.Menu(self.repair_btn, tearoff=0)
         self._all_menus.append(repair_menu)
         repair_menu.add_command(label="Clean invalid cheat files", command=self.on_clean_invalid)
@@ -2849,18 +2893,19 @@ class ScraperGUI:
         self.repair_btn["menu"] = repair_menu
         self.repair_btn.pack(side="left", padx=(0, 4))
 
-        self.clear_btn = ttk.Button(left, text="Clear DB", command=self.on_clear_db)
+        self.clear_btn = ttk.Button(left2, text="Clear DB", command=self.on_clear_db)
         self.clear_btn.pack(side="left", padx=(0, 4))
 
-        ttk.Label(left, textvariable=self.total_games_var).pack(side="left", padx=(12, 0))
+        ttk.Label(left2, textvariable=self.total_games_var).pack(side="left", padx=(12, 0))
 
-        self.nonbase_btn = ttk.Button(left, text="Update/DLC IDs", command=self._toggle_nonbase,
+        self.nonbase_btn = ttk.Button(left2, text="Update/DLC IDs", command=self._toggle_nonbase,
                                       width=13)
         self.nonbase_btn.pack(side="left", padx=(12, 0))
         self._action_buttons += [self.nonbase_btn]
 
-        # DB path on the right, expands to fill the remaining width.
-        right = ttk.Frame(bar)
+        # DB path on the right, expands to fill the remaining width (compact:
+        # shares the second row with the remaining buttons).
+        right = ttk.Frame(left2 if compact else bar)
         right.pack(side="right", fill="x", expand=True, padx=(12, 0))
         ttk.Label(right, text="DB:").pack(side="left")
         ttk.Button(right, text="...", width=3, command=self._choose_db).pack(side="right")
@@ -2916,16 +2961,22 @@ class ScraperGUI:
                  "Toggle a filter that shows only update/DLC title ids "
                  "(…800 / non-…000) — these need the base id on the console.")
 
-    def _build_log(self):
-        # Lives in the bottom pane of the vertical splitter so it can be dragged
-        # taller. weight=1 (vs. 5 for the table) sets a compact initial height.
-        frame = ttk.Frame(self.vpaned, padding=(10, 6))
-        self.vpaned.add(frame, weight=1)
-        top = ttk.Frame(frame)
-        top.pack(fill="x")
-        ttk.Label(top, textvariable=self.status_var).pack(side="left")
-        self.progress = ttk.Progressbar(top, mode="determinate", length=220)
-        self.progress.pack(side="right")
+    def _build_log(self, parent=None, with_status=True):
+        # Classic: lives in the bottom pane of the vertical splitter so it can be
+        # dragged taller (weight=1 vs. 5 for the table = compact initial height).
+        # Modern shell: built into its own page (status+progress live in the footer).
+        if parent is None:
+            frame = ttk.Frame(self.vpaned, padding=(10, 6))
+            self.vpaned.add(frame, weight=1)
+        else:
+            frame = ttk.Frame(parent, padding=(10, 6))
+            frame.pack(fill="both", expand=True)
+        if with_status:
+            top = ttk.Frame(frame)
+            top.pack(fill="x")
+            ttk.Label(top, textvariable=self.status_var).pack(side="left")
+            self.progress = ttk.Progressbar(top, mode="determinate", length=220)
+            self.progress.pack(side="right")
         logbox = ttk.Frame(frame)
         logbox.pack(fill="both", expand=True, pady=(4, 0))
         self.log = tk.Text(logbox, height=7, wrap="none", state="disabled",
@@ -4152,6 +4203,86 @@ class ScraperGUI:
                   "Copy it into the /switch/ folder on your Switch SD card and "
                   "launch it from the Homebrew Menu.",
                   ver=ver, path=info.get("path", "?")), parent=self.root))
+
+    # ------------------------------------------- Android companion app (.apk)
+    ANDROID_APK_ASSET = "SwitchCheatsDownloader-Android.apk"
+
+    def on_download_android_app(self):
+        """Download the latest Android app: the user picks where to save the
+        .apk (explorer dialog), then the CURRENT release asset is fetched and
+        SHA-256 verified."""
+        if self._busy:
+            return
+        path = filedialog.asksaveasfilename(
+            title=t("Save Android app as..."),
+            initialfile=self.ANDROID_APK_ASSET, defaultextension=".apk",
+            filetypes=[(t("Android app"), "*.apk")],
+            parent=self.root)
+        if not path:
+            return
+        self._stop_event.clear()
+        self._save_settings()
+        self._set_busy(True)
+        self.status_var.set(t("Downloading Android app..."))
+        threading.Thread(target=self._android_app_worker,
+                         args=(Path(path),), daemon=True).start()
+
+    def _android_app_worker(self, dest):
+        old_stdout = sys.stdout
+        sys.stdout = _QueueWriter(self._log_queue, mirror=self._log_writer)
+        try:
+            rel = fetch_github_release(tag=None)   # /releases/latest
+            asset = find_release_asset(rel, self.ANDROID_APK_ASSET)
+            if not asset or not asset.get("url"):
+                raise RuntimeError(
+                    f"asset '{self.ANDROID_APK_ASSET}' not found in the latest release")
+
+            def prog(done, total):
+                kb = done // 1024
+                pct = f" ({int(done * 100 / total)}%)" if total else ""
+                self._log_queue.put(("progress", done, max(total, 1),
+                                     f"Android app: {kb:,} KB{pct}"))
+
+            download_file(asset["url"], dest, progress_cb=prog,
+                          should_stop=self._stop_event.is_set)
+            want = int(asset.get("size") or 0)
+            got = dest.stat().st_size
+            if want and got != want:
+                raise RuntimeError(f"download incomplete: got {got:,} of {want:,} bytes")
+            # Same integrity check as the self-updater: never hand the user a
+            # corrupted or tampered apk.
+            digest = (asset.get("digest") or "").strip().lower()
+            if digest.startswith("sha256:"):
+                if sha256_of_file(dest) != digest.split(":", 1)[1]:
+                    raise RuntimeError("SHA-256 mismatch — the download is corrupted")
+                print("Android app verified (SHA-256 OK).")
+            ver = rel.get("version", "?")
+            print(f"Android app v{ver} downloaded ({got // 1024:,} KB).")
+            self._log_queue.put(("androidapp_done", ver, str(dest)))
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            self._log_queue.put(("error", f"Android app download failed:\n{exc}"))
+            self._log_queue.put(("androidapp_done", None, None))
+        finally:
+            sys.stdout.flush()
+            sys.stdout = old_stdout
+
+    def _finish_android_app(self, ver, path):
+        self._set_busy(False)
+        if not ver:
+            self.status_var.set(t("Android app download failed — see log."))
+            return
+        try:
+            self.root.lift(); self.root.focus_force()
+        except Exception:
+            pass
+        self.status_var.set(t("Android app v{ver} downloaded.", ver=ver))
+        self.root.after(10, lambda: messagebox.showinfo(
+            "Download Android App",
+            t("Android app v{ver} saved to:\n{path}\n\n"
+              "Copy the .apk onto your phone and install it (allow installation "
+              "from unknown sources).", ver=ver, path=path), parent=self.root))
 
     def _advance_data_baseline(self, cheats=False, db=False, when=None):
         """Mark the cheats/database packages as current as of *when* (now)."""
@@ -7684,6 +7815,8 @@ class ScraperGUI:
             self._finish_devcat(msg[1], msg[2])
         elif kind == "switchapp_done":
             self._finish_switch_app(msg[1], msg[2])
+        elif kind == "androidapp_done":
+            self._finish_android_app(msg[1], msg[2])
         elif kind == "update_result":
             self._handle_update_result(msg[1], msg[2])
         elif kind == "update_error":

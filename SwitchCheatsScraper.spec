@@ -17,10 +17,18 @@ for pkg in ("playwright",):
     d, b, h = collect_all(pkg)
     datas += d; binaries += b; hiddenimports += h
 
+# NOTE: Playwright's own PyInstaller hook bundles the browser binaries, so we
+# cannot drop Firefox by filtering collect_all() here. Instead build.ps1 deletes
+# the bundled Firefox from dist/ AFTER PyInstaller (before the installer step) —
+# only Chromium (the Built-in default) ships; Firefox is downloaded on demand.
+
 # Pure-python deps PyInstaller sometimes misses.
 hiddenimports += [
     "lxml", "lxml.etree", "bs4", "PIL", "PIL.Image", "PIL.ImageTk",
     "charset_normalizer", "requests", "urllib3", "tqdm",
+    # The launcher picks the UI at runtime (modern default, --classic fallback),
+    # so make sure BOTH shells are always bundled.
+    "gui", "gui_modern",
 ]
 
 # Ship app.ico so the Tk window/taskbar icon matches the exe icon.
