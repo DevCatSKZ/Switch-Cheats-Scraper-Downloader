@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-11 (modern-UI polish & fixes)
+
+### Fixed
+- **Active sidebar tab is now a clean rectangle** — the highlight coloured only
+  the button and the short empty badge, so the row background showed through at
+  the right edge as a notch. The whole row is now painted as one uniform
+  rectangle (row + button + badge + indicator share a background).
+- **Sidebar no longer grows/shrinks while navigating** — the active entry turns
+  semibold (wider) and the panel had no fixed width, so it reflowed on every
+  click. The sidebar now has a fixed width computed from the widest label in its
+  active state (language-safe).
+- **Stray “Game/Spiel” label removed from the Library** — the modern shell has a
+  dedicated game detail page, so the old side cover-preview panel (which
+  collapsed to a sliver and left its title floating over the table) is no longer
+  shown there; the table fills the full width.
+- **Sidebar count badge redesigned** as a small pill; empty badges no longer
+  render as little boxes.
+- **Button labels no longer truncated** — “Save… / Delete” (filter presets) and
+  “Update/DLC IDs” were clipped by fixed widths, which cut off the longer
+  translations (e.g. German “Speichern… / Löschen”). They now size to their text.
+
 ## v1.3 — 2026-07-11 (reset / clean downloaded data)
 
 ### Added

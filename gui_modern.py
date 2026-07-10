@@ -242,14 +242,26 @@ class ModernApp(ScraperGUI):
             tip = _NAV_TIPS.get(key, "")
             if tip:
                 _Tooltip(btn, tip + f"  (Alt+{len(self._nav_btns) + 1})")
-            # A count badge (currently only the Library shows the games total).
-            badge = tk.Label(row, text="", bd=0, font=("Segoe UI", 8),
-                             padx=6, highlightthickness=0)
-            badge.pack(side="right", padx=(0, 8))
+            # A count badge (currently only the Library shows the games total),
+            # styled as a small pill in _paint_nav.
+            badge = tk.Label(row, text="", bd=0, font=("Segoe UI Semibold", 8),
+                             padx=7, pady=1, highlightthickness=0)
+            badge.pack(side="right", padx=(0, 10))
             self._nav_btns[key] = btn
             self._nav_marks[key] = mark
             self._nav_badges[key] = badge
             self._nav_rows = getattr(self, "_nav_rows", []) + [row]
+        # Fixed sidebar width, sized to the WIDEST label in its active (semibold)
+        # state plus the badge. Without this the sidebar reflowed on every
+        # navigation, because the active row turns semibold (wider) and the
+        # panel had no fixed width — it grew and shrank as you switched pages.
+        import tkinter.font as _tkfont
+        _semi = _tkfont.Font(family="Segoe UI Semibold", size=11)
+        _labelw = max((_semi.measure(f"  {g}   {t(l)}") for _k, g, l in _NAV),
+                      default=150)
+        _badgew = _tkfont.Font(family="Segoe UI Semibold", size=8).measure(" 000,000 ")
+        self._sidebar.configure(width=max(212, 3 + 20 + _labelw + _badgew + 44))
+        self._sidebar.pack_propagate(False)
         # Author credit pinned at the sidebar bottom.
         self._side_credit = ttk.Label(self._sidebar, text=f"by {APP_AUTHOR}",
                                       style="SideCredit.TLabel")
@@ -462,7 +474,7 @@ class ModernApp(ScraperGUI):
         self._lib_table_host.grid(row=0, column=0, sticky="nsew")
         self._lib_gallery_host = ttk.Frame(host, style="Body.TFrame")
         self._lib_gallery_host.grid(row=0, column=0, sticky="nsew")
-        self._build_main(self._lib_table_host)
+        self._build_main(self._lib_table_host, with_preview=False)
         self._build_gallery(self._lib_gallery_host)
         self._set_library_view("table")
 
@@ -1246,33 +1258,35 @@ class ModernApp(ScraperGUI):
     def _paint_nav(self):
         c = theme()
         current = getattr(self, "_nav_current", None)
-        for row in getattr(self, "_nav_rows", []):
-            try:
-                row.configure(bg=c["surface"])
-            except Exception:
-                pass
+        # The active indicator is the WHOLE ROW painted as one clean rectangle:
+        # row + button + mark + badge all share the row's background so there are
+        # no seams or notches (the button and the short empty badge used to leave
+        # the row background showing at the right edge).
+        row_of = dict(zip(getattr(self, "_nav_order", []),
+                          getattr(self, "_nav_rows", [])))
         for key, btn in getattr(self, "_nav_btns", {}).items():
             mark = self._nav_marks.get(key)
             badge = self._nav_badges.get(key)
+            row = row_of.get(key)
             active = key == current
+            rowbg = c["featured_bg"] if active else c["surface"]
             try:
-                if active:
-                    btn.configure(bg=c["featured_bg"], fg=c["accent"],
-                                  activebackground=c["featured_bg"],
-                                  activeforeground=c["accent"],
-                                  font=("Segoe UI Semibold", 11))
-                    if mark is not None:
-                        mark.configure(bg=c["accent"])
-                else:
-                    btn.configure(bg=c["surface"], fg=c["fg_muted"],
-                                  activebackground=c["hover"],
-                                  activeforeground=c["fg"],
-                                  font=("Segoe UI", 11))
-                    if mark is not None:
-                        mark.configure(bg=c["surface"])
+                if row is not None:
+                    row.configure(bg=rowbg)
+                btn.configure(
+                    bg=rowbg,
+                    fg=c["accent"] if active else c["fg_muted"],
+                    activebackground=rowbg if active else c["hover"],
+                    activeforeground=c["accent"] if active else c["fg"],
+                    font=("Segoe UI Semibold", 11) if active else ("Segoe UI", 11))
+                if mark is not None:
+                    mark.configure(bg=c["accent"] if active else rowbg)
                 if badge is not None:
-                    badge.configure(bg=c["featured_bg"] if active else c["surface"],
-                                    fg=c["fg_muted"])
+                    # Count → subtle pill chip; empty → blend into the row.
+                    if badge.cget("text"):
+                        badge.configure(bg=c["hover"], fg=c["accent"])
+                    else:
+                        badge.configure(bg=rowbg, fg=c["accent"])
             except Exception:
                 pass
 
@@ -1286,6 +1300,8 @@ class ModernApp(ScraperGUI):
             badge.configure(text=f"{n:,}" if n else "")
         except Exception:
             badge.configure(text="")
+        # Re-apply the pill styling now the text is known (paint can run first).
+        self._paint_nav()
 
     def _db_build_count_games(self) -> int:
         import sqlite3 as _sq

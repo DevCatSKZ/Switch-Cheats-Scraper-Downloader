@@ -3464,11 +3464,11 @@ class ScraperGUI:
         _Tooltip(self.preset_combo,
                  "Saved filter combinations — pick one to apply all its filters "
                  "at once.")
-        save_pre = ttk.Button(power, text=t("Save…"), width=7,
+        save_pre = ttk.Button(power, text=t("Save…"),
                               command=self._save_current_preset)
         save_pre.pack(side="left", padx=(0, 2))
         _Tooltip(save_pre, "Save the current filter combination under a name.")
-        del_pre = ttk.Button(power, text=t("Delete"), width=7,
+        del_pre = ttk.Button(power, text=t("Delete"),
                              command=self._delete_selected_preset)
         del_pre.pack(side="left")
         _Tooltip(del_pre, "Delete the selected saved preset.")
@@ -3645,12 +3645,22 @@ class ScraperGUI:
                 news.append(name)
         return sorted(news)
 
-    def _build_main(self, parent=None):
-        # Table (left) + cheat-names panel (right), resizable.
-        paned = ttk.Panedwindow(parent or self._top_container, orient="horizontal")
-        paned.pack(side="top", fill="both", expand=True, padx=10)
-
-        left = ttk.Frame(paned)
+    def _build_main(self, parent=None, with_preview=True):
+        # Table (left) + optional cover/cheat preview panel (right), resizable.
+        # The modern shell has a dedicated game DETAIL PAGE, so it passes
+        # with_preview=False: the table fills the full width and the preview
+        # widgets are still created (kept off-layout) so the row-selection code
+        # that fills them keeps working — otherwise the narrow, collapsed
+        # preview LabelFrame left a stray "Game" title floating over the table.
+        host = parent or self._top_container
+        if with_preview:
+            paned = ttk.Panedwindow(host, orient="horizontal")
+            paned.pack(side="top", fill="both", expand=True, padx=10)
+            left = ttk.Frame(paned)
+        else:
+            paned = None
+            left = ttk.Frame(host)
+            left.pack(side="top", fill="both", expand=True, padx=10)
         columns = [c[0] for c in COLUMNS]
         self.tree = ttk.Treeview(left, columns=columns, show="headings", selectmode="extended")
         for col_id, heading, width, anchor in COLUMNS:
@@ -3731,9 +3741,13 @@ class ScraperGUI:
         self.context_menu.add_separator()
         # -- global (not row-specific) ---------------------------------------
         _ctx_add("reset_quota", "Reset API Limit", self._ctx_reset_api_limit)
-        paned.add(left, weight=3)
 
-        right = ttk.Labelframe(paned, text="Game", padding=(8, 6))
+        if paned is not None:
+            paned.add(left, weight=3)
+            right = ttk.Labelframe(paned, text="Game", padding=(8, 6))
+        else:
+            # Off-layout container: the preview widgets exist but are never shown.
+            right = ttk.Frame(left)
         self.cover_label = ttk.Label(right, anchor="center")
         self.cover_label.pack(side="top", fill="x", pady=(0, 6))
         txtframe = ttk.Frame(right)
@@ -3748,7 +3762,8 @@ class ScraperGUI:
         self.cheat_text.pack(side="left", fill="both", expand=True)
         cvsb.pack(side="right", fill="y")
         self._apply_cheat_text_style()
-        paned.add(right, weight=1)
+        if paned is not None:
+            paned.add(right, weight=1)
 
     def _build_database_bar(self, parent=None, compact=False):
         # Bottom row under the table: database actions + DB path. Packed at the
@@ -3818,8 +3833,7 @@ class ScraperGUI:
 
         ttk.Label(left2, textvariable=self.total_games_var).pack(side="left", padx=(12, 0))
 
-        self.nonbase_btn = ttk.Button(left2, text="Update/DLC IDs", command=self._toggle_nonbase,
-                                      width=13)
+        self.nonbase_btn = ttk.Button(left2, text="Update/DLC IDs", command=self._toggle_nonbase)
         self.nonbase_btn.pack(side="left", padx=(12, 0))
         self._action_buttons += [self.nonbase_btn]
 
