@@ -2,6 +2,46 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-10 (refreshed build)
+
+### Added — modern Holo-Glass GUI (now the default)
+- **Complete visual re-architecture** (`gui_modern.py`): header bar with the
+  real app icon + version pill + theme/language pickers, sidebar navigation
+  (Home / Library / Sources / CheatSlips / Log) with a teal active-indicator,
+  landing-page style page heads, glass stat cards and a persistent status
+  footer (status · Stop · progress). Opens in an optimal windowed size
+  (~1560×1000, centered) instead of maximized.
+- Shares **100% of the widgets and handlers** with the classic UI: `gui.py`'s
+  layout was extracted into a `_compose_ui()` hook + parented section builders;
+  the classic UI is composed from the same builders and stays pixel-identical.
+  `SwitchCheatsScraper.exe --classic` (or `python gui.py`) starts it.
+- **"Download Android App" button** on the ★ card: pick a save location, the
+  latest `SwitchCheatsDownloader-Android.apk` is downloaded and SHA-256
+  verified.
+
+### Added — quality-of-life (2026-07-09/10)
+- **Silent self-update:** the installer is now **per-user** (LocalAppData, no
+  admin/UAC); a found update downloads, verifies against GitHub's **SHA-256
+  digest**, installs silently and restarts the app. "Update automatically"
+  checkbox (default ON) — a manual *Check Updates* always shows the redesigned
+  dialog (rendered release notes) with a visible download/install progress.
+- **First-run welcome dialog:** empty database → one-click "★ Download
+  complete database (~25 MB)".
+- **Safety backups:** rotating `cheats.db.bak`/`.bak2` (WAL-safe) before
+  Clear DB, Import DB, Fix ID names, Sync titles, Recount cheats, Clean invalid.
+- **Windows toasts** for finished long tasks (scrape done, data update
+  installed, update installing) — only when the window is in the background.
+- **"Export for Emulators":** cheats as `<TitleID>/<GameName>/cheats/<BuildID>.txt`
+  for Eden / Suyu / Sudachi / Torzu / Yuzu (`load`) and Ryujinx (`mods`), as a
+  folder or ZIP; the ready-made `switch-cheats-emulator.zip` is hosted in the
+  `data` release.
+- **Android app reworked:** downloads `switch-cheats-emulator.zip`, unpacks it
+  to a public folder (fast direct file writes) and you import per game via the
+  emulator's own *Add-ons → Mods and cheats* (on Android 11+ no third-party
+  app can write into an emulator's private `Android/data`). One combined
+  Eden/Suyu/Sudachi section with a generic import guide; `names.json` is no
+  longer needed.
+
 ## v1.3 — 2026-07-08
 
 ### Changed — download engine reworked around the API + quota reset

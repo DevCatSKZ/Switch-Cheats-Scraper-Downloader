@@ -55,15 +55,21 @@ Compress-Archive -Path "dist\SwitchCheatsScraper" `
   automatically (it is imported by `gui.py`). The installer has a **"Program
   language"** page that writes `default_lang.txt` next to the app, so a fresh
   install starts in the chosen language.
-- **Entry point:** `SwitchCheatsScraper.py` (this replaces the old
-  `python gui.py` / `scraper.py gui`). During development you can just run
-  `python SwitchCheatsScraper.py`.
+- **Entry point:** `SwitchCheatsScraper.py`. It launches the **modern
+  Holo-Glass UI (`gui_modern.py`) by default**; `--classic` starts the classic
+  single-window UI (from source: `python gui.py`). Both shells share 100% of
+  the widgets/handlers (the section builders in `gui.py`) and are always
+  bundled (spec `hiddenimports = ["gui", "gui_modern"]`).
+- **Installer is PER-USER (no admin, no UAC):** `PrivilegesRequired=lowest`,
+  default dir `{autopf}` → `%LOCALAPPDATA%\Programs\Switch Cheats Scraper &
+  Downloader`. This is what enables the **silent self-update**: the app folder
+  is writable, so updates install with `/SILENT` without elevation and the app
+  restarts itself (see `_apply_installer_update` in `gui.py`; downloads are
+  verified against GitHub's SHA-256 asset digest first).
 - **User data:** When run as the packaged `.exe`, the app stores its database,
   downloads, settings and login profile **next to the executable** (portable).
-  If that folder is read-only (e.g. installed under Program Files as admin), it
-  falls back to `%LOCALAPPDATA%\SwitchCheatsScraper`. The installer defaults to
-  `C:\Program Files (x86)\Switch Cheats Scraper & Downloader` (needs admin; the
-  destination folder is freely selectable / creatable in the wizard); the app's
-  runtime data then lives in the `%LOCALAPPDATA%` fallback. From source it keeps
-  everything next to the code.
-- **Icon:** `app.ico` next to the spec brands the exe/installer.
+  If that folder is read-only (a legacy Program Files install), it falls back
+  to `%LOCALAPPDATA%\SwitchCheatsScraper`. From source it keeps everything
+  next to the code.
+- **Icon:** `app.ico` next to the spec brands the exe/installer (and the
+  modern UI's header, loaded via PIL).
