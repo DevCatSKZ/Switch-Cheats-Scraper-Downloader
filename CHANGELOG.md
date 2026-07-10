@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-10 (feature update)
+
+### Added — the tool is now a full cheat editor + a real control centre
+- **Cheat viewer/editor:** double-click any build to open its codes in a
+  syntax-highlighted editor ([Name] / {Master} headers in the accent colour,
+  opcodes tinted), edit them with a live cheat count, and save back to BOTH the
+  .txt file and the database in one click.
+- **Settings page** (modern sidebar): every scattered option in one place —
+  program auto-update, startup checks, keep-data-updated, browser choice,
+  browser fallback, cover options and the database / output paths.
+- **Live dashboard** on Home: games, total cheats, downloaded %, database size,
+  the date the cheat data was last updated, and a "Recently updated" list.
+- **Library power tools:** quick-filter chips (⚡ Has cheats, 🖼 No cover),
+  a Columns menu to show/hide table columns, and named filter presets
+  (save / apply / delete) — all persisted.
+- **Keep the cheat data up to date automatically:** opt-in on Settings; at
+  startup the app quietly checks the DevCatSKZ data release and merges a newer
+  database (non-destructive), with a toast when something new arrives.
+- **No-admin migration nudge:** a legacy Program-Files install (which needs a
+  UAC prompt per update) is offered — once — a one-click download+run of the
+  current per-user installer, after which updates install silently forever.
+
 ## v1.3 — 2026-07-10 (refreshed build)
 
 ### Added — modern Holo-Glass GUI (now the default)

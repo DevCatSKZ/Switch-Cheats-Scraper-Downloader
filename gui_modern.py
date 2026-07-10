@@ -16,18 +16,19 @@ from tkinter import ttk
 
 import i18n
 from i18n import t
-from gui import (ScraperGUI, theme, _Tooltip,
+from gui import (ScraperGUI, theme, _Tooltip, _BROWSER_KINDS, _fmt_size,
                  APP_NAME, APP_AUTHOR, APP_VERSION)
 
 
 # Sidebar navigation: (key, glyph, label). Labels are static English keys —
 # the i18n auto-hook translates them like every other widget text.
 _NAV = [
-    ("home",    "⌂",  "Home"),
-    ("library", "▤",  "Library"),
-    ("sources", "☁",  "Sources"),
-    ("scrape",  "⇣",  "CheatSlips"),
-    ("log",     "≡",  "Log"),
+    ("home",     "⌂",  "Home"),
+    ("library",  "▤",  "Library"),
+    ("sources",  "☁",  "Sources"),
+    ("scrape",   "⇣",  "CheatSlips"),
+    ("settings", "⚙",  "Settings"),
+    ("log",      "≡",  "Log"),
 ]
 
 # The Holo-Glass secondary accent (electric violet), straight from the
@@ -172,6 +173,7 @@ class ModernApp(ScraperGUI):
         self._build_library_page(self._pages["library"])
         self._build_sources_page(self._pages["sources"])
         self._build_scrape_page(self._pages["scrape"])
+        self._build_settings_page(self._pages["settings"])
         self._build_log_page(self._pages["log"])
 
         # ---------- footer --------------------------------------------------
@@ -203,24 +205,110 @@ class ModernApp(ScraperGUI):
         self._hairline(page, pady=(10, 14))
         return head
 
+    def _dash_stat(self, parent, key, sub, violet=False):
+        """One glass stat card with a live-updated big value + sub label."""
+        border, card = self._glass_card(parent, padding=(18, 13))
+        border.pack(side="left", fill="both", expand=True, padx=(0, 12))
+        var = tk.StringVar(value="—")
+        self._dash_vars[key] = var
+        ttk.Label(card, textvariable=var,
+                  style="StatBigV.TLabel" if violet else "StatBig.TLabel").pack(anchor="w")
+        ttk.Label(card, text=sub, style="StatSub.TLabel").pack(anchor="w")
+        return card
+
     def _build_home_page(self, page):
         self._page_title(page, "Overview", "Home",
                          "Everything for your Switch cheats — collected, managed, delivered.")
-        # Quick stats strip — glass cards with teal hairline borders.
+        self._dash_vars: dict[str, tk.StringVar] = {}
+
+        # ---- live stat cards -------------------------------------------
         stats = ttk.Frame(page, style="Body.TFrame")
-        stats.pack(fill="x", pady=(0, 14))
-        b1, card1 = self._glass_card(stats, padding=(18, 12))
-        b1.pack(side="left", padx=(0, 12))
-        ttk.Label(card1, textvariable=self.total_games_var,
-                  style="StatBig.TLabel").pack(anchor="w")
-        ttk.Label(card1, text="in your database", style="StatSub.TLabel").pack(anchor="w")
-        b2, card2 = self._glass_card(stats, padding=(18, 12))
-        b2.pack(side="left", padx=(0, 12))
-        ttk.Label(card2, text=f"v{APP_VERSION}", style="StatBigV.TLabel").pack(anchor="w")
-        ttk.Label(card2, text="program version", style="StatSub.TLabel").pack(anchor="w")
-        # The featured DevCat card (downloads, updates, Switch app) — the same
-        # proven card as in the classic toolbar, as the hero of the Home page.
-        self._build_devcat_card(page, beside_grid=False)
+        stats.pack(fill="x", pady=(0, 6))
+        self._dash_stat(stats, "games", t("games in your database"))
+        self._dash_stat(stats, "cheats", t("cheats total"))
+        self._dash_stat(stats, "downloaded", t("downloaded"))
+        self._dash_stat(stats, "db_size", t("database size"), violet=True)
+        # spacer so the 4th card doesn't get a trailing gap
+        ttk.Frame(stats, style="Body.TFrame", width=0).pack(side="left")
+
+        self._dash_data_var = tk.StringVar(value="")
+        ttk.Label(page, textvariable=self._dash_data_var,
+                  style="PageSub.TLabel").pack(anchor="w", pady=(2, 12))
+
+        # ---- two columns: DevCat hero (left) + recently updated (right) --
+        cols = ttk.Frame(page, style="Body.TFrame")
+        cols.pack(fill="both", expand=True)
+        leftcol = ttk.Frame(cols, style="Body.TFrame")
+        leftcol.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        rightcol = ttk.Frame(cols, style="Body.TFrame")
+        rightcol.pack(side="left", fill="both", expand=True, padx=(10, 0))
+
+        # The featured DevCat card (downloads, updates, Switch app).
+        self._build_devcat_card(leftcol, beside_grid=False)
+
+        rb, recent = self._glass_card(rightcol, padding=(16, 12))
+        rb.pack(fill="both", expand=True)
+        ttk.Label(recent, text=t("Recently updated"),
+                  style="CardTitle.TLabel").pack(anchor="w")
+        self._hairline(recent, pady=(7, 6))
+        self._recent_host = ttk.Frame(recent, style="Glass.TFrame")
+        self._recent_host.pack(fill="both", expand=True)
+
+        self._refresh_dashboard()
+
+    def _refresh_dashboard(self):
+        """Recompute the Home stats off-thread, then paint them on the UI thread."""
+        if not hasattr(self, "_dash_vars"):
+            return
+        import threading
+
+        def work():
+            stats = self._dashboard_stats()
+            try:
+                self.root.after(0, lambda: self._paint_dashboard(stats))
+            except Exception:
+                pass
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _paint_dashboard(self, s):
+        v = self._dash_vars
+        if "games" in v:
+            v["games"].set(f"{s['games']:,}")
+        if "cheats" in v:
+            v["cheats"].set(f"{s['cheats']:,}")
+        if "downloaded" in v:
+            pct = (100 * s["downloaded"] // s["builds"]) if s["builds"] else 0
+            v["downloaded"].set(f"{pct}%")
+        if "db_size" in v:
+            v["db_size"].set(_fmt_size(s["db_size"]))
+        # Last data update line.
+        import time as _tm
+        if s.get("last_data"):
+            when = _tm.strftime("%Y-%m-%d %H:%M", _tm.localtime(s["last_data"]))
+            self._dash_data_var.set(t("Cheat data last updated: {when}", when=when))
+        else:
+            self._dash_data_var.set(t("Cheat data last updated: never"))
+        # Recently-updated list.
+        host = getattr(self, "_recent_host", None)
+        if host is None:
+            return
+        for w in host.winfo_children():
+            w.destroy()
+        c = theme()
+        if not s["recent"]:
+            ttk.Label(host, text=t("No entries yet."),
+                      style="Glass.TLabel").pack(anchor="w")
+            return
+        for (name, version, tid, bid, cc) in s["recent"]:
+            rowf = ttk.Frame(host, style="Glass.TFrame")
+            rowf.pack(fill="x", pady=1)
+            label = (name or tid or "?")[:34]
+            ttk.Label(rowf, text=label, style="Glass.TLabel").pack(side="left")
+            meta = f"{cc}"
+            if version:
+                meta = f"v{version} · {cc}"
+            ttk.Label(rowf, text=meta, style="StatSub.TLabel").pack(side="right")
 
     def _build_library_page(self, page):
         self._page_title(page, "Browse", "Library",
@@ -249,11 +337,98 @@ class ModernApp(ScraperGUI):
                          "Everything the app did this session.")
         self._build_log(page, with_status=False)
 
+    # ------------------------------------------------------------- settings
+    def _settings_card(self, parent, title):
+        """A titled glass card; returns the inner body frame for controls."""
+        border, inner = self._glass_card(parent, padding=(16, 12))
+        border.pack(fill="x", pady=(0, 12))
+        ttk.Label(inner, text=title, style="CardTitle.TLabel").pack(anchor="w")
+        self._hairline(inner, pady=(7, 8))
+        body = ttk.Frame(inner, style="Glass.TFrame")
+        body.pack(fill="x")
+        return body
+
+    def _settings_check(self, parent, text, var, tip=None):
+        cb = ttk.Checkbutton(parent, text=text, variable=var,
+                             style="Glass.TCheckbutton",
+                             command=self._save_settings)
+        cb.pack(anchor="w", pady=2)
+        if tip:
+            _Tooltip(cb, tip)
+        return cb
+
+    def _build_settings_page(self, page):
+        self._page_title(page, "Configure", "Settings",
+                         "Everything in one place — updates, downloads, covers and paths.")
+        # Two balanced columns of cards.
+        cols = ttk.Frame(page, style="Body.TFrame")
+        cols.pack(fill="both", expand=True)
+        left = ttk.Frame(cols, style="Body.TFrame")
+        left.pack(side="left", fill="both", expand=True, padx=(0, 8))
+        right = ttk.Frame(cols, style="Body.TFrame")
+        right.pack(side="left", fill="both", expand=True, padx=(8, 0))
+
+        # -- Updates ------------------------------------------------------
+        upd = self._settings_card(left, t("Updates"))
+        self._settings_check(
+            upd, t("Update the program automatically"), self.auto_update,
+            "ON (recommended): a found program update installs itself silently "
+            "at startup and the app restarts — no clicks. OFF: updates are only "
+            "offered in a dialog to confirm.")
+        self._settings_check(
+            upd, t("Check for updates at startup"), self.update_check_startup)
+        self._settings_check(
+            upd, t("Keep the cheat data up to date automatically"),
+            self.keep_data_updated,
+            "ON: at startup the app quietly checks the DevCatSKZ data release "
+            "and merges a newer cheat database automatically (a toast tells you). "
+            "OFF: use '★ Download Complete' on Home when you want fresh data.")
+
+        # -- Startup / online --------------------------------------------
+        stp = self._settings_card(left, t("Startup"))
+        self._settings_check(
+            stp, t("Check whether cheatslips.com is online at startup"),
+            self.online_check_startup)
+
+        # -- Downloads & browser -----------------------------------------
+        dl = self._settings_card(right, t("Downloads & Browser"))
+        brow = ttk.Frame(dl, style="Glass.TFrame")
+        brow.pack(fill="x", pady=(0, 4))
+        ttk.Label(brow, text=t("Browser:"), style="Glass.TLabel").pack(side="left")
+        self.settings_browser_combo = ttk.Combobox(
+            brow, textvariable=self.browser_choice, state="readonly", width=12,
+            values=list(_BROWSER_KINDS.keys()))
+        self.settings_browser_combo.pack(side="left", padx=(6, 0))
+        self.settings_browser_combo.bind("<<ComboboxSelected>>", self._on_browser_selected)
+        self._settings_check(
+            dl, t("Download via browser when the API is limited"),
+            self.browser_fallback)
+        self._settings_check(
+            dl, t("Also download cover images with DevCatSKZ downloads"),
+            self.devcat_covers)
+        self._settings_check(
+            dl, t("Save cover images to disk"), self.cache_covers)
+
+        # -- Paths --------------------------------------------------------
+        paths = self._settings_card(right, t("Paths"))
+        self._settings_path_row(paths, t("Database:"), self.db_path, self._choose_db)
+        self._settings_path_row(paths, t("Output folder:"), self.dl_output,
+                                self._choose_output)
+
+    def _settings_path_row(self, parent, label, var, chooser):
+        ttk.Label(parent, text=label, style="Glass.TLabel").pack(anchor="w", pady=(4, 1))
+        row = ttk.Frame(parent, style="Glass.TFrame")
+        row.pack(fill="x")
+        ttk.Entry(row, textvariable=var).pack(side="left", fill="x", expand=True)
+        ttk.Button(row, text="…", width=3, command=chooser).pack(side="left", padx=(4, 0))
+
     # ------------------------------------------------------------ navigation
     def _select_page(self, key):
         self._pages[key].tkraise()
         self._nav_current = key
         self._paint_nav()
+        if key == "home":
+            self._refresh_dashboard()
 
     # ------------------------------------------------------------- busy sync
     def _set_busy(self, busy: bool):
@@ -308,6 +483,15 @@ class ModernApp(ScraperGUI):
                      foreground=c["fg_muted"], font=("Segoe UI", 9))
         st.configure("Eyebrow.TLabel", background=c["bg"],
                      foreground=c["accent"], font=("Consolas", 9, "bold"))
+        # Controls sitting on a glass card must share its surface background.
+        st.configure("CardTitle.TLabel", background=c["surface"],
+                     foreground=c["title"], font=("Segoe UI Semibold", 11))
+        st.configure("Glass.TLabel", background=c["surface"], foreground=c["fg"])
+        st.configure("Glass.TCheckbutton", background=c["surface"],
+                     foreground=c["fg"])
+        st.map("Glass.TCheckbutton",
+               background=[("active", c["surface"])],
+               foreground=[("active", c["fg"])])
 
     def _paint_modern(self):
         """Recolour the plain-tk parts (nav buttons, hairlines, glass borders)."""

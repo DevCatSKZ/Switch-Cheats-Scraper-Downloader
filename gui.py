@@ -550,6 +550,196 @@ class AddEntryDialog:
         self.top.destroy()
 
 
+def highlight_cheat_text(txt: "tk.Text"):
+    """Apply Atmosphère-cheat syntax highlighting to a Text widget.
+
+    [Named cheat] / {Master cheat} headers get the accent, hex code lines are
+    dimmed apart from their opcode, and everything else reads as a comment.
+    Tags are (re)configured here so a theme change refreshes correctly.
+    """
+    import re as _re
+    t = theme()
+    txt.tag_configure("cheat_head", foreground=t["accent"],
+                      font=("Consolas", 10, "bold"))
+    txt.tag_configure("cheat_master", foreground=t.get("warn", t["accent"]),
+                      font=("Consolas", 10, "bold"))
+    txt.tag_configure("cheat_op", foreground=t["accent"])
+    txt.tag_configure("cheat_comment", foreground=t["fg_muted"])
+    for tag in ("cheat_head", "cheat_master", "cheat_op", "cheat_comment"):
+        txt.tag_remove(tag, "1.0", "end")
+    lines = txt.get("1.0", "end-1c").split("\n")
+    for i, line in enumerate(lines, 1):
+        s = line.strip()
+        if not s:
+            continue
+        if s.startswith("[") and s.endswith("]"):
+            txt.tag_add("cheat_head", f"{i}.0", f"{i}.end")
+        elif s.startswith("{") and s.endswith("}"):
+            txt.tag_add("cheat_master", f"{i}.0", f"{i}.end")
+        elif _re.match(r"^[0-9A-Fa-f]{8}(\s+[0-9A-Fa-f]{1,8})*$", s):
+            # Code line: tint just the leading opcode word.
+            m = _re.match(r"^(\s*)([0-9A-Fa-f]{8})", line)
+            if m:
+                a = f"{i}.{len(m.group(1))}"
+                b = f"{i}.{len(m.group(1)) + 8}"
+                txt.tag_add("cheat_op", a, b)
+        else:
+            txt.tag_add("cheat_comment", f"{i}.0", f"{i}.end")
+
+
+class CheatEditorDialog:
+    """View + edit a build's cheat codes with live [Title] highlighting.
+
+    Opened by double-clicking a row. Saves back to BOTH the .txt file on disk
+    and the database (cheat_count / cheat_names) via the on_save callback, which
+    returns (ok: bool, message: str) so the dialog can report inline without
+    closing — a real editor, not just a form.
+    """
+
+    def __init__(self, parent, *, title_id, build_id, name, version, credits,
+                 content, downloaded, on_save):
+        self._on_save = on_save
+        self._tid0, self._bid0 = title_id, build_id
+        th = theme()
+        self.top = tk.Toplevel(parent)
+        self.top.title(t("Cheat editor"))
+        self.top.transient(parent)
+        self.top.grab_set()
+        self.top.configure(bg=th["bg"])
+        self.top.minsize(560, 460)
+
+        frm = ttk.Frame(self.top, padding=14)
+        frm.pack(fill="both", expand=True)
+
+        # ---- header: game name + identity line -------------------------------
+        head = ttk.Frame(frm)
+        head.pack(fill="x")
+        ttk.Label(head, text=(name or t("Unnamed game")),
+                  font=("Segoe UI Semibold", 13),
+                  foreground=th["accent"]).pack(anchor="w")
+        dl_txt = t("downloaded") if downloaded else t("not downloaded")
+        self._ident = ttk.Label(
+            head, foreground=th["fg_muted"], font=("Segoe UI", 9),
+            text=f"{title_id}  ·  {build_id}"
+                 + (f"  ·  v{version}" if version else "")
+                 + f"  ·  {dl_txt}")
+        self._ident.pack(anchor="w", pady=(2, 0))
+
+        # ---- editable metadata (name / version) ------------------------------
+        meta = ttk.Frame(frm)
+        meta.pack(fill="x", pady=(10, 6))
+        self.name_var = tk.StringVar(value=name or "")
+        self.version_var = tk.StringVar(value=version or "")
+        self.credits_var = tk.StringVar(value=credits or "")
+        ttk.Label(meta, text=t("Name")).grid(row=0, column=0, sticky="w", padx=(0, 6))
+        ttk.Entry(meta, textvariable=self.name_var, width=34).grid(
+            row=0, column=1, sticky="we", padx=(0, 12))
+        ttk.Label(meta, text=t("Version")).grid(row=0, column=2, sticky="w", padx=(0, 6))
+        ttk.Entry(meta, textvariable=self.version_var, width=12).grid(
+            row=0, column=3, sticky="w")
+        meta.columnconfigure(1, weight=1)
+
+        # ---- code editor -----------------------------------------------------
+        ttk.Label(frm, text=t("Cheat codes (Atmosphère format · [Name] / {Master} headers)"),
+                  foreground=th["fg_muted"], font=("Segoe UI", 8)).pack(anchor="w")
+        box = ttk.Frame(frm)
+        box.pack(fill="both", expand=True, pady=(3, 0))
+        self.code = tk.Text(box, width=64, height=18, wrap="none",
+                            font=("Consolas", 10), undo=True,
+                            bg=th["field"], fg=th["fg"], insertbackground=th["fg"],
+                            selectbackground=th["select_bg"], selectforeground=th["select_fg"],
+                            relief="flat", highlightthickness=1,
+                            highlightbackground=th["border"], highlightcolor=th["accent"])
+        vsb = ttk.Scrollbar(box, orient="vertical", command=self.code.yview)
+        hsb = ttk.Scrollbar(box, orient="horizontal", command=self.code.xview)
+        self.code.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        self.code.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="we")
+        box.rowconfigure(0, weight=1)
+        box.columnconfigure(0, weight=1)
+        if content:
+            self.code.insert("1.0", content)
+        self.code.edit_reset()          # first content isn't an undo step
+        highlight_cheat_text(self.code)
+
+        # Re-highlight (debounced) as the user types.
+        self._hl_after = None
+        self.code.bind("<<Modified>>", self._on_modified)
+
+        # ---- footer: live count + status + buttons ---------------------------
+        foot = ttk.Frame(frm)
+        foot.pack(fill="x", pady=(10, 0))
+        self.count_var = tk.StringVar()
+        ttk.Label(foot, textvariable=self.count_var,
+                  foreground=th["fg_muted"], font=("Segoe UI", 9)).pack(side="left")
+        self.status = ttk.Label(foot, text="", foreground=th.get("ok", th["accent"]),
+                                font=("Segoe UI", 9))
+        self.status.pack(side="left", padx=(12, 0))
+        ttk.Button(foot, text=t("Close"), command=self._close).pack(side="right")
+        ttk.Button(foot, text=t("Save"), style="Accent.TButton",
+                   command=self._save).pack(side="right", padx=(0, 6))
+        ttk.Button(foot, text=t("Reload from disk"),
+                   command=self._reload).pack(side="right", padx=(0, 6))
+
+        self._reload_content = content or ""
+        self._refresh_count()
+        self.top.bind("<Control-s>", lambda _e: self._save())
+        self.top.bind("<Escape>", lambda _e: self._close())
+        self.top.protocol("WM_DELETE_WINDOW", self._close)
+        _center_dialog(self.top, parent)
+
+    def _on_modified(self, _e=None):
+        if not self.code.edit_modified():
+            return
+        self.code.edit_modified(False)
+        if self._hl_after:
+            try:
+                self.top.after_cancel(self._hl_after)
+            except Exception:
+                pass
+        self._hl_after = self.top.after(180, self._rehighlight)
+        self.status.config(text="")
+
+    def _rehighlight(self):
+        self._hl_after = None
+        highlight_cheat_text(self.code)
+        self._refresh_count()
+
+    def _refresh_count(self):
+        import re as _re
+        body = self.code.get("1.0", "end-1c")
+        n = len(_re.findall(r"(?m)^\s*[\[{].+[\]}]\s*$", body))
+        self.count_var.set(t("{n} cheat(s)", n=n))
+
+    def _reload(self):
+        self.code.delete("1.0", "end")
+        self.code.insert("1.0", self._reload_content)
+        self.code.edit_reset()
+        highlight_cheat_text(self.code)
+        self._refresh_count()
+        self.status.config(text=t("Reloaded from disk."))
+
+    def _save(self, close=False):
+        payload = {
+            "title_id": self._tid0, "build_id": self._bid0,
+            "name": self.name_var.get().strip(),
+            "version": self.version_var.get().strip(),
+            "credits": self.credits_var.get().strip(),
+            "content": self.code.get("1.0", "end-1c").rstrip() + "\n",
+        }
+        ok, msg = self._on_save(payload)
+        self.status.config(
+            text=msg, foreground=theme().get("ok" if ok else "error", theme()["accent"]))
+        if ok:
+            self._reload_content = payload["content"]
+            if close:
+                self.top.destroy()
+
+    def _close(self):
+        self.top.destroy()
+
+
 class ExportSDDialog:
     """Modal dialog: pick the Switch SD-card root + target tool, then export."""
 
@@ -1454,6 +1644,13 @@ class ScraperGUI:
         self.names_missing = tk.BooleanVar(value=False)
         self.nonbase_only = tk.BooleanVar(value=False)
         self.hide_placeholder_builds = tk.BooleanVar(value=True)
+        # Quick-filter chips (Library): only builds that actually have cheats,
+        # and only builds still missing a cover image.
+        self.has_cheats_only = tk.BooleanVar(value=False)
+        self.missing_cover_only = tk.BooleanVar(value=False)
+        # Library power: hidden table columns + saved filter presets (persisted).
+        self._hidden_columns: set = set()
+        self._filter_presets: dict = {}
         self.auto_scan_downloaded = tk.BooleanVar(value=False)
         # Two independent scrape controls (decoupled):
         #  - full catalog: discover over /games (ALL games) instead of the fast
@@ -1487,8 +1684,15 @@ class ScraperGUI:
         # only ever done silently when the app folder is writable (per-user install
         # or portable), so it never triggers a UAC prompt.
         self.auto_update = tk.BooleanVar(value=True)
+        # Keep the cheat DATA current: silently check the DevCatSKZ data release
+        # at startup and merge a newer database automatically (like the program
+        # auto-update, but for the cheats). Off by default — opt in on Settings.
+        self.keep_data_updated = tk.BooleanVar(value=False)
         # One-time first-run greeting (persisted in settings.json).
         self._welcome_shown = False
+        # One-time nudge for legacy admin (Program Files) installs to switch to
+        # the no-UAC per-user installer.
+        self._migration_hint_shown = False
         # SD-card export (remembered between runs).
         self.sd_export_root = tk.StringVar(value="")
         self.sd_export_mode = tk.StringVar(value="atmosphere")
@@ -1617,6 +1821,8 @@ class ScraperGUI:
             self.root.after(800, self.on_check_online)
         # First run with an empty database → friendly one-click onboarding.
         self.root.after(900, self._maybe_show_welcome)
+        # Legacy admin install → one-time offer to switch to the no-UAC version.
+        self.root.after(1100, self._maybe_show_migration_hint)
         # Check GitHub for a newer program/data version at startup (optional).
         # Runs quietly in the background; pops the dialog only if something's new.
         if self.update_check_startup.get():
@@ -1759,6 +1965,8 @@ class ScraperGUI:
         self.show_description.set(bool(data.get("show_description", False)))
         self.cache_covers.set(bool(data.get("cache_covers", True)))
         self.hide_placeholder_builds.set(bool(data.get("hide_placeholder_builds", True)))
+        self._hidden_columns = set(data.get("hidden_columns", []) or [])
+        self._filter_presets = dict(data.get("filter_presets", {}) or {})
         self.auto_scan_downloaded.set(bool(data.get("auto_scan_downloaded", False)))
         self.browser_fallback.set(bool(data.get("browser_fallback", False)))
         # Browser choice (migrate the old use_installed_browser bool).
@@ -1779,7 +1987,9 @@ class ScraperGUI:
         self.nroapp_copy_sd.set(bool(data.get("nroapp_copy_sd", False)))
         self.update_check_startup.set(bool(data.get("update_check_startup", True)))
         self.auto_update.set(bool(data.get("auto_update", True)))
+        self.keep_data_updated.set(bool(data.get("keep_data_updated", False)))
         self._welcome_shown = bool(data.get("welcome_shown", False))
+        self._migration_hint_shown = bool(data.get("migration_hint_shown", False))
         self.sd_export_root.set(data.get("sd_export_root", ""))
         self.sd_export_mode.set(data.get("sd_export_mode", "atmosphere"))
         self.export_zip_path.set(data.get("export_zip_path", ""))
@@ -1809,6 +2019,8 @@ class ScraperGUI:
             "show_description": self.show_description.get(),
             "cache_covers": self.cache_covers.get(),
             "hide_placeholder_builds": self.hide_placeholder_builds.get(),
+            "hidden_columns": sorted(self._hidden_columns),
+            "filter_presets": self._filter_presets,
             "auto_scan_downloaded": self.auto_scan_downloaded.get(),
             "browser_fallback": self.browser_fallback.get(),
             "browser_choice": self.browser_choice.get(),
@@ -1819,7 +2031,9 @@ class ScraperGUI:
             "nroapp_copy_sd": self.nroapp_copy_sd.get(),
             "update_check_startup": self.update_check_startup.get(),
             "auto_update": self.auto_update.get(),
+            "keep_data_updated": self.keep_data_updated.get(),
             "welcome_shown": getattr(self, "_welcome_shown", False),
+            "migration_hint_shown": getattr(self, "_migration_hint_shown", False),
             "sd_export_root": self.sd_export_root.get(),
             "sd_export_mode": self.sd_export_mode.get(),
             "export_zip_path": self.export_zip_path.get(),
@@ -1852,6 +2066,44 @@ class ScraperGUI:
         except Exception:
             return 0
 
+    def _dashboard_stats(self) -> dict:
+        """Snapshot of library numbers for the Home dashboard. Read-only, quick;
+        safe to call from a worker thread (opens its own RO connection)."""
+        import sqlite3 as _sq
+        out = {"games": 0, "builds": 0, "cheats": 0, "with_cheats": 0,
+               "downloaded": 0, "db_size": 0, "last_data": None, "recent": []}
+        p = Path(self.db_path.get())
+        try:
+            out["db_size"] = p.stat().st_size
+        except Exception:
+            pass
+        if p.exists() and p.stat().st_size:
+            try:
+                con = _sq.connect(f"file:{p}?mode=ro", uri=True)
+                out["builds"] = con.execute("SELECT COUNT(*) FROM builds").fetchone()[0]
+                out["cheats"] = con.execute(
+                    "SELECT COALESCE(SUM(cheat_count),0) FROM builds").fetchone()[0]
+                out["with_cheats"] = con.execute(
+                    "SELECT COUNT(*) FROM builds WHERE cheat_count>0").fetchone()[0]
+                out["games"] = con.execute(
+                    "SELECT COUNT(DISTINCT substr(title_id,1,13)||'000') FROM builds"
+                ).fetchone()[0]
+                out["recent"] = con.execute(
+                    "SELECT game_title, version, title_id, build_id, cheat_count "
+                    "FROM builds WHERE game_title IS NOT NULL AND game_title<>'' "
+                    "AND last_updated IS NOT NULL "
+                    "ORDER BY last_updated DESC LIMIT 8").fetchall()
+                con.close()
+            except Exception:
+                pass
+        try:
+            out["downloaded"] = len(self._load_downloaded_cache())
+        except Exception:
+            pass
+        st = getattr(self, "_update_state", {}) or {}
+        out["last_data"] = st.get("data_db_baseline") or st.get("data_cheats_baseline")
+        return out
+
     def _maybe_show_welcome(self):
         """First start with an empty database → offer the one-click complete
         download instead of greeting the user with an empty table. Shown once."""
@@ -1862,6 +2114,55 @@ class ScraperGUI:
         if self._db_build_count() > 0:
             return   # existing data — nothing to onboard
         WelcomeDialog(self.root, self)
+
+    def _maybe_show_migration_hint(self):
+        """Legacy admin installs (under Program Files, app folder not writable)
+        need a UAC prompt for every update. Offer — once — to switch to the
+        current per-user installer, which updates silently forever after."""
+        if getattr(self, "_migration_hint_shown", False):
+            return
+        if not getattr(sys, "frozen", False) or self._app_dir_writable():
+            return   # from source, portable, or already a per-user install
+        self._migration_hint_shown = True
+        self._save_settings()
+        if messagebox.askyesno(
+            t("Switch to the no-admin version"),
+            t("This copy is installed under Program Files, so every update needs "
+              "a Windows admin prompt (UAC).\n\nThe current installer sets the "
+              "app up just for you — then updates install silently, with no admin "
+              "prompt ever again.\n\nDownload and run the new installer now?"),
+                parent=self.root):
+            self._download_and_run_installer()
+
+    def _download_and_run_installer(self):
+        if self._busy:
+            return
+        self._stop_event.clear()
+        self._set_busy(True)
+        self.status_var.set(t("Downloading the installer…"))
+        threading.Thread(target=self._installer_dl_worker, daemon=True).start()
+
+    def _installer_dl_worker(self):
+        import tempfile
+        try:
+            rel = fetch_github_release(tag=None)
+            asset = find_release_asset(rel, PROGRAM_SETUP_ASSET)
+            if not asset or not asset.get("url"):
+                raise RuntimeError("installer asset not found in the latest release")
+            dest = Path(tempfile.gettempdir()) / PROGRAM_SETUP_ASSET
+            download_file(
+                asset["url"], dest,
+                progress_cb=lambda d, tot: self._log_queue.put(
+                    ("progress", d, max(tot, 1), f"Installer: {d // 1024:,} KB")),
+                should_stop=self._stop_event.is_set)
+            digest = (asset.get("digest") or "").strip().lower()
+            if digest.startswith("sha256:") and \
+                    sha256_of_file(dest) != digest.split(":", 1)[1]:
+                raise RuntimeError("SHA-256 mismatch — the download is corrupted")
+            self._log_queue.put(("run_installer", str(dest)))
+        except Exception as exc:
+            self._log_queue.put(("error", f"Installer download failed:\n{exc}"))
+            self._log_queue.put(("download_done",))
 
     # ------------------------------------------------------ safety backups
     def _backup_db(self, reason: str):
@@ -2707,6 +3008,41 @@ class ScraperGUI:
                         command=self._on_select_row).pack(side="left", padx=(0, 4))
         ttk.Checkbutton(search_group, text="Show Description", variable=self.show_description,
                         command=self._on_select_row).pack(side="left")
+
+        # ---- power row: quick-filter chips + column picker + presets --------
+        power = ttk.Frame(parent)
+        power.pack(fill="x", pady=(4, 0))
+        # Quick-filter chips (toggle buttons via the ttk Toolbutton style).
+        ttk.Checkbutton(power, text="⚡ " + t("Has cheats"), style="Toolbutton",
+                        variable=self.has_cheats_only,
+                        command=self.refresh_table).pack(side="left", padx=(0, 4))
+        ttk.Checkbutton(power, text="🖼 " + t("No cover"), style="Toolbutton",
+                        variable=self.missing_cover_only,
+                        command=self.refresh_table).pack(side="left", padx=(0, 10))
+        # Column show/hide menu.
+        self.columns_btn = ttk.Menubutton(power, text=t("Columns") + " ▾")
+        colmenu = tk.Menu(self.columns_btn, tearoff=0)
+        self._all_menus.append(colmenu)
+        self._col_vars = {}
+        for col_id, heading, _w, _a in COLUMNS:
+            var = tk.BooleanVar(value=(col_id not in self._hidden_columns))
+            self._col_vars[col_id] = var
+            colmenu.add_checkbutton(
+                label=t(heading), variable=var,
+                command=self._apply_column_visibility_from_menu)
+        self.columns_btn["menu"] = colmenu
+        self.columns_btn.pack(side="left", padx=(0, 10))
+        # Filter presets.
+        ttk.Label(power, text=t("Preset:")).pack(side="left", padx=(0, 3))
+        self.preset_combo = ttk.Combobox(power, state="readonly", width=16,
+                                         values=self._preset_names())
+        self.preset_combo.pack(side="left", padx=(0, 3))
+        self.preset_combo.bind("<<ComboboxSelected>>", self._apply_selected_preset)
+        ttk.Button(power, text=t("Save…"), width=7,
+                   command=self._save_current_preset).pack(side="left", padx=(0, 2))
+        ttk.Button(power, text=t("Delete"), width=7,
+                   command=self._delete_selected_preset).pack(side="left")
+
         if with_pickers:
             self._build_theme_lang_pickers(search_group)
 
@@ -2736,6 +3072,71 @@ class ScraperGUI:
         _Tooltip(self.lang_combo,
                  "Choose the program language. The app restarts to apply it.")
 
+    # ----------------------------------------------- library power features
+    def _apply_column_visibility(self):
+        """Show only the columns not in self._hidden_columns (order preserved)."""
+        if not hasattr(self, "tree"):
+            return
+        visible = [c[0] for c in COLUMNS if c[0] not in self._hidden_columns]
+        if not visible:                      # never hide everything
+            visible = ["game_title"]
+        try:
+            self.tree.configure(displaycolumns=visible)
+        except Exception:
+            pass
+
+    def _apply_column_visibility_from_menu(self):
+        """Sync self._hidden_columns from the menu vars, apply + persist."""
+        self._hidden_columns = {c for c, v in self._col_vars.items() if not v.get()}
+        self._apply_column_visibility()
+        self._save_settings()
+
+    # -- filter presets ---------------------------------------------------
+    _PRESET_VARS = ("not_downloaded_only", "names_missing", "nonbase_only",
+                    "hide_placeholder_builds", "has_cheats_only",
+                    "missing_cover_only")
+
+    def _preset_names(self):
+        return sorted(self._filter_presets.keys())
+
+    def _capture_filter_state(self) -> dict:
+        return {k: bool(getattr(self, k).get()) for k in self._PRESET_VARS}
+
+    def _save_current_preset(self):
+        from tkinter import simpledialog
+        name = simpledialog.askstring(
+            t("Save filter preset"), t("Preset name:"), parent=self.root)
+        if not name:
+            return
+        name = name.strip()
+        if not name:
+            return
+        self._filter_presets[name] = self._capture_filter_state()
+        self._save_settings()
+        self.preset_combo.configure(values=self._preset_names())
+        self.preset_combo.set(name)
+        self.status_var.set(t("Saved filter preset '{name}'.", name=name))
+
+    def _apply_selected_preset(self, _e=None):
+        name = self.preset_combo.get()
+        state = self._filter_presets.get(name)
+        if not state:
+            return
+        for k in self._PRESET_VARS:
+            if k in state:
+                getattr(self, k).set(bool(state[k]))
+        self.refresh_table()
+        self.status_var.set(t("Applied filter preset '{name}'.", name=name))
+
+    def _delete_selected_preset(self):
+        name = self.preset_combo.get()
+        if name in self._filter_presets:
+            del self._filter_presets[name]
+            self._save_settings()
+            self.preset_combo.configure(values=self._preset_names())
+            self.preset_combo.set("")
+            self.status_var.set(t("Deleted filter preset '{name}'.", name=name))
+
     def _build_main(self, parent=None):
         # Table (left) + cheat-names panel (right), resizable.
         paned = ttk.Panedwindow(parent or self._top_container, orient="horizontal")
@@ -2749,11 +3150,14 @@ class ScraperGUI:
                               command=lambda c=col_id: self._sort_by(c))
             self.tree.column(col_id, width=width, anchor=anchor, stretch=(col_id == "game_title"))
         self._apply_tree_tags()
+        self._apply_column_visibility()   # honour any saved hidden columns
         vsb = ttk.Scrollbar(left, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
         self.tree.pack(side="left", fill="both", expand=True)
         vsb.pack(side="right", fill="y")
-        self.tree.bind("<Double-1>", self._copy_cell)
+        # Double-click a row opens the cheat viewer/editor (single-cell copy is
+        # still available via Ctrl+C / the context menu).
+        self.tree.bind("<Double-1>", self._open_cheat_editor)
         self.tree.bind("<<TreeviewSelect>>", self._on_select_row)
         self.tree.bind("<Button-3>", self._show_context_menu)
         # Ctrl+A = select all rows, Ctrl+C = copy selected rows (tab-separated).
@@ -3091,6 +3495,8 @@ class ScraperGUI:
             "names_missing": self.names_missing.get(),
             "nonbase_only": self.nonbase_only.get(),
             "hide_placeholder": self.hide_placeholder_builds.get(),
+            "has_cheats": self.has_cheats_only.get(),
+            "missing_cover": self.missing_cover_only.get(),
         }
         threading.Thread(target=self._refresh_table_worker, args=(gen, snap),
                          daemon=True).start()
@@ -3139,6 +3545,10 @@ class ScraperGUI:
             if snap["nonbase_only"] and not is_nonbase:
                 continue
             if snap["hide_placeholder"] and is_placeholder_build_id(bid, r["title_id"]):
+                continue
+            if snap["has_cheats"] and not (r["cheat_count"] or 0) > 0:
+                continue
+            if snap["missing_cover"] and (r["image"] or "").strip():
                 continue
             tags = []
             if not has_name:
@@ -4380,17 +4790,28 @@ class ScraperGUI:
         #     Restart and WATCHES the download + install progress. ---
         can_silent = (getattr(sys, "frozen", False) and not self._busy
                       and self._app_dir_writable())
-        if startup and self.auto_update.get() and can_silent:
-            if prog:
-                self.update_status_lbl.config(text="installing update…",
-                                              foreground=theme()["checking"])
-                self.start_program_update(info)
+        # 1) A found PROGRAM update installs itself silently on startup, when
+        #    enabled AND doable without a UAC prompt (writable frozen build). A
+        #    manual "Check Updates" click never lands here.
+        if startup and prog and self.auto_update.get() and can_silent:
+            self.update_status_lbl.config(text="installing update…",
+                                          foreground=theme()["checking"])
+            self.start_program_update(info)
+            return
+        # 2) The cheat DATA auto-merges on startup when the user keeps it current
+        #    ("Keep the cheat data up to date" on Settings) — non-destructive, so
+        #    it works from source too — or as part of the classic silent path.
+        #    _finish_devcat shows a toast with the result.
+        data_auto = (self.keep_data_updated.get()
+                     or (self.auto_update.get() and can_silent))
+        if startup and has_data and data_auto and not self._busy:
+            self.start_data_update(info)
+            if not prog:
                 return
-            if has_data:                       # non-destructive merge, silent
-                self.start_data_update(info)
-                return
-        # Startup checks stay quiet unless something is actually new.
-        if startup and not (prog or has_data):
+            # A program update is ALSO available → still show its dialog below.
+            info = dict(info, cheats=None, db=None)
+        # 3) Startup checks stay quiet unless something is actually new.
+        if startup and not (prog or bool(info.get("cheats") or info.get("db"))):
             return
         self._show_update_dialog(info)
 
@@ -5311,6 +5732,101 @@ class ScraperGUI:
             except Exception as exc:
                 print(f"  WARN: could not move {src} -> {dst}: {exc}")
         return moved
+
+    def _open_cheat_editor(self, event):
+        """Double-click a row → open the cheat viewer/editor for that build."""
+        row = self.tree.identify_row(event.y)
+        if not row:
+            return
+        col_ids = [c[0] for c in COLUMNS]
+        v = self.tree.item(row, "values")
+
+        def col(name):
+            i = col_ids.index(name)
+            return (v[i] if len(v) > i else "") or ""
+
+        tid = str(col("title_id")).strip()
+        bid = str(col("build_id")).strip()
+        if not tid or not bid:
+            return
+        name, version = str(col("game_title")).strip(), str(col("version")).strip()
+        # The table shows "-" as a placeholder for empty version/name — treat it
+        # as blank in the editor so the header doesn't read "v-".
+        if version in ("-", ""):
+            version = ""
+        if name == "-":
+            name = ""
+        # Credits come from the DB; content + downloaded state come from disk.
+        credits = ""
+        try:
+            db = GameDatabase(Path(self.db_path.get()))
+            info = db.get_game_info(tid)
+            db.close()
+            if info:
+                if not name:
+                    name = info.get("title") or ""
+                for s in info.get("sources", []):
+                    if (s.get("build_id") or "").upper() == bid.upper():
+                        credits = s.get("credits") or ""
+                        if not version:
+                            version = s.get("version") or ""
+                        break
+        except Exception:
+            pass
+        p = self._cheat_file_path(tid, bid)
+        content, downloaded = "", False
+        if p and p.exists():
+            downloaded = True
+            try:
+                content = p.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                content = ""
+        CheatEditorDialog(
+            self.root, title_id=tid, build_id=bid, name=name, version=version,
+            credits=credits, content=content, downloaded=downloaded,
+            on_save=self._editor_save)
+
+    def _cheat_file_path(self, tid, bid):
+        """Standard on-disk location of a build's cheat file (may not exist)."""
+        out = Path(self.dl_output.get().strip() or DEFAULT_OUTPUT)
+        tid_u, bid_u = (tid or "").upper(), (bid or "").upper()
+        cand = [out / "titles" / tid_u / "cheats" / f"{bid_u}.txt",
+                out / "by_bid" / f"{bid_u}.txt"]
+        for c in cand:
+            if c.exists():
+                return c
+        return cand[0]   # default write location
+
+    def _editor_save(self, payload):
+        """Persist an edit from CheatEditorDialog: overwrite the .txt file AND
+        update the DB (name / version / credits / cheat_count / cheat_names).
+        Returns (ok, message) so the dialog can report inline."""
+        tid, bid = payload["title_id"], payload["build_id"]
+        content = payload["content"]
+        names = parse_cheat_names_from_content(content)
+        try:
+            path = self._cheat_file_path(tid, bid)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+            db = GameDatabase(Path(self.db_path.get()))
+            db.upsert_game({
+                "title_id": tid, "title": payload["name"] or None, "slug": None,
+                "image": None, "banner": None,
+                "sources": [{
+                    "build_id": bid, "title_id": tid, "source_id": None,
+                    "version": payload["version"] or None, "upload_date": None,
+                    "cheat_count": len(names), "cheat_names": names,
+                    "credits": payload["credits"] or None, "description": None,
+                    "cheat_id": None,
+                }],
+            }, source="manual")
+            db.close()
+        except Exception as exc:
+            return False, str(exc)
+        self.status_var.set(t("Saved {tid}/{bid} ({n} cheat(s)).",
+                              tid=tid, bid=bid, n=len(names)))
+        self.refresh_table()
+        return True, t("Saved — {n} cheat(s).", n=len(names))
 
     def _ctx_edit_entry(self):
         pairs = self._selected_pairs()
@@ -7817,6 +8333,16 @@ class ScraperGUI:
             self._finish_switch_app(msg[1], msg[2])
         elif kind == "androidapp_done":
             self._finish_android_app(msg[1], msg[2])
+        elif kind == "run_installer":
+            self._set_busy(False)
+            path = msg[1]
+            try:
+                import ctypes
+                ctypes.windll.shell32.ShellExecuteW(None, "open", path, "", None, 1)
+                self.status_var.set(t("Installer started — follow its steps, then "
+                                      "you can remove the old version."))
+            except Exception as exc:
+                messagebox.showerror("Installer", str(exc))
         elif kind == "update_result":
             self._handle_update_result(msg[1], msg[2])
         elif kind == "update_error":

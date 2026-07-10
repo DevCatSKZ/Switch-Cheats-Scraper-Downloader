@@ -1303,6 +1303,226 @@ _merge({
               "インストールしてください。"},
 })
 
+# ---- v1.3 refresh: cheat editor · settings · dashboard · library power ------
+_merge({
+    # -- Cheat editor --
+    "Cheat editor": {"de": "Cheat-Editor", "es": "Editor de cheats",
+                     "fr": "Éditeur de cheats", "it": "Editor di cheat",
+                     "ja": "チートエディタ"},
+    "Unnamed game": {"de": "Unbenanntes Spiel", "es": "Juego sin nombre",
+                     "fr": "Jeu sans nom", "it": "Gioco senza nome",
+                     "ja": "名称未設定のゲーム"},
+    "Name": {"de": "Name", "es": "Nombre", "fr": "Nom", "it": "Nome",
+             "ja": "名前"},
+    "downloaded": {"de": "heruntergeladen", "es": "descargado",
+                   "fr": "téléchargé", "it": "scaricato", "ja": "ダウンロード済み"},
+    "not downloaded": {"de": "nicht heruntergeladen", "es": "no descargado",
+                       "fr": "non téléchargé", "it": "non scaricato",
+                       "ja": "未ダウンロード"},
+    "Cheat codes (Atmosphère format · [Name] / {Master} headers)": {
+        "de": "Cheat-Codes (Atmosphère-Format · [Name] / {Master} Überschriften)",
+        "es": "Códigos de cheats (formato Atmosphère · encabezados [Name] / {Master})",
+        "fr": "Codes de cheats (format Atmosphère · en-têtes [Name] / {Master})",
+        "it": "Codici cheat (formato Atmosphère · intestazioni [Name] / {Master})",
+        "ja": "チートコード（Atmosphère形式 · [Name] / {Master} 見出し）"},
+    "Reload from disk": {"de": "Von Festplatte neu laden",
+                         "es": "Recargar desde disco", "fr": "Recharger depuis le disque",
+                         "it": "Ricarica dal disco", "ja": "ディスクから再読み込み"},
+    "Reloaded from disk.": {"de": "Von Festplatte neu geladen.",
+                            "es": "Recargado desde disco.", "fr": "Rechargé depuis le disque.",
+                            "it": "Ricaricato dal disco.", "ja": "ディスクから再読み込みしました。"},
+    "{n} cheat(s)": {"de": "{n} Cheat(s)", "es": "{n} cheat(s)",
+                     "fr": "{n} cheat(s)", "it": "{n} cheat", "ja": "{n} 個のチート"},
+    "Saved — {n} cheat(s).": {
+        "de": "Gespeichert — {n} Cheat(s).", "es": "Guardado — {n} cheat(s).",
+        "fr": "Enregistré — {n} cheat(s).", "it": "Salvato — {n} cheat.",
+        "ja": "保存しました — {n} 個のチート。"},
+    # -- Settings page --
+    "Settings": {"de": "Einstellungen", "es": "Ajustes", "fr": "Paramètres",
+                 "it": "Impostazioni", "ja": "設定"},
+    "Configure": {"de": "Einrichten", "es": "Configurar", "fr": "Configurer",
+                  "it": "Configura", "ja": "設定"},
+    "Everything in one place — updates, downloads, covers and paths.": {
+        "de": "Alles an einem Ort — Updates, Downloads, Cover und Pfade.",
+        "es": "Todo en un solo lugar: actualizaciones, descargas, carátulas y rutas.",
+        "fr": "Tout au même endroit — mises à jour, téléchargements, jaquettes et chemins.",
+        "it": "Tutto in un unico posto — aggiornamenti, download, copertine e percorsi.",
+        "ja": "すべてを一か所に — 更新・ダウンロード・カバー・パス。"},
+    "Updates": {"de": "Updates", "es": "Actualizaciones", "fr": "Mises à jour",
+                "it": "Aggiornamenti", "ja": "アップデート"},
+    "Update the program automatically": {
+        "de": "Programm automatisch aktualisieren",
+        "es": "Actualizar el programa automáticamente",
+        "fr": "Mettre à jour le programme automatiquement",
+        "it": "Aggiorna il programma automaticamente",
+        "ja": "プログラムを自動的に更新する"},
+    "Check for updates at startup": {
+        "de": "Beim Start auf Updates prüfen",
+        "es": "Buscar actualizaciones al inicio",
+        "fr": "Vérifier les mises à jour au démarrage",
+        "it": "Controlla aggiornamenti all'avvio",
+        "ja": "起動時に更新を確認する"},
+    "Keep the cheat data up to date automatically": {
+        "de": "Cheat-Daten automatisch aktuell halten",
+        "es": "Mantener los datos de cheats actualizados automáticamente",
+        "fr": "Garder les données de cheats à jour automatiquement",
+        "it": "Mantieni i dati dei cheat aggiornati automaticamente",
+        "ja": "チートデータを自動的に最新に保つ"},
+    "Startup": {"de": "Start", "es": "Inicio", "fr": "Démarrage",
+                "it": "Avvio", "ja": "起動"},
+    "Check whether cheatslips.com is online at startup": {
+        "de": "Beim Start prüfen, ob cheatslips.com online ist",
+        "es": "Comprobar si cheatslips.com está en línea al inicio",
+        "fr": "Vérifier si cheatslips.com est en ligne au démarrage",
+        "it": "Controlla se cheatslips.com è online all'avvio",
+        "ja": "起動時に cheatslips.com がオンラインか確認する"},
+    "Downloads & Browser": {
+        "de": "Downloads & Browser", "es": "Descargas y navegador",
+        "fr": "Téléchargements & navigateur", "it": "Download e browser",
+        "ja": "ダウンロードとブラウザ"},
+    "Download via browser when the API is limited": {
+        "de": "Über Browser laden, wenn die API limitiert ist",
+        "es": "Descargar por navegador cuando la API esté limitada",
+        "fr": "Télécharger via le navigateur quand l'API est limitée",
+        "it": "Scarica dal browser quando l'API è limitata",
+        "ja": "APIが制限されたらブラウザでダウンロード"},
+    "Also download cover images with DevCatSKZ downloads": {
+        "de": "Cover-Bilder bei DevCatSKZ-Downloads mitladen",
+        "es": "Descargar también carátulas con las descargas de DevCatSKZ",
+        "fr": "Télécharger aussi les jaquettes avec les téléchargements DevCatSKZ",
+        "it": "Scarica anche le copertine con i download DevCatSKZ",
+        "ja": "DevCatSKZダウンロード時にカバー画像も取得する"},
+    "Save cover images to disk": {
+        "de": "Cover-Bilder auf Festplatte speichern",
+        "es": "Guardar carátulas en disco", "fr": "Enregistrer les jaquettes sur le disque",
+        "it": "Salva le copertine su disco", "ja": "カバー画像をディスクに保存する"},
+    "Paths": {"de": "Pfade", "es": "Rutas", "fr": "Chemins", "it": "Percorsi",
+              "ja": "パス"},
+    "Database:": {"de": "Datenbank:", "es": "Base de datos:", "fr": "Base de données :",
+                  "it": "Database:", "ja": "データベース："},
+    "Output folder:": {"de": "Ausgabeordner:", "es": "Carpeta de salida:",
+                       "fr": "Dossier de sortie :", "it": "Cartella di output:",
+                       "ja": "出力フォルダ："},
+    # -- Dashboard --
+    "games in your database": {
+        "de": "Spiele in deiner Datenbank", "es": "juegos en tu base de datos",
+        "fr": "jeux dans votre base", "it": "giochi nel tuo database",
+        "ja": "データベース内のゲーム"},
+    "cheats total": {"de": "Cheats gesamt", "es": "cheats en total",
+                     "fr": "cheats au total", "it": "cheat totali",
+                     "ja": "チート合計"},
+    "database size": {"de": "Datenbankgröße", "es": "tamaño de la base de datos",
+                      "fr": "taille de la base", "it": "dimensione del database",
+                      "ja": "データベースサイズ"},
+    "Cheat data last updated: {when}": {
+        "de": "Cheat-Daten zuletzt aktualisiert: {when}",
+        "es": "Datos de cheats actualizados por última vez: {when}",
+        "fr": "Données de cheats mises à jour le : {when}",
+        "it": "Dati dei cheat aggiornati l'ultima volta: {when}",
+        "ja": "チートデータの最終更新：{when}"},
+    "Cheat data last updated: never": {
+        "de": "Cheat-Daten zuletzt aktualisiert: nie",
+        "es": "Datos de cheats actualizados por última vez: nunca",
+        "fr": "Données de cheats mises à jour : jamais",
+        "it": "Dati dei cheat aggiornati l'ultima volta: mai",
+        "ja": "チートデータの最終更新：なし"},
+    "Recently updated": {"de": "Zuletzt aktualisiert", "es": "Actualizado recientemente",
+                         "fr": "Récemment mis à jour", "it": "Aggiornati di recente",
+                         "ja": "最近更新"},
+    "No entries yet.": {"de": "Noch keine Einträge.", "es": "Aún no hay entradas.",
+                        "fr": "Aucune entrée pour l'instant.", "it": "Ancora nessuna voce.",
+                        "ja": "まだエントリがありません。"},
+    # -- Library power --
+    "Has cheats": {"de": "Hat Cheats", "es": "Con cheats", "fr": "Avec cheats",
+                   "it": "Con cheat", "ja": "チートあり"},
+    "No cover": {"de": "Kein Cover", "es": "Sin carátula", "fr": "Sans jaquette",
+                 "it": "Senza copertina", "ja": "カバーなし"},
+    "Columns": {"de": "Spalten", "es": "Columnas", "fr": "Colonnes",
+                "it": "Colonne", "ja": "列"},
+    "Preset:": {"de": "Vorlage:", "es": "Ajuste:", "fr": "Préréglage :",
+                "it": "Preset:", "ja": "プリセット："},
+    "Save…": {"de": "Speichern…", "es": "Guardar…", "fr": "Enregistrer…",
+              "it": "Salva…", "ja": "保存…"},
+    "Delete": {"de": "Löschen", "es": "Eliminar", "fr": "Supprimer",
+               "it": "Elimina", "ja": "削除"},
+    "Save filter preset": {"de": "Filtervorlage speichern",
+                           "es": "Guardar ajuste de filtro", "fr": "Enregistrer le préréglage",
+                           "it": "Salva preset filtro", "ja": "フィルタープリセットを保存"},
+    "Preset name:": {"de": "Vorlagenname:", "es": "Nombre del ajuste:",
+                     "fr": "Nom du préréglage :", "it": "Nome del preset:",
+                     "ja": "プリセット名："},
+    "Saved filter preset '{name}'.": {
+        "de": "Filtervorlage '{name}' gespeichert.",
+        "es": "Ajuste de filtro '{name}' guardado.",
+        "fr": "Préréglage « {name} » enregistré.",
+        "it": "Preset filtro '{name}' salvato.",
+        "ja": "フィルタープリセット「{name}」を保存しました。"},
+    "Applied filter preset '{name}'.": {
+        "de": "Filtervorlage '{name}' angewendet.",
+        "es": "Ajuste de filtro '{name}' aplicado.",
+        "fr": "Préréglage « {name} » appliqué.",
+        "it": "Preset filtro '{name}' applicato.",
+        "ja": "フィルタープリセット「{name}」を適用しました。"},
+    "Deleted filter preset '{name}'.": {
+        "de": "Filtervorlage '{name}' gelöscht.",
+        "es": "Ajuste de filtro '{name}' eliminado.",
+        "fr": "Préréglage « {name} » supprimé.",
+        "it": "Preset filtro '{name}' eliminato.",
+        "ja": "フィルタープリセット「{name}」を削除しました。"},
+    # -- Migration to the no-admin installer --
+    "Switch to the no-admin version": {
+        "de": "Zur Version ohne Admin wechseln",
+        "es": "Cambiar a la versión sin administrador",
+        "fr": "Passer à la version sans admin",
+        "it": "Passa alla versione senza admin",
+        "ja": "管理者不要版に切り替える"},
+    "This copy is installed under Program Files, so every update needs "
+    "a Windows admin prompt (UAC).\n\nThe current installer sets the "
+    "app up just for you — then updates install silently, with no admin "
+    "prompt ever again.\n\nDownload and run the new installer now?": {
+        "de": "Diese Kopie ist unter Programme installiert, daher braucht jedes "
+              "Update eine Windows-Admin-Abfrage (UAC).\n\nDer aktuelle Installer "
+              "richtet die App nur für dich ein — danach installieren sich Updates "
+              "still, ganz ohne Admin-Abfrage.\n\nJetzt den neuen Installer laden "
+              "und ausführen?",
+        "es": "Esta copia está instalada en Archivos de programa, así que cada "
+              "actualización necesita un aviso de administrador de Windows (UAC).\n\n"
+              "El instalador actual configura la app solo para ti; después las "
+              "actualizaciones se instalan en silencio, sin ningún aviso de "
+              "administrador.\n\n¿Descargar y ejecutar el nuevo instalador ahora?",
+        "fr": "Cette copie est installée sous Program Files, donc chaque mise à "
+              "jour nécessite une invite administrateur Windows (UAC).\n\n"
+              "L'installateur actuel configure l'app rien que pour vous — ensuite "
+              "les mises à jour s'installent en silence, sans aucune invite "
+              "administrateur.\n\nTélécharger et lancer le nouvel installateur "
+              "maintenant ?",
+        "it": "Questa copia è installata in Programmi, quindi ogni aggiornamento "
+              "richiede un avviso di amministratore di Windows (UAC).\n\n"
+              "L'installer attuale configura l'app solo per te — poi gli "
+              "aggiornamenti si installano in silenzio, senza mai più un avviso "
+              "di amministratore.\n\nScaricare ed eseguire il nuovo installer ora?",
+        "ja": "このコピーは Program Files にインストールされているため、更新の"
+              "たびに Windows の管理者確認（UAC）が必要です。\n\n現在のインス"
+              "トーラーはアプリをあなた専用にセットアップします。以降、更新は"
+              "管理者確認なしで静かにインストールされます。\n\n今すぐ新しい"
+              "インストーラーをダウンロードして実行しますか？"},
+    "Downloading the installer…": {
+        "de": "Installer wird heruntergeladen…", "es": "Descargando el instalador…",
+        "fr": "Téléchargement de l'installateur…", "it": "Download dell'installer…",
+        "ja": "インストーラーをダウンロード中…"},
+    "Installer started — follow its steps, then you can remove the old version.": {
+        "de": "Installer gestartet — folge den Schritten, danach kannst du die "
+              "alte Version entfernen.",
+        "es": "Instalador iniciado — sigue los pasos y luego puedes quitar la "
+              "versión antigua.",
+        "fr": "Installateur lancé — suivez les étapes, puis vous pourrez retirer "
+              "l'ancienne version.",
+        "it": "Installer avviato — segui i passaggi, poi puoi rimuovere la "
+              "vecchia versione.",
+        "ja": "インストーラーを起動しました — 手順に従い、その後で旧バージョンを"
+              "削除できます。"},
+})
+
 # ---- Messagebox titles -----------------------------------------------------
 _merge({
     "Download": {"de": "Download", "es": "Descargar", "fr": "Télécharger",
