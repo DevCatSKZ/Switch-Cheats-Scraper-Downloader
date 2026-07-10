@@ -30,7 +30,8 @@ A complete **toolkit for Nintendo Switch cheat codes**. It scrapes and downloads
 | Direct download | What it is |
 |---|---|
 | **📥 [database.db](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/database.db)** | The complete cheat database (game names, regions, versions, cover URLs) — ~10 MB |
-| **📥 [switch-cheats.zip](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip)** | Every cheat file in Atmosphère layout — ~4 MB |
+| **📥 [switch-cheats.zip](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip)** | Every cheat file in **Atmosphère** layout (Switch SD card) — ~4 MB |
+| **📥 [switch-cheats-emulator.zip](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats-emulator.zip)** | Every cheat file in the **emulator** layout — for Eden / Suyu / Sudachi / Yuzu / Ryujinx and the Android app — ~4 MB |
 | **➡ [Open the Nintendo Switch Cheats Database »](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data)** | Browse the full data release |
 
 In the app, the **★ Download Complete** button on Home pulls both in one click, merges them into your library and keeps them current. The on-console Switch app and the Android app read this same database directly.
@@ -101,7 +102,8 @@ You don't have to scrape anything yourself: a **continuously updated** cheats ar
 
 | Asset | What it is | Direct link |
 |---|---|---|
-| `switch-cheats.zip` | All cheat files (Atmosphère layout) — ~4 MB | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip) |
+| `switch-cheats.zip` | All cheat files in **Atmosphère** layout (Switch SD card) — ~4 MB | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats.zip) |
+| `switch-cheats-emulator.zip` | All cheat files in the **emulator** layout (`<TitleID>/<GameName>/cheats/<BuildID>.txt`) — for Eden / Suyu / Sudachi / Yuzu / Ryujinx; read by the Android app — ~4 MB | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/switch-cheats-emulator.zip) |
 | `database.db` | Complete cheat database — game names, regions, versions, cover **URLs** (copyright-clean: no box art, no publisher descriptions) — ~10 MB | [download](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/download/data/database.db) |
 
 In the app, the **★ Download Complete** card downloads these with one click (**Download Cheats** / **Download Database** / **★ Download Complete**), and **Check Updates** notices when they were refreshed and re-imports them — nothing is removed, existing entries are merged and enriched. The Switch and Android companion apps read this same data on the device.
