@@ -2349,7 +2349,7 @@ class ScraperGUI:
         out = {"games": 0, "builds": 0, "cheats": 0, "with_cheats": 0,
                "downloaded": 0, "db_size": 0, "last_data": None, "recent": []}
         p = Path(self.db_path.get())
-        bids = set()
+        bids = []
         try:
             out["db_size"] = p.stat().st_size
         except Exception:
@@ -2365,8 +2365,11 @@ class ScraperGUI:
                 out["games"] = con.execute(
                     "SELECT COUNT(DISTINCT substr(title_id,1,13)||'000') FROM builds"
                 ).fetchone()[0]
-                bids = {r[0] for r in con.execute(
-                    "SELECT UPPER(build_id) FROM builds WHERE build_id IS NOT NULL")}
+                # Row-wise list, NOT a set: the same build_id can belong to
+                # several title_ids (5307 rows ↔ ~5033 distinct bids) and the
+                # percentage must match the table, which counts rows.
+                bids = [r[0] for r in con.execute(
+                    "SELECT UPPER(build_id) FROM builds WHERE build_id IS NOT NULL")]
                 out["recent"] = con.execute(
                     "SELECT game_title, version, title_id, build_id, cheat_count "
                     "FROM builds WHERE game_title IS NOT NULL AND game_title<>'' "
@@ -2384,8 +2387,9 @@ class ScraperGUI:
             self._save_downloaded_cache(on_disk, output)   # keep the cache fresh
         except Exception:
             on_disk = self._load_downloaded_cache(output)
-        out["downloaded"] = len(bids & {b.upper() for b in on_disk}) if bids \
-            else len(on_disk)
+        disk = {b.upper() for b in on_disk}
+        out["downloaded"] = sum(1 for b in bids if b in disk) if bids \
+            else len(disk)
         st = getattr(self, "_update_state", {}) or {}
         out["last_data"] = st.get("data_db_baseline") or st.get("data_cheats_baseline")
         return out
