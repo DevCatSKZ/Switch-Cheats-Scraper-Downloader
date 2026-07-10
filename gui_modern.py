@@ -120,8 +120,23 @@ class ModernApp(ScraperGUI):
         self._hdr_ver = ttk.Label(self._header, text=f"  v{APP_VERSION}  ",
                                   style="HdrPill.TLabel")
         self._hdr_ver.pack(side="left", padx=(14, 0))
+        # A quiet hint that Ctrl+K opens the command palette.
+        self._hdr_hint = ttk.Label(self._header, text="  ⌕  Ctrl+K  ",
+                                   style="HdrHint.TLabel", cursor="hand2")
+        self._hdr_hint.pack(side="left", padx=(10, 0))
+        self._hdr_hint.bind("<Button-1>", lambda _e: self._open_command_palette())
         # Theme + language pickers on the right of the header.
         self._build_theme_lang_pickers(self._header, side="right")
+        # Notification bell (with unseen-count badge) + a busy dot, left of the
+        # pickers.
+        self._notifications = []      # (epoch_or_None, title, message)
+        self._notif_unseen = 0
+        self._hdr_busy = ttk.Label(self._header, text="●", style="HdrBusy.TLabel")
+        self._hdr_busy.pack(side="right", padx=(10, 10))
+        self._bell_btn = ttk.Label(self._header, text="🔔", style="HdrBell.TLabel",
+                                   cursor="hand2")
+        self._bell_btn.pack(side="right", padx=(6, 0))
+        self._bell_btn.bind("<Button-1>", lambda _e: self._open_notifications())
         # 1px accent hairline under the header.
         self._hdr_line = tk.Frame(root, height=1, bd=0, highlightthickness=0)
         self._hdr_line.pack(fill="x")
@@ -147,6 +162,8 @@ class ModernApp(ScraperGUI):
         self._pages: dict[str, ttk.Frame] = {}
         self._nav_btns: dict[str, tk.Button] = {}
         self._nav_marks: dict[str, tk.Frame] = {}
+        self._nav_badges: dict[str, tk.Label] = {}
+        self._nav_order = [k for k, _g, _l in _NAV]
         for key, glyph, label in _NAV:
             page = ttk.Frame(content, style="Body.TFrame", padding=(18, 12, 18, 10))
             page.grid(row=0, column=0, sticky="nsew")
@@ -158,11 +175,16 @@ class ModernApp(ScraperGUI):
             mark.pack(side="left", fill="y")
             btn = tk.Button(row, text=f"  {glyph}   {t(label)}",
                             anchor="w", relief="flat", bd=0, cursor="hand2",
-                            font=("Segoe UI", 11), padx=10, pady=9, width=16,
+                            font=("Segoe UI", 11), padx=10, pady=9,
                             command=lambda k=key: self._select_page(k))
             btn.pack(side="left", fill="x", expand=True)
+            # A count badge (currently only the Library shows the games total).
+            badge = tk.Label(row, text="", bd=0, font=("Segoe UI", 8),
+                             padx=6, highlightthickness=0)
+            badge.pack(side="right", padx=(0, 8))
             self._nav_btns[key] = btn
             self._nav_marks[key] = mark
+            self._nav_badges[key] = badge
             self._nav_rows = getattr(self, "_nav_rows", []) + [row]
         # Author credit pinned at the sidebar bottom.
         self._side_credit = ttk.Label(self._sidebar, text=f"by {APP_AUTHOR}",
@@ -197,8 +219,16 @@ class ModernApp(ScraperGUI):
                                           command=self.on_stop, state="disabled")
         self.footer_stop_btn.pack(side="right", padx=(0, 12))
 
+        # ---------- keyboard: Alt+1..N pages, Esc back, Ctrl+K palette ------
+        for i, key in enumerate(self._nav_order, 1):
+            root.bind(f"<Alt-Key-{i}>", lambda _e, k=key: self._select_page(k))
+        root.bind("<Escape>", self._on_escape)
+        root.bind("<Control-k>", lambda _e: self._open_command_palette())
+        root.bind("<Control-K>", lambda _e: self._open_command_palette())
+
         self._select_page("home")
         self._paint_modern()   # colour everything for the current theme
+        self._update_nav_badge()
 
     # ---------------------------------------------------------------- pages
     def _page_title(self, page, eyebrow, title, subtitle):
@@ -265,16 +295,24 @@ class ModernApp(ScraperGUI):
         self._refresh_dashboard()
 
     def _refresh_dashboard(self):
-        """Recompute the Home stats off-thread, then paint them on the UI thread."""
+        """Paint the Home stats INSTANTLY from the cache, then reconcile against
+        disk in the background — no more empty '—' cards on every visit."""
         if not hasattr(self, "_dash_vars"):
             return
         import threading
         output = self.dl_output.get()   # Tk var snapshot on the main thread
 
         def work():
-            stats = self._dashboard_stats(output)
+            # 1) cached numbers → immediate paint
             try:
-                self.root.after(0, lambda: self._paint_dashboard(stats))
+                fast = self._dashboard_stats(output, fast=True)
+                self.root.after(0, lambda: self._paint_dashboard(fast))
+            except Exception:
+                pass
+            # 2) live disk scan → repaint if the downloaded count changed
+            try:
+                live = self._dashboard_stats(output, fast=False)
+                self.root.after(0, lambda: self._paint_dashboard(live))
             except Exception:
                 pass
 
@@ -309,16 +347,22 @@ class ModernApp(ScraperGUI):
             ttk.Label(host, text=t("No entries yet."),
                       style="Glass.TLabel").pack(anchor="w")
             return
+        base_font = ("Segoe UI", 9)
+        hover_font = ("Segoe UI", 9, "underline")
         for (name, version, tid, bid, cc) in s["recent"]:
             rowf = ttk.Frame(host, style="Glass.TFrame")
             rowf.pack(fill="x", pady=1)
             label = (name or tid or "?")[:34]
             name_lbl = ttk.Label(rowf, text=label, style="Glass.TLabel",
-                                 cursor="hand2")
+                                 cursor="hand2", font=base_font)
             name_lbl.pack(side="left")
-            # Click a name → jump straight to its game page.
+            # Click a name → jump to its game page; underline + accent on hover.
             name_lbl.bind("<Button-1>",
                           lambda _e, t_=tid: self.open_game_page(t_))
+            name_lbl.bind("<Enter>", lambda _e, l=name_lbl: l.configure(
+                font=hover_font, foreground=theme()["accent"]))
+            name_lbl.bind("<Leave>", lambda _e, l=name_lbl: l.configure(
+                font=base_font, foreground=theme()["fg"]))
             meta = f"{cc}"
             if version:
                 meta = f"v{version} · {cc}"
@@ -523,16 +567,17 @@ class ModernApp(ScraperGUI):
         cols = ttk.Frame(body, style="Body.TFrame")
         cols.pack(fill="both", expand=True)
 
-        # ---- left column: cover + description + facts ----------------------
-        left = ttk.Frame(cols, style="Body.TFrame")
+        # ---- left column: cover + facts + (scrollable) description ---------
+        left = ttk.Frame(cols, style="Body.TFrame", width=300)
         left.pack(side="left", fill="y", padx=(0, 16), anchor="n")
+        left.pack_propagate(False)
         cover = ttk.Label(left, style="Glass.TLabel", anchor="center")
         cover.pack(anchor="n")
         url = field("image") or field("banner")
         if url:
             self._load_cover_into(cover, url, tid)
         facts = ttk.Frame(left, style="Body.TFrame")
-        facts.pack(anchor="w", pady=(10, 0))
+        facts.pack(anchor="w", pady=(10, 0), fill="x")
         for label, value in (
                 ("Title ID", tid.upper()),
                 (t("Players"), field("players")),
@@ -549,16 +594,20 @@ class ModernApp(ScraperGUI):
 
         desc = field("game_description") or field("description") or field("intro")
         if desc:
-            dbox = tk.Text(left, width=36, height=13, wrap="word",
-                           font=("Segoe UI", 9), relief="flat",
+            dwrap = ttk.Frame(left, style="Body.TFrame")
+            dwrap.pack(anchor="w", fill="both", expand=True, pady=(10, 0))
+            dbox = tk.Text(dwrap, wrap="word", font=("Segoe UI", 9), relief="flat",
                            bg=c["surface"], fg=c["fg_muted"],
                            padx=10, pady=8, highlightthickness=1,
                            highlightbackground=c["border"], cursor="arrow")
-            dbox.insert("1.0", str(desc)[:2200])
+            dsb = ttk.Scrollbar(dwrap, orient="vertical", command=dbox.yview)
+            dbox.configure(yscrollcommand=dsb.set)
+            dbox.insert("1.0", str(desc))
             dbox.config(state="disabled")
-            dbox.pack(anchor="w", pady=(10, 0))
+            dbox.pack(side="left", fill="both", expand=True)
+            dsb.pack(side="right", fill="y")
 
-        # ---- right column: builds as glass cards (scrollable) -------------
+        # ---- right column: builds as glass cards in a 2-column grid --------
         right = ttk.Frame(cols, style="Body.TFrame")
         right.pack(side="left", fill="both", expand=True)
         ttk.Label(right, text=t("{n} build(s)", n=len(rows)),
@@ -579,19 +628,28 @@ class ModernApp(ScraperGUI):
         for w in (canvas, inner):
             w.bind("<MouseWheel>", _wheel)
 
+        # One column for 1-2 builds, two columns from three on — fills the space.
+        ncols = 1 if len(rows) <= 2 else 2
+        for ci in range(ncols):
+            inner.columnconfigure(ci, weight=1, uniform="bcard")
         import json as _json
-        for r in rows:
-            self._build_build_card(inner, tid, r, _json)
+        for idx, r in enumerate(rows):
+            self._build_build_card(inner, tid, r, _json,
+                                   gridpos=(idx // ncols, idx % ncols))
 
         self._paint_detail_fav(self._detail_tid in self._favorites)
         self._pages["detail"].tkraise()
         self._nav_current = "library"   # keep Library lit in the sidebar
         self._paint_nav()
 
-    def _build_build_card(self, parent, tid, r, _json):
+    def _build_build_card(self, parent, tid, r, _json, gridpos=None):
         c = theme()
         border, card = self._glass_card(parent, padding=(14, 10))
-        border.pack(fill="x", pady=(0, 8), padx=(0, 4))
+        if gridpos is not None:
+            border.grid(row=gridpos[0], column=gridpos[1], sticky="new",
+                        padx=(0, 8), pady=(0, 8))
+        else:
+            border.pack(fill="x", pady=(0, 8), padx=(0, 4))
         bid = (r["build_id"] or "").upper()
         head = ttk.Frame(card, style="Glass.TFrame")
         head.pack(fill="x")
@@ -715,12 +773,69 @@ class ModernApp(ScraperGUI):
         self._paint_nav()
         if key == "home":
             self._refresh_dashboard()
+        elif key == "library":
+            self._update_nav_badge()
+            self.root.after(150, self._update_empty_state)
+
+    # ------------------------------------------------------------ empty state
+    def refresh_table(self, *a, **k):
+        super().refresh_table(*a, **k)
+        # The async chunked insert finishes a moment later — re-check a few times.
+        for delay in (250, 700, 1500):
+            self.root.after(delay, self._update_empty_state)
+
+    def _ensure_empty_overlay(self):
+        if getattr(self, "_empty_overlay", None) is not None:
+            return
+        if not hasattr(self, "tree"):
+            return
+        c = theme()
+        self._empty_overlay = tk.Label(
+            self.tree.master, text="", justify="center", wraplength=380,
+            bg=c["tree_bg"], fg=c["fg_muted"], font=("Segoe UI", 11))
+
+    def _update_empty_state(self):
+        if not hasattr(self, "tree"):
+            return
+        self._ensure_empty_overlay()
+        c = theme()
+        try:
+            self._empty_overlay.configure(bg=c["tree_bg"], fg=c["fg_muted"])
+        except Exception:
+            pass
+        if self.tree.get_children():
+            self._empty_overlay.place_forget()
+            return
+        term = self.search_var.get().strip()
+        if self._db_build_count() == 0:
+            msg = "📭  " + t("Your database is empty — open Home and click "
+                            "★ Download complete database.")
+        elif term:
+            msg = "🔍  " + t("No matches for “{term}”.", term=term)
+        else:
+            msg = "🔍  " + t("No entries match the current filters.")
+        self._empty_overlay.configure(text=msg)
+        self._empty_overlay.place(relx=0.5, rely=0.42, anchor="center")
 
     # ------------------------------------------------------------- busy sync
     def _set_busy(self, busy: bool):
         super()._set_busy(busy)
+        self._busy_state = busy
         try:
             self.footer_stop_btn.config(state="normal" if busy else "disabled")
+        except Exception:
+            pass
+        self._paint_busy()
+        if not busy:
+            # A finished task may have changed the DB — refresh the Library badge.
+            self._update_nav_badge()
+
+    def _paint_busy(self):
+        c = theme()
+        busy = getattr(self, "_busy_state", False)
+        try:
+            self._hdr_busy.configure(
+                foreground=c.get("warn", "#e3a72f") if busy else c["featured_bg"])
         except Exception:
             pass
 
@@ -746,6 +861,13 @@ class ModernApp(ScraperGUI):
                      foreground=c["fg_muted"], font=("Segoe UI", 9))
         st.configure("HdrPill.TLabel", background=c["bg"],
                      foreground=c["accent"], font=("Consolas", 10, "bold"))
+        st.configure("HdrHint.TLabel", background=c["featured_bg"],
+                     foreground=c["fg_muted"], font=("Segoe UI", 8))
+        st.configure("HdrBell.TLabel", background=c["featured_bg"],
+                     foreground=c["fg_muted"], font=("Segoe UI", 11))
+        # Busy dot: amber while a task runs, else blends into the header.
+        st.configure("HdrBusy.TLabel", background=c["featured_bg"],
+                     foreground=c["featured_bg"], font=("Segoe UI", 11))
         st.configure("Body.TFrame", background=c["bg"])
         st.configure("Glass.TFrame", background=c["surface"])
         st.configure("Side.TFrame", background=c["surface"])
@@ -785,6 +907,11 @@ class ModernApp(ScraperGUI):
         st.map("Glass.TCheckbutton",
                background=[("active", c["surface"])],
                foreground=[("active", c["fg"])])
+        # Unify the section headers on the Sources / CheatSlips / Library pages
+        # (ttk LabelFrame titles) with the Settings card titles: accent, bold.
+        st.configure("TLabelframe", background=c["bg"], bordercolor=c["border"])
+        st.configure("TLabelframe.Label", background=c["bg"],
+                     foreground=c["accent"], font=("Segoe UI Semibold", 10))
 
     def _paint_modern(self):
         """Recolour the plain-tk parts (nav buttons, hairlines, glass borders)."""
@@ -808,6 +935,8 @@ class ModernApp(ScraperGUI):
             except Exception:
                 pass
         self._paint_nav()
+        self._paint_busy()
+        self._paint_bell()
 
     def _paint_nav(self):
         c = theme()
@@ -819,8 +948,10 @@ class ModernApp(ScraperGUI):
                 pass
         for key, btn in getattr(self, "_nav_btns", {}).items():
             mark = self._nav_marks.get(key)
+            badge = self._nav_badges.get(key)
+            active = key == current
             try:
-                if key == current:
+                if active:
                     btn.configure(bg=c["featured_bg"], fg=c["accent"],
                                   activebackground=c["featured_bg"],
                                   activeforeground=c["accent"],
@@ -834,8 +965,241 @@ class ModernApp(ScraperGUI):
                                   font=("Segoe UI", 11))
                     if mark is not None:
                         mark.configure(bg=c["surface"])
+                if badge is not None:
+                    badge.configure(bg=c["featured_bg"] if active else c["surface"],
+                                    fg=c["fg_muted"])
             except Exception:
                 pass
+
+    def _update_nav_badge(self):
+        """Show the games total on the Library nav entry."""
+        badge = getattr(self, "_nav_badges", {}).get("library")
+        if badge is None:
+            return
+        try:
+            n = self._db_build_count_games()
+            badge.configure(text=f"{n:,}" if n else "")
+        except Exception:
+            badge.configure(text="")
+
+    def _db_build_count_games(self) -> int:
+        import sqlite3 as _sq
+        p = Path(self.db_path.get())
+        if not p.exists() or not p.stat().st_size:
+            return 0
+        try:
+            con = _sq.connect(f"file:{p}?mode=ro", uri=True)
+            n = con.execute(
+                "SELECT COUNT(DISTINCT substr(title_id,1,13)||'000') FROM builds"
+            ).fetchone()[0]
+            con.close()
+            return int(n)
+        except Exception:
+            return 0
+
+    def _on_escape(self, _e=None):
+        """Esc backs out of the game detail page to the Library."""
+        if self._pages.get("detail") and self._pages["detail"].winfo_ismapped() \
+                and getattr(self, "_detail_tid", None):
+            self._select_page("library")
+
+    # ------------------------------------------------------ notifications
+    def _toast(self, title, message):
+        """Record every toast in the header's notification history, then show it."""
+        try:
+            self._notifications.insert(0, (None, title, message))
+            del self._notifications[40:]
+            self._notif_unseen += 1
+            self._paint_bell()
+        except Exception:
+            pass
+        super()._toast(title, message)
+
+    def _paint_bell(self):
+        n = getattr(self, "_notif_unseen", 0)
+        try:
+            self._bell_btn.configure(text=("🔔" + (f" {n}" if n else "")))
+        except Exception:
+            pass
+
+    def _open_notifications(self):
+        self._notif_unseen = 0
+        self._paint_bell()
+        c = theme()
+        top = tk.Toplevel(self.root)
+        top.title(t("Notifications"))
+        top.transient(self.root)
+        top.configure(bg=c["bg"])
+        top.geometry("420x360")
+        frm = ttk.Frame(top, style="Body.TFrame", padding=14)
+        frm.pack(fill="both", expand=True)
+        ttk.Label(frm, text=t("Notifications"),
+                  style="PageTitle.TLabel").pack(anchor="w")
+        self._hairline(frm, pady=(8, 8))
+        if not self._notifications:
+            ttk.Label(frm, text=t("No notifications yet."),
+                      style="PageSub.TLabel").pack(anchor="w")
+        else:
+            host = ttk.Frame(frm, style="Body.TFrame")
+            host.pack(fill="both", expand=True)
+            for _ts, ntitle, nmsg in self._notifications[:30]:
+                b, card = self._glass_card(host, padding=(12, 8))
+                b.pack(fill="x", pady=(0, 6))
+                ttk.Label(card, text=ntitle, style="CardTitle.TLabel").pack(anchor="w")
+                ttk.Label(card, text=nmsg, style="Glass.TLabel",
+                          wraplength=350, justify="left").pack(anchor="w")
+        ttk.Button(frm, text=t("Close"), command=top.destroy).pack(
+            side="bottom", anchor="e", pady=(8, 0))
+        top.bind("<Escape>", lambda _e: top.destroy())
+        self._paint_modern()
+
+    # ------------------------------------------------------ command palette
+    def _open_command_palette(self):
+        if getattr(self, "_palette", None) is not None:
+            try:
+                self._palette.destroy()
+            except Exception:
+                pass
+        CommandPalette(self.root, self)
+
+
+class CommandPalette:
+    """Ctrl+K overlay: type to jump to a game or run an action.
+
+    Matches a small set of built-in actions (navigate to a page, download the
+    complete dataset, check for updates) plus the top games whose name matches
+    the query. Enter/double-click activates; ↑/↓ move; Esc closes.
+    """
+
+    def __init__(self, parent, app):
+        self.app = app
+        app._palette = self
+        c = theme()
+        self.top = tk.Toplevel(parent)
+        self.top.transient(parent)
+        self.top.overrideredirect(True)
+        self.top.configure(bg=c["featured_border"])
+        # Centered near the top of the parent window.
+        parent.update_idletasks()
+        w, h = 560, 420
+        x = parent.winfo_rootx() + (parent.winfo_width() - w) // 2
+        y = parent.winfo_rooty() + 90
+        self.top.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
+
+        outer = ttk.Frame(self.top, style="Glass.TFrame", padding=2)
+        outer.pack(fill="both", expand=True, padx=1, pady=1)
+        inner = ttk.Frame(outer, style="Glass.TFrame", padding=10)
+        inner.pack(fill="both", expand=True)
+        self.var = tk.StringVar()
+        ent = tk.Entry(inner, textvariable=self.var, font=("Segoe UI", 13),
+                       bg=c["field"], fg=c["fg"], insertbackground=c["fg"],
+                       relief="flat", highlightthickness=1,
+                       highlightbackground=c["border"], highlightcolor=c["accent"])
+        ent.pack(fill="x", ipady=6)
+        ttk.Label(inner, text=t("Type a game name, or an action…"),
+                  style="StatSub.TLabel").pack(anchor="w", pady=(4, 6))
+        self.box = tk.Listbox(
+            inner, activestyle="none", font=("Segoe UI", 11),
+            bg=c["surface"], fg=c["fg"], relief="flat", highlightthickness=0,
+            selectbackground=c["select_bg"], selectforeground=c["select_fg"])
+        self.box.pack(fill="both", expand=True)
+
+        self._items = []   # parallel list of (label, callback)
+        self.var.trace_add("write", lambda *_: self._refresh())
+        ent.bind("<Down>", lambda _e: self._move(1))
+        ent.bind("<Up>", lambda _e: self._move(-1))
+        ent.bind("<Return>", lambda _e: self._activate())
+        self.box.bind("<Double-Button-1>", lambda _e: self._activate())
+        self.box.bind("<Return>", lambda _e: self._activate())
+        for w_ in (self.top, ent, self.box):
+            w_.bind("<Escape>", lambda _e: self._close())
+        self.top.bind("<FocusOut>", self._maybe_close)
+        self._refresh()
+        ent.focus_set()
+
+    def _actions(self, term):
+        a = []
+        for key, _glyph, label in _NAV:
+            a.append((f"→  {t(label)}", lambda k=key: self.app._select_page(k)))
+        a.append(("★  " + t("Download complete database (~25 MB)"),
+                  self.app.on_devcat_complete))
+        a.append(("⭯  " + t("Check Updates"),
+                  lambda: self.app.on_check_updates()))
+        term = term.lower()
+        return [x for x in a if not term or term in x[0].lower()]
+
+    def _games(self, term):
+        if not term:
+            return []
+        import sqlite3 as _sq
+        out = []
+        try:
+            p = Path(self.app.db_path.get())
+            con = _sq.connect(f"file:{p}?mode=ro", uri=True)
+            for tid, name in con.execute(
+                    "SELECT title_id, MAX(game_title) FROM builds "
+                    "WHERE game_title LIKE ? GROUP BY substr(title_id,1,13) "
+                    "ORDER BY game_title LIMIT 8", (f"%{term}%",)):
+                if name:
+                    out.append((f"🎮  {name}",
+                                lambda t_=tid: self.app.open_game_page(t_)))
+            con.close()
+        except Exception:
+            pass
+        return out
+
+    def _refresh(self):
+        term = self.var.get().strip()
+        self._items = self._actions(term) + self._games(term)
+        self.box.delete(0, "end")
+        for label, _cb in self._items:
+            self.box.insert("end", "  " + label)
+        if self._items:
+            self.box.selection_clear(0, "end")
+            self.box.selection_set(0)
+
+    def _move(self, d):
+        if not self._items:
+            return
+        cur = self.box.curselection()
+        i = (cur[0] if cur else 0) + d
+        i = max(0, min(len(self._items) - 1, i))
+        self.box.selection_clear(0, "end")
+        self.box.selection_set(i)
+        self.box.see(i)
+
+    def _activate(self):
+        cur = self.box.curselection()
+        if not self._items:
+            return
+        i = cur[0] if cur else 0
+        _label, cb = self._items[i]
+        self._close()
+        try:
+            cb()
+        except Exception:
+            pass
+
+    def _maybe_close(self, _e=None):
+        # Close when focus truly leaves the palette (not just child widgets).
+        self.top.after(120, self._close_if_unfocused)
+
+    def _close_if_unfocused(self):
+        try:
+            if self.top.focus_get() is None:
+                self._close()
+        except Exception:
+            self._close()
+
+    def _close(self):
+        try:
+            self.app._palette = None
+        except Exception:
+            pass
+        try:
+            self.top.destroy()
+        except Exception:
+            pass
 
 
 def run_gui():

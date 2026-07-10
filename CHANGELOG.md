@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-10 (UX polish)
+
+### Improved — the modern shell got a round of UX work
+- **Command palette (Ctrl+K)** — a centred overlay: type to jump to any game or
+  run an action (navigate to a page, download the complete dataset, check for
+  updates). ↑/↓ to move, Enter/double-click to run, Esc to close.
+- **Instant dashboard** — the Home stats now paint immediately from the cache
+  and reconcile against disk in the background, instead of a ~1 s live scan
+  showing empty "—" cards on every visit.
+- **Game detail page** — the description is now taller + scrollable (no more
+  cut-off text) and the build cards flow in a **2-column grid** that fills the
+  space.
+- **Sidebar** — the Library entry shows the games count as a badge; a header
+  busy-dot lights amber while a task runs.
+- **Keyboard** — Alt+1…6 switch pages, Esc backs out of the game page.
+- **Empty states** — friendly messages for an empty database or a search with
+  no matches, instead of a blank table.
+- **Notification history** — a 🔔 bell in the header collects every toast (with
+  an unseen badge); click to review recent notifications.
+- **Cleaner status bar** — "5,307 builds · 100% downloaded · 57 update/DLC"
+  (grouped thousands, plain wording) instead of the old techy string.
+- **Consistent section headers** — the Sources / CheatSlips / Library section
+  titles now match the Settings card titles (accent, bold), and the
+  "Recently updated" names underline on hover.
+
 ## v1.3 — 2026-07-10 (feature update 4)
 
 ### Added — share-safe database export

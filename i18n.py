@@ -1662,6 +1662,55 @@ _merge({
                   "it": "Lingue", "ja": "言語"},
     "Rating": {"de": "Freigabe", "es": "Clasificación", "fr": "Classification",
                "it": "Classificazione", "ja": "レーティング"},
+    # -- Modern shell v1.3.x: palette, notifications, status, empty states --
+    "{n} builds": {"de": "{n} Builds", "es": "{n} builds", "fr": "{n} builds",
+                   "it": "{n} build", "ja": "{n} 件のビルド"},
+    "{pct}% downloaded": {
+        "de": "{pct}% geladen", "es": "{pct}% descargado",
+        "fr": "{pct}% téléchargé", "it": "{pct}% scaricato",
+        "ja": "{pct}% ダウンロード済み"},
+    "{n} missing": {"de": "{n} fehlen", "es": "{n} faltan", "fr": "{n} manquants",
+                    "it": "{n} mancanti", "ja": "{n} 件未取得"},
+    "{n} unnamed": {"de": "{n} unbenannt", "es": "{n} sin nombre",
+                    "fr": "{n} sans nom", "it": "{n} senza nome",
+                    "ja": "{n} 件名称なし"},
+    "{n} update/DLC": {"de": "{n} Update/DLC", "es": "{n} update/DLC",
+                       "fr": "{n} MAJ/DLC", "it": "{n} update/DLC",
+                       "ja": "{n} 件アップデート/DLC"},
+    "Type a game name, or an action…": {
+        "de": "Spielname oder Aktion eingeben…",
+        "es": "Escribe el nombre de un juego o una acción…",
+        "fr": "Tapez un nom de jeu ou une action…",
+        "it": "Digita il nome di un gioco o un'azione…",
+        "ja": "ゲーム名またはアクションを入力…"},
+    "Notifications": {
+        "de": "Benachrichtigungen", "es": "Notificaciones", "fr": "Notifications",
+        "it": "Notifiche", "ja": "通知"},
+    "No notifications yet.": {
+        "de": "Noch keine Benachrichtigungen.", "es": "Aún no hay notificaciones.",
+        "fr": "Aucune notification pour l'instant.", "it": "Ancora nessuna notifica.",
+        "ja": "まだ通知はありません。"},
+    "Your database is empty — open Home and click ★ Download complete database.": {
+        "de": "Deine Datenbank ist leer — öffne Start und klicke ★ Komplette "
+              "Datenbank laden.",
+        "es": "Tu base de datos está vacía: abre Inicio y pulsa ★ Descargar base "
+              "de datos completa.",
+        "fr": "Votre base est vide — ouvrez l'Accueil et cliquez sur ★ Télécharger "
+              "la base complète.",
+        "it": "Il tuo database è vuoto — apri Home e premi ★ Scarica il database "
+              "completo.",
+        "ja": "データベースが空です — ホームを開き ★ 完全なデータベースをダウンロード"
+              "をクリックしてください。"},
+    "No matches for “{term}”.": {
+        "de": "Keine Treffer für „{term}“.", "es": "Sin resultados para «{term}».",
+        "fr": "Aucun résultat pour « {term} ».", "it": "Nessun risultato per «{term}».",
+        "ja": "「{term}」に一致する結果はありません。"},
+    "No entries match the current filters.": {
+        "de": "Keine Einträge passen zu den aktuellen Filtern.",
+        "es": "Ninguna entrada coincide con los filtros actuales.",
+        "fr": "Aucune entrée ne correspond aux filtres actuels.",
+        "it": "Nessuna voce corrisponde ai filtri attuali.",
+        "ja": "現在のフィルターに一致するエントリはありません。"},
     # -- Export DB: share mode (strip descriptions) --
     "Export database": {
         "de": "Datenbank exportieren", "es": "Exportar base de datos",

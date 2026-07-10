@@ -2346,10 +2346,14 @@ class ScraperGUI:
         except Exception:
             return 0
 
-    def _dashboard_stats(self, output: str = None) -> dict:
+    def _dashboard_stats(self, output: str = None, fast: bool = False) -> dict:
         """Snapshot of library numbers for the Home dashboard. Read-only, quick;
         safe to call from a worker thread (opens its own RO connection).
-        *output* is a main-thread snapshot of the output folder."""
+        *output* is a main-thread snapshot of the output folder.
+
+        ``fast=True`` uses the cached downloaded-build set (instant, no disk
+        scan) so the dashboard can paint immediately; a follow-up call with
+        ``fast=False`` reconciles against disk in the background."""
         import sqlite3 as _sq
         out = {"games": 0, "builds": 0, "cheats": 0, "with_cheats": 0,
                "downloaded": 0, "db_size": 0, "last_data": None, "recent": []}
@@ -2383,15 +2387,18 @@ class ScraperGUI:
                 con.close()
             except Exception:
                 pass
-        # "downloaded" must agree with the table: do a LIVE disk scan (we are
-        # in a worker thread; ~5000 files take well under a second) and count
-        # only files that belong to a DB build. The stale JSON cache used
-        # before could under-report (e.g. 94% while everything was on disk).
-        try:
-            on_disk = scan_downloaded_build_ids(output or self.dl_output.get())
-            self._save_downloaded_cache(on_disk, output)   # keep the cache fresh
-        except Exception:
+        # "downloaded" must agree with the table. fast=True reads the cached set
+        # (instant, for the first paint); otherwise a LIVE disk scan (~5000
+        # files, well under a second in a worker thread) reconciles against disk
+        # and refreshes the cache.
+        if fast:
             on_disk = self._load_downloaded_cache(output)
+        else:
+            try:
+                on_disk = scan_downloaded_build_ids(output or self.dl_output.get())
+                self._save_downloaded_cache(on_disk, output)   # keep the cache fresh
+            except Exception:
+                on_disk = self._load_downloaded_cache(output)
         disk = {b.upper() for b in on_disk}
         out["downloaded"] = sum(1 for b in bids if b in disk) if bids \
             else len(disk)
@@ -4001,18 +4008,17 @@ class ScraperGUI:
             if is_nonbase:
                 nonbase += 1
         shown = len(prepared)
-        parts = [f"{shown} build(s) shown", f"{have} downloaded",
-                 f"{shown - have} not downloaded"]
+        # Human-readable summary with grouped thousands, e.g.
+        # "5,307 builds · 100% downloaded · 57 update/DLC".
+        pct = (100 * have // shown) if shown else 0
+        parts = [t("{n} builds", n=f"{shown:,}"),
+                 t("{pct}% downloaded", pct=pct)]
+        if shown - have:
+            parts.append(t("{n} missing", n=f"{shown - have:,}"))
         if nameless:
-            parts.append(f"{nameless} unnamed")
+            parts.append(t("{n} unnamed", n=f"{nameless:,}"))
         if nonbase:
-            parts.append(f"{nonbase} update/DLC ID(s)")
-        if scan_kind == "live":
-            parts.append("live scan")
-        elif scan_kind == "fallback":
-            parts.append("cache fallback")
-        else:
-            parts.append("cached")
+            parts.append(t("{n} update/DLC", n=f"{nonbase:,}"))
         games_label = t("{n} games", n=total_games)
         self._log_queue.put(("table_rows", gen, prepared, games_label,
                              " · ".join(parts)))
