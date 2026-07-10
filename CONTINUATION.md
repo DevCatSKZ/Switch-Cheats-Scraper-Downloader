@@ -49,6 +49,30 @@ pro Spiel im Emulator (Add-ons → „Mods and cheats"), weil Android 11+ fremde
 `Android/data` für Dritt-Apps komplett sperrt (gilt für Eden **und** Suyu
 **und** Sudachi).
 
+**Feature-Updates (2026-07-10, Commits e3b4c87 / 66089ea / b94c544):**
+- **Cheat-Editor** (`CheatEditorDialog`; Doppelklick klassisch / „Edit codes"
+  modern): Syntax-Highlighting + **Validierung** (`classify_cheat_line`:
+  gültige Zeile = 1–4 Wörter à 8 Hex; Fehler rot+unterstrichen, Live-Zähler,
+  Speichern-Rückfrage), „＋ New cheat"-Vorlage, Rechtsklick-Blockoperationen
+  (Duplizieren/Löschen). Gemeinsamer Öffner: `_open_cheat_editor_for(tid,bid)`.
+- **Modern-Shell-Seiten:** ⚙ Settings (alle Optionen zentral), Live-Dashboard
+  (Stats + klickbares „Recently updated"), **Spiel-Detailseite**
+  (`open_game_page`; Doppelklick in der modernen Bibliothek routet hierher —
+  Cover, Beschreibung, Build-Karten, aufklappbare Cheats, ⭐/Download/Export).
+  Bibliothek: Chips (⭐ Favoriten, ⚡ Has cheats, 🖼 No cover, 🔎 Search in
+  cheats), Spalten-Menü, Filter-Presets (persistiert).
+- **⭐ Favoriten/Watchlist:** in settings.json (`favorites`, überlebt
+  DB-Replace); nach Daten-Updates Diff → Toast, wenn Favoriten neue Cheats
+  bekamen (`_favorite_counts_snapshot`/`_favorite_news`).
+- **Cheat-Inhaltssuche:** `GameDatabase.search(in_cheats=True)` matcht
+  `cheat_names` (JSON-Text, LIKE NOCASE).
+- **Repair → „Find invalid code lines":** scannt alle Dateien mit den
+  Editor-Regeln, `InvalidLinesDialog` (nicht-modal) → Doppelklick öffnet den
+  Editor, gefixte Dateien fallen aus der Liste (Referenzbestand: 183 Treffer).
+- **Daten-Auto-Update** (`keep_data_updated`, Settings-Opt-in) + einmaliger
+  **Migrations-Hinweis** für Program-Files-Installationen (Download+Start des
+  Per-User-Installers, SHA-256-geprüft).
+
 **Merkzettel:** Details/Fallstricke stehen in den Memory-Notizen
 (`modern-gui-architecture`, `windows-auto-update`, `android-cheat-delivery`,
 `i18n-architecture`).
