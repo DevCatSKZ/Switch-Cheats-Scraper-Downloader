@@ -1510,6 +1510,58 @@ _merge({
         "de": "Installer wird heruntergeladen…", "es": "Descargando el instalador…",
         "fr": "Téléchargement de l'installateur…", "it": "Download dell'installer…",
         "ja": "インストーラーをダウンロード中…"},
+    # -- Cheat editor: syntax validation --
+    "⚠ {n} invalid code line(s)": {
+        "de": "⚠ {n} ungültige Code-Zeile(n)",
+        "es": "⚠ {n} línea(s) de código no válida(s)",
+        "fr": "⚠ {n} ligne(s) de code invalide(s)",
+        "it": "⚠ {n} riga/righe di codice non valide",
+        "ja": "⚠ 無効なコード行 {n} 行"},
+    "{n} code line(s) are malformed (marked red) — Atmosphère "
+    "may reject this cheat file on the console.\n\nSave anyway?": {
+        "de": "{n} Code-Zeile(n) sind fehlerhaft (rot markiert) — Atmosphère "
+              "könnte diese Cheat-Datei auf der Konsole ablehnen.\n\nTrotzdem "
+              "speichern?",
+        "es": "{n} línea(s) de código están mal formadas (marcadas en rojo): "
+              "Atmosphère podría rechazar este archivo en la consola.\n\n"
+              "¿Guardar de todos modos?",
+        "fr": "{n} ligne(s) de code sont mal formées (marquées en rouge) — "
+              "Atmosphère pourrait rejeter ce fichier sur la console.\n\n"
+              "Enregistrer quand même ?",
+        "it": "{n} riga/righe di codice sono malformate (in rosso) — Atmosphère "
+              "potrebbe rifiutare questo file sulla console.\n\nSalvare comunque?",
+        "ja": "{n} 行のコードが不正です（赤色表示）。Atmosphère が本体でこの"
+              "チートファイルを拒否する可能性があります。\n\nそれでも保存しますか？"},
+    # -- Favourites / watchlist --
+    "Favorites": {"de": "Favoriten", "es": "Favoritos", "fr": "Favoris",
+                  "it": "Preferiti", "ja": "お気に入り"},
+    "⭐ Add / remove favorite": {
+        "de": "⭐ Favorit hinzufügen / entfernen",
+        "es": "⭐ Añadir / quitar favorito",
+        "fr": "⭐ Ajouter / retirer des favoris",
+        "it": "⭐ Aggiungi / rimuovi preferito",
+        "ja": "⭐ お気に入りに追加 / 解除"},
+    "Favorites: {added} added, {removed} removed ({total} total).": {
+        "de": "Favoriten: {added} hinzugefügt, {removed} entfernt ({total} gesamt).",
+        "es": "Favoritos: {added} añadidos, {removed} quitados ({total} en total).",
+        "fr": "Favoris : {added} ajoutés, {removed} retirés ({total} au total).",
+        "it": "Preferiti: {added} aggiunti, {removed} rimossi ({total} in totale).",
+        "ja": "お気に入り：{added} 件追加、{removed} 件解除（合計 {total} 件）。"},
+    "{n} favorite(s) got new cheats: {names}": {
+        "de": "{n} Favorit(en) haben neue Cheats: {names}",
+        "es": "{n} favorito(s) tienen nuevos cheats: {names}",
+        "fr": "{n} favori(s) ont de nouveaux cheats : {names}",
+        "it": "{n} preferito/i hanno nuovi cheat: {names}",
+        "ja": "{n} 件のお気に入りに新しいチート：{names}"},
+    "Favorites updated": {
+        "de": "Favoriten aktualisiert", "es": "Favoritos actualizados",
+        "fr": "Favoris mis à jour", "it": "Preferiti aggiornati",
+        "ja": "お気に入りが更新されました"},
+    # -- Cheat content search --
+    "Search in cheats": {
+        "de": "In Cheats suchen", "es": "Buscar en cheats",
+        "fr": "Chercher dans les cheats", "it": "Cerca nei cheat",
+        "ja": "チート内を検索"},
     "Installer started — follow its steps, then you can remove the old version.": {
         "de": "Installer gestartet — folge den Schritten, danach kannst du die "
               "alte Version entfernen.",

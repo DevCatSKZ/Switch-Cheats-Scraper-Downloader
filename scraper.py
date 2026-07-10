@@ -947,6 +947,7 @@ class GameDatabase:
         term: Optional[str] = None,
         build_id: Optional[str] = None,
         title_id: Optional[str] = None,
+        in_cheats: bool = False,
     ) -> List[sqlite3.Row]:
         query = (
             "SELECT game_title, version, title_id, build_id, upload_date, "
@@ -971,11 +972,17 @@ class GameDatabase:
         if term:
             # Match the free-text term against the game name AND both ids, so
             # typing a title id or build id into the search box works too.
-            clauses.append(
-                "(game_title LIKE ? OR UPPER(title_id) LIKE ? OR UPPER(build_id) LIKE ?)")
+            # With in_cheats=True the term ALSO matches the cheat names (the
+            # cheat_names column is a JSON list stored as text), so searching
+            # "inf health" finds every game that has such a cheat.
+            like = "(game_title LIKE ? OR UPPER(title_id) LIKE ? OR UPPER(build_id) LIKE ?"
             params.append(f"%{term}%")
             params.append(f"%{term.upper()}%")
             params.append(f"%{term.upper()}%")
+            if in_cheats:
+                like += " OR cheat_names LIKE ? COLLATE NOCASE"
+                params.append(f"%{term}%")
+            clauses.append(like + ")")
         if clauses:
             query += " WHERE " + " AND ".join(clauses)
         query += " ORDER BY game_title COLLATE NOCASE, version"

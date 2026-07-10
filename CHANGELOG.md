@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-10 (feature update 2)
+
+### Added — editor validation, favourites watchlist, cheat search
+- **Syntax validation in the cheat editor:** malformed Atmosphère code lines
+  (7/9-digit words, stray characters, >4 words per instruction) are marked
+  red + underlined with a live "⚠ n invalid code line(s)" counter, and saving
+  a broken file asks for confirmation first — no more silently broken cheats
+  on the console.
+- **⭐ Favourites / watchlist:** right-click any game → "⭐ Add / remove
+  favorite" (stars show in the Game column, stored in settings so they survive
+  data updates). New ⭐ Favorites quick-filter chip. After every data update
+  the app diffs your favourites and notifies you — log line + Windows toast —
+  when one of them gained new cheats or builds.
+- **Cheat content search:** new 🔎 "Search in cheats" chip — the search box
+  then also matches the cheat NAMES, so "inf health" finds every game with
+  such a cheat (0 → 359 hits on the full database in testing).
+- Both new chips are part of saved filter presets.
+
 ## v1.3 — 2026-07-10 (feature update)
 
 ### Added — the tool is now a full cheat editor + a real control centre

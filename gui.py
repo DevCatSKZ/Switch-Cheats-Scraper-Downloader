@@ -550,11 +550,38 @@ class AddEntryDialog:
         self.top.destroy()
 
 
-def highlight_cheat_text(txt: "tk.Text"):
-    """Apply Atmosphère-cheat syntax highlighting to a Text widget.
+def classify_cheat_line(s: str) -> str:
+    """Classify one (stripped) cheat-file line for highlighting/validation.
+
+    Returns "empty" | "head" | "master" | "code" | "error" | "comment".
+    A valid Atmosphère code line is 1–4 words of exactly 8 hex digits each
+    (the cheat VM's 128-bit max instruction). Lines that clearly TRY to be
+    code but are malformed (7/9-digit words, stray characters, >4 words)
+    come back as "error"; free text stays a harmless "comment"."""
+    import re as _re
+    if not s:
+        return "empty"
+    if s.startswith("[") and s.endswith("]"):
+        return "head"
+    if s.startswith("{") and s.endswith("}"):
+        return "master"
+    tokens = s.split()
+    hex8 = sum(1 for t in tokens if _re.fullmatch(r"[0-9A-Fa-f]{8}", t))
+    if hex8 == len(tokens):
+        return "code" if 1 <= len(tokens) <= 4 else "error"
+    # At least one proper opcode word, or the whole line is hex-ish gibberish
+    # → the author meant this to be code; flag it instead of hiding it.
+    if hex8 >= 1 or all(_re.fullmatch(r"[0-9A-Fa-f]+", t) for t in tokens):
+        return "error"
+    return "comment"
+
+
+def highlight_cheat_text(txt: "tk.Text") -> int:
+    """Apply Atmosphère-cheat syntax highlighting + validation to a Text widget.
 
     [Named cheat] / {Master cheat} headers get the accent, hex code lines are
-    dimmed apart from their opcode, and everything else reads as a comment.
+    dimmed apart from their opcode, free text reads as a comment — and
+    MALFORMED code lines are marked red. Returns the number of invalid lines.
     Tags are (re)configured here so a theme change refreshes correctly.
     """
     import re as _re
@@ -565,26 +592,34 @@ def highlight_cheat_text(txt: "tk.Text"):
                       font=("Consolas", 10, "bold"))
     txt.tag_configure("cheat_op", foreground=t["accent"])
     txt.tag_configure("cheat_comment", foreground=t["fg_muted"])
-    for tag in ("cheat_head", "cheat_master", "cheat_op", "cheat_comment"):
+    txt.tag_configure("cheat_error", foreground=t.get("error", "#ff6b7a"),
+                      underline=True)
+    for tag in ("cheat_head", "cheat_master", "cheat_op", "cheat_comment",
+                "cheat_error"):
         txt.tag_remove(tag, "1.0", "end")
+    errors = 0
     lines = txt.get("1.0", "end-1c").split("\n")
     for i, line in enumerate(lines, 1):
-        s = line.strip()
-        if not s:
+        kind = classify_cheat_line(line.strip())
+        if kind == "empty":
             continue
-        if s.startswith("[") and s.endswith("]"):
+        if kind == "head":
             txt.tag_add("cheat_head", f"{i}.0", f"{i}.end")
-        elif s.startswith("{") and s.endswith("}"):
+        elif kind == "master":
             txt.tag_add("cheat_master", f"{i}.0", f"{i}.end")
-        elif _re.match(r"^[0-9A-Fa-f]{8}(\s+[0-9A-Fa-f]{1,8})*$", s):
+        elif kind == "code":
             # Code line: tint just the leading opcode word.
             m = _re.match(r"^(\s*)([0-9A-Fa-f]{8})", line)
             if m:
                 a = f"{i}.{len(m.group(1))}"
                 b = f"{i}.{len(m.group(1)) + 8}"
                 txt.tag_add("cheat_op", a, b)
+        elif kind == "error":
+            txt.tag_add("cheat_error", f"{i}.0", f"{i}.end")
+            errors += 1
         else:
             txt.tag_add("cheat_comment", f"{i}.0", f"{i}.end")
+    return errors
 
 
 class CheatEditorDialog:
@@ -661,7 +696,7 @@ class CheatEditorDialog:
         if content:
             self.code.insert("1.0", content)
         self.code.edit_reset()          # first content isn't an undo step
-        highlight_cheat_text(self.code)
+        self._err_count = highlight_cheat_text(self.code)
 
         # Re-highlight (debounced) as the user types.
         self._hl_after = None
@@ -673,6 +708,11 @@ class CheatEditorDialog:
         self.count_var = tk.StringVar()
         ttk.Label(foot, textvariable=self.count_var,
                   foreground=th["fg_muted"], font=("Segoe UI", 9)).pack(side="left")
+        # Live validation verdict: warns about malformed code lines (red).
+        self.err_var = tk.StringVar()
+        ttk.Label(foot, textvariable=self.err_var,
+                  foreground=th.get("error", "#ff6b7a"),
+                  font=("Segoe UI", 9)).pack(side="left", padx=(10, 0))
         self.status = ttk.Label(foot, text="", foreground=th.get("ok", th["accent"]),
                                 font=("Segoe UI", 9))
         self.status.pack(side="left", padx=(12, 0))
@@ -703,7 +743,7 @@ class CheatEditorDialog:
 
     def _rehighlight(self):
         self._hl_after = None
-        highlight_cheat_text(self.code)
+        self._err_count = highlight_cheat_text(self.code)
         self._refresh_count()
 
     def _refresh_count(self):
@@ -711,16 +751,30 @@ class CheatEditorDialog:
         body = self.code.get("1.0", "end-1c")
         n = len(_re.findall(r"(?m)^\s*[\[{].+[\]}]\s*$", body))
         self.count_var.set(t("{n} cheat(s)", n=n))
+        e = getattr(self, "_err_count", 0)
+        self.err_var.set(t("⚠ {n} invalid code line(s)", n=e) if e else "")
 
     def _reload(self):
         self.code.delete("1.0", "end")
         self.code.insert("1.0", self._reload_content)
         self.code.edit_reset()
-        highlight_cheat_text(self.code)
+        self._err_count = highlight_cheat_text(self.code)
         self._refresh_count()
         self.status.config(text=t("Reloaded from disk."))
 
     def _save(self, close=False):
+        # Run the validation on the CURRENT text (the debounce may not have
+        # fired yet) and make broken code an explicit decision, not a surprise
+        # on the console.
+        self._err_count = highlight_cheat_text(self.code)
+        self._refresh_count()
+        if self._err_count and not messagebox.askyesno(
+                t("Cheat editor"),
+                t("{n} code line(s) are malformed (marked red) — Atmosphère "
+                  "may reject this cheat file on the console.\n\nSave anyway?",
+                  n=self._err_count),
+                parent=self.top):
+            return
         payload = {
             "title_id": self._tid0, "build_id": self._bid0,
             "name": self.name_var.get().strip(),
@@ -1645,12 +1699,19 @@ class ScraperGUI:
         self.nonbase_only = tk.BooleanVar(value=False)
         self.hide_placeholder_builds = tk.BooleanVar(value=True)
         # Quick-filter chips (Library): only builds that actually have cheats,
-        # and only builds still missing a cover image.
+        # only builds still missing a cover image, and only ⭐ favorites.
         self.has_cheats_only = tk.BooleanVar(value=False)
         self.missing_cover_only = tk.BooleanVar(value=False)
+        self.favorites_only = tk.BooleanVar(value=False)
+        # Extend the search into the cheat NAMES ("inf health" → every game
+        # that has such a cheat).
+        self.search_in_cheats = tk.BooleanVar(value=False)
         # Library power: hidden table columns + saved filter presets (persisted).
         self._hidden_columns: set = set()
         self._filter_presets: dict = {}
+        # ⭐ favourite games (title_ids, persisted in settings.json so they
+        # survive data updates and full DB replaces).
+        self._favorites: set = set()
         self.auto_scan_downloaded = tk.BooleanVar(value=False)
         # Two independent scrape controls (decoupled):
         #  - full catalog: discover over /games (ALL games) instead of the fast
@@ -1967,6 +2028,7 @@ class ScraperGUI:
         self.hide_placeholder_builds.set(bool(data.get("hide_placeholder_builds", True)))
         self._hidden_columns = set(data.get("hidden_columns", []) or [])
         self._filter_presets = dict(data.get("filter_presets", {}) or {})
+        self._favorites = {str(f).upper() for f in data.get("favorites", []) or []}
         self.auto_scan_downloaded.set(bool(data.get("auto_scan_downloaded", False)))
         self.browser_fallback.set(bool(data.get("browser_fallback", False)))
         # Browser choice (migrate the old use_installed_browser bool).
@@ -2021,6 +2083,7 @@ class ScraperGUI:
             "hide_placeholder_builds": self.hide_placeholder_builds.get(),
             "hidden_columns": sorted(self._hidden_columns),
             "filter_presets": self._filter_presets,
+            "favorites": sorted(self._favorites),
             "auto_scan_downloaded": self.auto_scan_downloaded.get(),
             "browser_fallback": self.browser_fallback.get(),
             "browser_choice": self.browser_choice.get(),
@@ -3013,12 +3076,31 @@ class ScraperGUI:
         power = ttk.Frame(parent)
         power.pack(fill="x", pady=(4, 0))
         # Quick-filter chips (toggle buttons via the ttk Toolbutton style).
+        fav_chip = ttk.Checkbutton(power, text="⭐ " + t("Favorites"),
+                                   style="Toolbutton",
+                                   variable=self.favorites_only,
+                                   command=self.refresh_table)
+        fav_chip.pack(side="left", padx=(0, 4))
+        _Tooltip(fav_chip,
+                 "Show only your ⭐ favourite games. Right-click any row → "
+                 "'⭐ Add / remove favorite' to build your watchlist — after a "
+                 "data update you get a notification when a favourite gained "
+                 "new cheats.")
         ttk.Checkbutton(power, text="⚡ " + t("Has cheats"), style="Toolbutton",
                         variable=self.has_cheats_only,
                         command=self.refresh_table).pack(side="left", padx=(0, 4))
         ttk.Checkbutton(power, text="🖼 " + t("No cover"), style="Toolbutton",
                         variable=self.missing_cover_only,
-                        command=self.refresh_table).pack(side="left", padx=(0, 10))
+                        command=self.refresh_table).pack(side="left", padx=(0, 4))
+        cheat_chip = ttk.Checkbutton(power, text="🔎 " + t("Search in cheats"),
+                                     style="Toolbutton",
+                                     variable=self.search_in_cheats,
+                                     command=self.refresh_table)
+        cheat_chip.pack(side="left", padx=(0, 10))
+        _Tooltip(cheat_chip,
+                 "ON: the search box also matches the cheat NAMES — type "
+                 "'inf health' to find every game that has such a cheat. "
+                 "OFF: search game names and IDs only.")
         # Column show/hide menu.
         self.columns_btn = ttk.Menubutton(power, text=t("Columns") + " ▾")
         colmenu = tk.Menu(self.columns_btn, tearoff=0)
@@ -3094,7 +3176,7 @@ class ScraperGUI:
     # -- filter presets ---------------------------------------------------
     _PRESET_VARS = ("not_downloaded_only", "names_missing", "nonbase_only",
                     "hide_placeholder_builds", "has_cheats_only",
-                    "missing_cover_only")
+                    "missing_cover_only", "favorites_only", "search_in_cheats")
 
     def _preset_names(self):
         return sorted(self._filter_presets.keys())
@@ -3136,6 +3218,69 @@ class ScraperGUI:
             self.preset_combo.configure(values=self._preset_names())
             self.preset_combo.set("")
             self.status_var.set(t("Deleted filter preset '{name}'.", name=name))
+
+    # -- ⭐ favourites / watchlist -----------------------------------------
+    def _ctx_toggle_favorite(self):
+        """Toggle ⭐ for every selected row's game (per title_id)."""
+        pairs = self._selected_pairs()
+        seen, added, removed = set(), 0, 0
+        for tid, _bid in pairs:
+            tid_u = (tid or "").strip().upper()
+            if not tid_u or tid_u == "-" or tid_u in seen:
+                continue
+            seen.add(tid_u)
+            if tid_u in self._favorites:
+                self._favorites.discard(tid_u)
+                removed += 1
+            else:
+                self._favorites.add(tid_u)
+                added += 1
+        if not seen:
+            return
+        self._save_settings()
+        self.refresh_table()
+        self.status_var.set(t("Favorites: {added} added, {removed} removed "
+                              "({total} total).", added=added, removed=removed,
+                              total=len(self._favorites)))
+
+    def _favorite_counts_snapshot(self, db_path) -> dict:
+        """Per-favourite (cheat sum, build count, name) — the watchlist takes
+        this snapshot before a data update and diffs it afterwards. Read-only
+        connection, safe to call from worker threads."""
+        favs = {f.upper() for f in getattr(self, "_favorites", set())}
+        if not favs:
+            return {}
+        import sqlite3 as _sq
+        out = {}
+        try:
+            p = Path(db_path)
+            if not p.exists():
+                return {}
+            con = _sq.connect(f"file:{p}?mode=ro", uri=True)
+            q = ("SELECT UPPER(title_id), COALESCE(SUM(cheat_count),0), COUNT(*), "
+                 "MAX(game_title) FROM builds WHERE UPPER(title_id) IN (%s) "
+                 "GROUP BY UPPER(title_id)" % ",".join("?" * len(favs)))
+            for tid, total, builds, name in con.execute(q, tuple(sorted(favs))):
+                out[tid] = (total, builds, name or tid)
+            con.close()
+        except Exception:
+            pass
+        return out
+
+    def _favorite_news(self, db_path, before: dict) -> list:
+        """Names of favourites that gained cheats or builds since *before*."""
+        if not getattr(self, "_favorites", None):
+            return []
+        after = self._favorite_counts_snapshot(db_path)
+        news = []
+        for tid, (total, builds, name) in after.items():
+            prev = before.get(tid)
+            if prev is None:
+                if total > 0:
+                    news.append(name)
+            elif total > prev[0] or builds > prev[1]:
+                news.append(name)
+        return sorted(news)
 
     def _build_main(self, parent=None):
         # Table (left) + cheat-names panel (right), resizable.
@@ -3194,6 +3339,7 @@ class ScraperGUI:
         _ctx_add("edit_codes", "Edit entry (codes)", self._ctx_edit_entry)
         _ctx_add("edit_ids", "Edit Title ID / Build ID", self._ctx_edit_ids)
         _ctx_add("add_new", "Add new entry", self._ctx_add_new_entry)
+        _ctx_add("favorite", "⭐ Add / remove favorite", self._ctx_toggle_favorite)
         self.context_menu.add_separator()
         # -- metadata / enrichment -------------------------------------------
         # Same actions as the "Get Cheat Information" toolbar section, available
@@ -3497,6 +3643,9 @@ class ScraperGUI:
             "hide_placeholder": self.hide_placeholder_builds.get(),
             "has_cheats": self.has_cheats_only.get(),
             "missing_cover": self.missing_cover_only.get(),
+            "favorites_only": self.favorites_only.get(),
+            "favorites": frozenset(self._favorites),
+            "in_cheats": self.search_in_cheats.get(),
         }
         threading.Thread(target=self._refresh_table_worker, args=(gen, snap),
                          daemon=True).start()
@@ -3515,7 +3664,7 @@ class ScraperGUI:
         try:
             db = GameDatabase(path)
             try:
-                rows = db.search(term=snap["term"])
+                rows = db.search(term=snap["term"], in_cheats=snap["in_cheats"])
                 total_games = db.count_games()
             finally:
                 db.close()
@@ -3550,6 +3699,9 @@ class ScraperGUI:
                 continue
             if snap["missing_cover"] and (r["image"] or "").strip():
                 continue
+            is_fav = (r["title_id"] or "").upper() in snap["favorites"]
+            if snap["favorites_only"] and not is_fav:
+                continue
             tags = []
             if not has_name:
                 tags.append("nameless")
@@ -3559,7 +3711,7 @@ class ScraperGUI:
                 tags.append("nonbase")
             values = (
                 "✓" if is_done else "✗",
-                r["game_title"] or "",
+                ("⭐ " if is_fav else "") + (r["game_title"] or ""),
                 r["region"] or "-",
                 r["version"] or "-",
                 r["title_id"] or "-",
@@ -4439,6 +4591,9 @@ class ScraperGUI:
             return cb
 
         db_summary = cheats_summary = None
+        # Watchlist: snapshot the favourites BEFORE the import so _finish_devcat
+        # can tell which of them gained new cheats.
+        fav_before = self._favorite_counts_snapshot(cfg["db_path"])
         try:
             # Database first so the rich metadata is in place, then the files.
             if "db" in parts:
@@ -4474,12 +4629,13 @@ class ScraperGUI:
                     tmpz.unlink()
                 except Exception:
                     pass
-            self._log_queue.put(("devcat_done", db_summary, cheats_summary))
+            fav_news = self._favorite_news(cfg["db_path"], fav_before)
+            self._log_queue.put(("devcat_done", db_summary, cheats_summary, fav_news))
         except Exception as exc:
             self._log_queue.put(("error", f"Download from DevCatSKZ failed:\n{exc}"))
             self._log_queue.put(("download_done",))
 
-    def _finish_devcat(self, db_summary, cheats_summary):
+    def _finish_devcat(self, db_summary, cheats_summary, fav_news=None):
         self._set_busy(False)
         self._update_downloaded_cache_incremental()
         self.refresh_table(force_scan=True)
@@ -4494,8 +4650,17 @@ class ScraperGUI:
             parts.append(f"Cheats: {cheats_summary[0]} file(s) for "
                          f"{cheats_summary[1]} game(s)")
         self.status_var.set(t("DevCatSKZ download done — {parts}", parts=" · ".join(parts)))
-        self._toast(t("Data update installed"),
-                    t("Cheats and database are up to date."))
+        # ⭐ watchlist: when favourites gained new cheats, THAT is the headline
+        # of the notification; otherwise the generic "data is current" toast.
+        if fav_news:
+            names = ", ".join(fav_news[:5]) + ("…" if len(fav_news) > 5 else "")
+            line = t("{n} favorite(s) got new cheats: {names}",
+                     n=len(fav_news), names=names)
+            self._append_log("⭐ " + line)
+            self._toast(t("Favorites updated"), line)
+        else:
+            self._toast(t("Data update installed"),
+                        t("Cheats and database are up to date."))
         # Covers are fetched only when the user opted in via the card checkbox
         # (off by default). No prompt — the checkbox is the choice.
         if self.devcat_covers.get():
@@ -5750,8 +5915,10 @@ class ScraperGUI:
         if not tid or not bid:
             return
         name, version = str(col("game_title")).strip(), str(col("version")).strip()
-        # The table shows "-" as a placeholder for empty version/name — treat it
-        # as blank in the editor so the header doesn't read "v-".
+        # The table shows "-" as a placeholder for empty version/name and a
+        # "⭐ " prefix for favourites — normalise both so they never leak into
+        # the editor (and from there into the database).
+        name = name.removeprefix("⭐").strip()
         if version in ("-", ""):
             version = ""
         if name == "-":
@@ -8328,7 +8495,8 @@ class ScraperGUI:
         elif kind == "import_db_done":
             self._finish_import_db(msg[1])
         elif kind == "devcat_done":
-            self._finish_devcat(msg[1], msg[2])
+            self._finish_devcat(msg[1], msg[2],
+                                msg[3] if len(msg) > 3 else None)
         elif kind == "switchapp_done":
             self._finish_switch_app(msg[1], msg[2])
         elif kind == "androidapp_done":
