@@ -80,6 +80,51 @@ class ModernApp(ScraperGUI):
         self._hairlines = getattr(self, "_hairlines", []) + [line]
         return line
 
+    def _outline_card(self, parent, padding=(16, 12)):
+        """A teal-glass-bordered panel whose INTERIOR is the page background —
+        so the shared classic sections (LabelFrames, buttons) drop straight in
+        without any surface/background mismatch. Returns the inner frame."""
+        border = tk.Frame(parent, bd=0, highlightthickness=0)
+        inner = ttk.Frame(border, style="Body.TFrame", padding=padding)
+        inner.pack(padx=1, pady=1, fill="both", expand=True)
+        self._glass_borders = getattr(self, "_glass_borders", []) + [border]
+        return border, inner
+
+    def _build_activity_panel(self, parent):
+        """A live log tail (glass card) — fills the empty space on the Sources /
+        CheatSlips pages and mirrors every log line as it happens."""
+        c = theme()
+        b, card = self._glass_card(parent, padding=(14, 10))
+        b.pack(fill="both", expand=True, pady=(4, 0))
+        ttk.Label(card, text=t("Activity"), style="CardTitle.TLabel").pack(anchor="w")
+        self._hairline(card, pady=(7, 6))
+        box = ttk.Frame(card, style="Glass.TFrame")
+        box.pack(fill="both", expand=True)
+        txt = tk.Text(box, height=8, wrap="none", state="disabled",
+                      bg=c["log_bg"], fg=c["log_fg"], font=("Consolas", 9),
+                      relief="flat", highlightthickness=0, padx=8, pady=6)
+        sb = ttk.Scrollbar(box, orient="vertical", command=txt.yview)
+        txt.configure(yscrollcommand=sb.set)
+        txt.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+        self._activity_texts = getattr(self, "_activity_texts", []) + [txt]
+        return txt
+
+    def _append_log(self, msg):
+        """Mirror every log line into the on-page Activity panels too."""
+        super()._append_log(msg)
+        for txt in getattr(self, "_activity_texts", []):
+            try:
+                txt.config(state="normal")
+                txt.insert("end", msg + "\n")
+                end = int(txt.index("end-1c").split(".")[0])
+                if end > 320:                       # keep it bounded
+                    txt.delete("1.0", f"{end - 300}.0")
+                txt.see("end")
+                txt.config(state="disabled")
+            except Exception:
+                pass
+
     # ------------------------------------------------------------ composition
     def _compose_ui(self):
         root = self.root
@@ -380,15 +425,29 @@ class ModernApp(ScraperGUI):
     def _build_sources_page(self, page):
         self._page_title(page, "Collect", "Sources",
                          "Import cheats from 9+ community sources, then enrich the metadata.")
-        grid_host = ttk.Frame(page, style="Body.TFrame")
-        grid_host.pack(anchor="w", pady=(0, 12))
-        self._build_sources_grid(grid_host)
-        self._build_info_section(page)
+        # Card 1: the community-source import buttons.
+        b1, c1 = self._outline_card(page, padding=(16, 12))
+        b1.pack(fill="x", pady=(0, 12))
+        ttk.Label(c1, text=t("Community sources"),
+                  style="CardTitle2b.TLabel").pack(anchor="w", pady=(0, 8))
+        gh = ttk.Frame(c1, style="Body.TFrame")
+        gh.pack(anchor="w")
+        self._build_sources_grid(gh)
+        # Card 2: the metadata-enrichment buttons (its own LabelFrame title).
+        b2, c2 = self._outline_card(page, padding=(16, 8))
+        b2.pack(fill="x", pady=(0, 12))
+        self._build_info_section(c2)
+        # Fill the rest with a live activity log.
+        self._build_activity_panel(page)
 
     def _build_scrape_page(self, page):
         self._page_title(page, "Scraping", "CheatSlips",
                          "Scrape cheatslips.com and download the cheat files.")
-        self._build_cheatslips_section(page)
+        b, inner = self._outline_card(page, padding=(14, 10))
+        b.pack(fill="x", pady=(0, 12))
+        self._build_cheatslips_section(inner)
+        # Fill the rest with a live activity log — watch the scrape/download run.
+        self._build_activity_panel(page)
 
     def _build_log_page(self, page):
         self._page_title(page, "Session", "Log",
@@ -909,8 +968,13 @@ class ModernApp(ScraperGUI):
                foreground=[("active", c["fg"])])
         # Unify the section headers on the Sources / CheatSlips / Library pages
         # (ttk LabelFrame titles) with the Settings card titles: accent, bold.
-        st.configure("TLabelframe", background=c["bg"], bordercolor=c["border"])
+        # Borderless + flat so the surrounding outline card provides the frame.
+        st.configure("TLabelframe", background=c["bg"], borderwidth=0,
+                     relief="flat")
         st.configure("TLabelframe.Label", background=c["bg"],
+                     foreground=c["accent"], font=("Segoe UI Semibold", 10))
+        # Section title on the page background (outline cards).
+        st.configure("CardTitle2b.TLabel", background=c["bg"],
                      foreground=c["accent"], font=("Segoe UI Semibold", 10))
 
     def _paint_modern(self):
@@ -932,6 +996,11 @@ class ModernApp(ScraperGUI):
         for border in getattr(self, "_glass_borders", []):
             try:
                 border.configure(bg=c["featured_border"])
+            except Exception:
+                pass
+        for txt in getattr(self, "_activity_texts", []):
+            try:
+                txt.configure(bg=c["log_bg"], fg=c["log_fg"])
             except Exception:
                 pass
         self._paint_nav()

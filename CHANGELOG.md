@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-10 (UX polish 2)
+
+### Improved — Sources & CheatSlips pages redesigned as cards
+- The two pages that used to be a thin strip of controls over a big empty area
+  are now **card-based** like Home/Settings: the community-source import
+  buttons, the metadata-enrichment buttons and the CheatSlips scrape/download
+  form each sit in a teal-outlined card, and the remaining space is filled by a
+  **live Activity log** that mirrors the run as it happens — no more switching
+  to the Log page to watch a scrape or import.
+
 ## v1.3 — 2026-07-10 (UX polish)
 
 ### Improved — the modern shell got a round of UX work

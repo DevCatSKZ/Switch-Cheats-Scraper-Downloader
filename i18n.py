@@ -1662,6 +1662,13 @@ _merge({
                   "it": "Lingue", "ja": "言語"},
     "Rating": {"de": "Freigabe", "es": "Clasificación", "fr": "Classification",
                "it": "Classificazione", "ja": "レーティング"},
+    # -- Sources / CheatSlips card redesign --
+    "Community sources": {
+        "de": "Community-Quellen", "es": "Fuentes de la comunidad",
+        "fr": "Sources communautaires", "it": "Fonti della community",
+        "ja": "コミュニティソース"},
+    "Activity": {"de": "Aktivität", "es": "Actividad", "fr": "Activité",
+                 "it": "Attività", "ja": "アクティビティ"},
     # -- Modern shell v1.3.x: palette, notifications, status, empty states --
     "{n} builds": {"de": "{n} Builds", "es": "{n} builds", "fr": "{n} builds",
                    "it": "{n} build", "ja": "{n} 件のビルド"},
