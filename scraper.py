@@ -56,6 +56,50 @@ DEVCAT_DATA_TAG = "data"
 DEVCAT_CHEATS_ASSET = "switch-cheats.zip"
 DEVCAT_DB_ASSET = "database.db"
 
+# Columns holding third-party PUBLISHER text (Nintendo eShop marketing copy).
+# They are nice to have LOCALLY (fetch anytime via "Get Descriptions"), but must
+# not be part of the REDISTRIBUTED database — republishing that text would be a
+# copyright concern. Cheat descriptions/credits are community content and stay.
+SHARED_DB_STRIP_COLUMNS = ("game_description", "intro")
+
+
+def export_shared_db(src_db, dst_db, strip_publisher_text: bool = True) -> dict:
+    """Write a redistribution-ready copy of *src_db* to *dst_db*.
+
+    With ``strip_publisher_text`` (default), the publisher eShop text columns
+    (see SHARED_DB_STRIP_COLUMNS) are cleared and the copy is VACUUMed so the
+    shared database carries only facts, cheat metadata and community notes.
+    Returns {column: rows_cleared, "_before": bytes, "_after": bytes}.
+    """
+    import shutil
+    src, dst = Path(src_db), Path(dst_db)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    # Consistent copy via sqlite's online backup (safe even if src is in use).
+    s = sqlite3.connect(f"file:{src}?mode=ro", uri=True)
+    d = sqlite3.connect(str(dst))
+    with d:
+        s.backup(d)
+    s.close(); d.close()
+    result = {"_before": src.stat().st_size}
+    if strip_publisher_text:
+        con = sqlite3.connect(str(dst))
+        try:
+            existing = {r[1] for r in con.execute("PRAGMA table_info(builds)")}
+            for col in SHARED_DB_STRIP_COLUMNS:
+                if col not in existing:
+                    continue
+                n = con.execute(
+                    f"SELECT COUNT(*) FROM builds WHERE {col} IS NOT NULL "
+                    f"AND {col}<>''").fetchone()[0]
+                con.execute(f"UPDATE builds SET {col}=NULL")
+                result[col] = n
+            con.commit()
+            con.execute("VACUUM")
+        finally:
+            con.close()
+    result["_after"] = dst.stat().st_size
+    return result
+
 # --- Self-update (program build hosted on the same repo's latest release) -----
 # The "latest" GitHub release carries the installer (and optional portable zip).
 # The updater compares versions AND asset upload times, so a re-upload of the

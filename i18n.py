@@ -1662,6 +1662,77 @@ _merge({
                   "it": "Lingue", "ja": "言語"},
     "Rating": {"de": "Freigabe", "es": "Clasificación", "fr": "Classification",
                "it": "Classificazione", "ja": "レーティング"},
+    # -- Export DB: share mode (strip descriptions) --
+    "Export database": {
+        "de": "Datenbank exportieren", "es": "Exportar base de datos",
+        "fr": "Exporter la base de données", "it": "Esporta database",
+        "ja": "データベースをエクスポート"},
+    "Optimise this export for sharing?\n\n"
+    "YES  — remove the game descriptions (Nintendo eShop text) so the "
+    "shared database is smaller and copyright-clean. Cheats, names, "
+    "versions and credits are kept.\n"
+    "NO   — export a full 1:1 copy (keeps descriptions).\n\n"
+    "Your live database is not changed either way.": {
+        "de": "Diesen Export für die Weitergabe optimieren?\n\n"
+              "JA   — die Spielbeschreibungen (Nintendo-eShop-Text) entfernen, "
+              "damit die geteilte Datenbank kleiner und rechtlich sauber ist. "
+              "Cheats, Namen, Versionen und Credits bleiben erhalten.\n"
+              "NEIN — eine vollständige 1:1-Kopie exportieren (mit "
+              "Beschreibungen).\n\nDeine aktive Datenbank wird in keinem Fall "
+              "verändert.",
+        "es": "¿Optimizar esta exportación para compartir?\n\n"
+              "SÍ   — quita las descripciones de los juegos (texto de la eShop de "
+              "Nintendo) para que la base compartida sea más pequeña y sin "
+              "problemas de copyright. Se mantienen cheats, nombres, versiones y "
+              "créditos.\nNO   — exporta una copia completa 1:1 (con "
+              "descripciones).\n\nTu base de datos activa no se modifica.",
+        "fr": "Optimiser cet export pour le partage ?\n\n"
+              "OUI  — retirer les descriptions des jeux (texte de l'eShop "
+              "Nintendo) pour que la base partagée soit plus petite et sans souci "
+              "de droits d'auteur. Les cheats, noms, versions et crédits sont "
+              "conservés.\nNON  — exporter une copie complète 1:1 (avec "
+              "descriptions).\n\nVotre base active n'est pas modifiée.",
+        "it": "Ottimizzare questa esportazione per la condivisione?\n\n"
+              "SÌ   — rimuove le descrizioni dei giochi (testo dell'eShop "
+              "Nintendo) così il database condiviso è più piccolo e senza "
+              "problemi di copyright. Cheat, nomi, versioni e crediti restano.\n"
+              "NO   — esporta una copia completa 1:1 (con descrizioni).\n\n"
+              "Il tuo database attivo non viene modificato.",
+        "ja": "この書き出しを共有用に最適化しますか？\n\n"
+              "はい — ゲームの説明（Nintendo eShop のテキスト）を削除し、共有"
+              "データベースを小さく、著作権的にクリーンにします。チート・名前・"
+              "バージョン・クレジットは保持されます。\n"
+              "いいえ — 完全な 1:1 コピーを書き出します（説明を含む）。\n\n"
+              "アクティブなデータベースはどちらの場合も変更されません。"},
+    "Database exported (share) to {dest} — {n} description(s) removed, {size} MB": {
+        "de": "Datenbank (Weitergabe) exportiert nach {dest} — {n} "
+              "Beschreibung(en) entfernt, {size} MB",
+        "es": "Base de datos (compartir) exportada a {dest} — {n} descripción(es) "
+              "eliminada(s), {size} MB",
+        "fr": "Base (partage) exportée vers {dest} — {n} description(s) "
+              "retirée(s), {size} Mo",
+        "it": "Database (condivisione) esportato in {dest} — {n} descrizione/i "
+              "rimosse, {size} MB",
+        "ja": "データベース（共有用）を {dest} に書き出しました — 説明 {n} 件を"
+              "削除、{size} MB"},
+    "Share database exported to:\n{dest}\n\n"
+    "{n} game description(s) removed · {size} MB\n\n"
+    "Ready to upload as the shared 'database.db'.": {
+        "de": "Weitergabe-Datenbank exportiert nach:\n{dest}\n\n"
+              "{n} Spielbeschreibung(en) entfernt · {size} MB\n\n"
+              "Bereit zum Hochladen als geteilte 'database.db'.",
+        "es": "Base de datos para compartir exportada a:\n{dest}\n\n"
+              "{n} descripción(es) de juego eliminada(s) · {size} MB\n\n"
+              "Lista para subir como 'database.db' compartida.",
+        "fr": "Base de partage exportée vers :\n{dest}\n\n"
+              "{n} description(s) de jeu retirée(s) · {size} Mo\n\n"
+              "Prête à être téléversée en tant que 'database.db' partagée.",
+        "it": "Database per la condivisione esportato in:\n{dest}\n\n"
+              "{n} descrizione/i di gioco rimosse · {size} MB\n\n"
+              "Pronto per il caricamento come 'database.db' condiviso.",
+        "ja": "共有用データベースを書き出しました：\n{dest}\n\n"
+              "ゲームの説明 {n} 件を削除 · {size} MB\n\n"
+              "共有用の 'database.db' としてアップロードできます。"},
     # -- Cheat content search --
     "Search in cheats": {
         "de": "In Cheats suchen", "es": "Buscar en cheats",

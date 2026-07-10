@@ -64,6 +64,7 @@ from scraper import (
     export_cheats_to_sd,
     export_cheats_to_zip,
     export_cheats_for_emulator,
+    export_shared_db,
     EMULATOR_TARGETS,
     build_title_name_map,
     import_cheats_from_zip,
@@ -8029,54 +8030,61 @@ class ScraperGUI:
             "• Player Count, Size, Rating, and more", n=n, dest=dest))
 
     def on_export_db(self):
-        """Export a full copy of the entire SQLite database (cheats.db)."""
-        import datetime as _dt
-        import sqlite3 as _sqlite3
+        """Export a copy of the whole SQLite database (cheats.db).
 
+        Offers a SHARE mode that strips the publisher eShop text
+        (game_description / intro) so a database you redistribute carries only
+        facts, cheats and community notes — smaller and copyright-clean. Your
+        live database is never modified."""
         src = Path(self.db_path.get())
         if not src.exists():
             messagebox.showwarning("Export database", "No database file yet. Scrape first.")
             return
-        default_name = "database.db"
+        # yes = optimise for sharing (strip), no = full copy, cancel = abort.
+        share = messagebox.askyesnocancel(
+            t("Export database"),
+            t("Optimise this export for sharing?\n\n"
+              "YES  — remove the game descriptions (Nintendo eShop text) so the "
+              "shared database is smaller and copyright-clean. Cheats, names, "
+              "versions and credits are kept.\n"
+              "NO   — export a full 1:1 copy (keeps descriptions).\n\n"
+              "Your live database is not changed either way."),
+            parent=self.root)
+        if share is None:
+            return
         dest = filedialog.asksaveasfilename(
-            title="Export full database",
-            defaultextension=".db",
-            initialfile=default_name,
-            filetypes=[("SQLite database", "*.db"), ("All files", "*.*")],
-        )
+            title=t("Export database"),
+            defaultextension=".db", initialfile="database.db",
+            filetypes=[("SQLite database", "*.db"), ("All files", "*.*")])
         if not dest:
             return
         if Path(dest).resolve() == src.resolve():
             messagebox.showwarning("Export database",
                                    "Choose a different file than the live database.")
             return
-        srccon = dstcon = None
         try:
-            # SQLite online backup -> a clean, consistent copy even if WAL is in use.
-            # (close explicitly: `with sqlite3.connect` only ends the transaction,
-            #  it does not release the file handle.)
-            srccon = _sqlite3.connect(str(src))
-            dstcon = _sqlite3.connect(dest)
-            srccon.backup(dstcon)
+            res = export_shared_db(src, dest, strip_publisher_text=bool(share))
         except Exception as exc:
             messagebox.showerror("Export database", t("Failed: {err}", err=exc))
             return
-        finally:
-            for con in (dstcon, srccon):
-                if con is not None:
-                    try:
-                        con.close()
-                    except Exception:
-                        pass
-        try:
-            size_mb = Path(dest).stat().st_size / (1024 * 1024)
-        except Exception:
-            size_mb = 0
-        self.status_var.set(t("Database exported to {dest} ({size} MB)",
-                              dest=dest, size=f"{size_mb:.1f}"))
-        messagebox.showinfo("Export database",
-                            t("Full database exported to:\n{dest}\n\n{size} MB",
-                              dest=dest, size=f"{size_mb:.1f}"))
+        size_mb = res.get("_after", 0) / (1024 * 1024)
+        if share:
+            cleared = res.get("game_description", 0)
+            self.status_var.set(
+                t("Database exported (share) to {dest} — {n} description(s) "
+                  "removed, {size} MB", dest=dest, n=cleared, size=f"{size_mb:.1f}"))
+            messagebox.showinfo(
+                t("Export database"),
+                t("Share database exported to:\n{dest}\n\n"
+                  "{n} game description(s) removed · {size} MB\n\n"
+                  "Ready to upload as the shared 'database.db'.",
+                  dest=dest, n=cleared, size=f"{size_mb:.1f}"), parent=self.root)
+        else:
+            self.status_var.set(t("Database exported to {dest} ({size} MB)",
+                                  dest=dest, size=f"{size_mb:.1f}"))
+            messagebox.showinfo("Export database",
+                                t("Full database exported to:\n{dest}\n\n{size} MB",
+                                  dest=dest, size=f"{size_mb:.1f}"), parent=self.root)
 
     def on_export_names(self):
         """Export a lightweight Title ID → game name map (names.json).

@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here.
 
+## v1.3 — 2026-07-10 (feature update 4)
+
+### Added — share-safe database export
+- **"Export DB" now offers a SHARE mode** that strips the publisher eShop text
+  (game descriptions / intros) from the exported copy, so a database you
+  redistribute carries only facts, cheats, names, versions and community
+  credits — smaller (~half the size) and copyright-clean. A full 1:1 export
+  (keeps descriptions) is still one click away; your live database is never
+  modified. Backed by `scraper.export_shared_db(strip_publisher_text=…)`.
+- The publicly shared `database.db` (the `data` release) has been re-exported
+  without game descriptions.
+
 ## v1.3 — 2026-07-10 (feature update 3)
 
 ### Added — game pages, a broken-file finder and editor power tools
