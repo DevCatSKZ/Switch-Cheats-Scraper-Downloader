@@ -1,6 +1,6 @@
 # CheatSlips Scraper – Continuation Guide
 
-Stand: Juni 2026 (Basis) + **Update Juli 2026** (siehe Block direkt hierunter). Dieses Dokument beschreibt Architektur, Klassen und offene Punkte für den nächsten Entwickler/Agenten.
+Stand: Juni 2026 (Basis) + **Update Juli 2026** (zwei Feature-Blöcke: die Juli-Basis und die UX/Galerie/i18n/Website-Politur vom 10.07., siehe unten). Dieses Dokument beschreibt Architektur, Klassen und offene Punkte für den nächsten Entwickler/Agenten.
 
 ## ⚡ Update Juli 2026 — was seit Juni neu ist
 
@@ -72,6 +72,46 @@ pro Spiel im Emulator (Add-ons → „Mods and cheats"), weil Android 11+ fremde
 - **Daten-Auto-Update** (`keep_data_updated`, Settings-Opt-in) + einmaliger
   **Migrations-Hinweis** für Program-Files-Installationen (Download+Start des
   Per-User-Installers, SHA-256-geprüft).
+
+**Feature-Updates (2026-07-10, Commits 7dcba0e / f3e8d71 / e3dcccf / 2626dd8):**
+- **Command-Palette (Strg+K):** `CommandPalette` (overrideredirect-Toplevel,
+  Listbox, schließt bei FocusOut). Fuzzy-Liste aus Nav-Aktionen **plus**
+  Spieltreffern → Enter routet auf `open_game_page`. Header zeigt den
+  „Strg+K"-Hinweis.
+- **Instant-Dashboard:** `_dashboard_stats(output, fast=True)` liest den Cache
+  (sofort), ein Hintergrund-Thread ersetzt danach durch den Live-Disk-Scan.
+  Kein ~1 s-Hänger mehr bei jedem Home-Besuch.
+- **Detailseite überarbeitet:** Beschreibung links **scrollbar** (feste Breite
+  300, `pack_propagate False`), Build-Karten im **2-Spalten-Grid**
+  (`_build_build_card(gridpos, …)`; 1 Spalte bei ≤2 Builds, sonst 2). Tooltips
+  auf Zurück/Download/Export/Favorit/Edit.
+- **Sidebar & Tastatur:** Nav-Badges (`_nav_badges`, Bibliothek = Spielezahl via
+  `_db_build_count_games`), Busy-Dot (`_hdr_busy`/`_paint_busy`), **Alt+1…N**
+  (`_nav_order`), **Esc** (`_on_escape`: Detail → Bibliothek). Tooltips überall
+  (`_NAV_TIPS`).
+- **Benachrichtigungs-Glocke:** `_notifications`/`_notif_unseen`/`_paint_bell`/
+  `_open_notifications`; `_toast` protokolliert in den Verlauf und ruft super.
+- **Leere Zustände:** `_update_empty_state`-Overlay auf `self.tree.master`;
+  `refresh_table` prüft bei 250/700/1500 ms nach.
+- **Sources & CheatSlips als Karten** (`_outline_card` = Teal-Rahmen + Body-BG)
+  + **Live-Activity-Panel** (`_build_activity_panel`, Glass-Log, `_activity_texts`);
+  `_append_log` spiegelt in die Activity-Texte (Trim > 320 Zeilen). Keine leeren
+  Seiten mehr. `TLabelframe`-Sektionsköpfe flach/accent-bold.
+- **Cover-Galerie (Bibliothek):** `library_view`-StringVar + „▤ Table / ⊞ Gallery"-
+  Toggle; `_lib_table_host`/`_lib_gallery_host` gestapelt (`tkraise`).
+  `_populate_gallery` (RO-SQLite, gruppiert per `substr(title_id,1,13)||'000'`,
+  `_GALLERY_CAP=120`, `_GALLERY_COLS=6`, „+N more"-Hinweis), `_gallery_tile`
+  (Glass-Karte, Platzhalter = Namens-Initiale, Klick → `open_game_page`),
+  `_gallery_load_covers` (cache-first, Netzwerk nur bei `cache_covers`,
+  Generation-Guard). `refresh_table`/`_paint_modern` decken die Galerie mit ab.
+- **Volle Lokalisierung + Tooltips:** AST-Audit → **371/371** Strings in 6
+  Sprachen (letzte Update-Status-Labels ergänzt: checking/available/up-to-date/
+  installing). Tooltips für Nav (mit Alt+n), Glocke, Strg+K-Hinweis,
+  Spielseiten-Aktionen, Bibliotheks-Spalten/Presets.
+- **Website (`docs/`):** neutrales Demo-GIF im Hero (`hero-demo`/`demo.gif`,
+  `hero_demo_cap`) + **custom Sprach-Dropdown** (`.lang-dd`/`.lang-btn`/
+  `.lang-menu`, aria-selected ✓, schließt bei Außenklick/Esc) statt nativem
+  weißem Popup — in `index.html` **und** `privacy.html`.
 
 **Merkzettel:** Details/Fallstricke stehen in den Memory-Notizen
 (`modern-gui-architecture`, `windows-auto-update`, `android-cheat-delivery`,
