@@ -2341,13 +2341,15 @@ class ScraperGUI:
         except Exception:
             return 0
 
-    def _dashboard_stats(self) -> dict:
+    def _dashboard_stats(self, output: str = None) -> dict:
         """Snapshot of library numbers for the Home dashboard. Read-only, quick;
-        safe to call from a worker thread (opens its own RO connection)."""
+        safe to call from a worker thread (opens its own RO connection).
+        *output* is a main-thread snapshot of the output folder."""
         import sqlite3 as _sq
         out = {"games": 0, "builds": 0, "cheats": 0, "with_cheats": 0,
                "downloaded": 0, "db_size": 0, "last_data": None, "recent": []}
         p = Path(self.db_path.get())
+        bids = set()
         try:
             out["db_size"] = p.stat().st_size
         except Exception:
@@ -2363,6 +2365,8 @@ class ScraperGUI:
                 out["games"] = con.execute(
                     "SELECT COUNT(DISTINCT substr(title_id,1,13)||'000') FROM builds"
                 ).fetchone()[0]
+                bids = {r[0] for r in con.execute(
+                    "SELECT UPPER(build_id) FROM builds WHERE build_id IS NOT NULL")}
                 out["recent"] = con.execute(
                     "SELECT game_title, version, title_id, build_id, cheat_count "
                     "FROM builds WHERE game_title IS NOT NULL AND game_title<>'' "
@@ -2371,10 +2375,17 @@ class ScraperGUI:
                 con.close()
             except Exception:
                 pass
+        # "downloaded" must agree with the table: do a LIVE disk scan (we are
+        # in a worker thread; ~5000 files take well under a second) and count
+        # only files that belong to a DB build. The stale JSON cache used
+        # before could under-report (e.g. 94% while everything was on disk).
         try:
-            out["downloaded"] = len(self._load_downloaded_cache())
+            on_disk = scan_downloaded_build_ids(output or self.dl_output.get())
+            self._save_downloaded_cache(on_disk, output)   # keep the cache fresh
         except Exception:
-            pass
+            on_disk = self._load_downloaded_cache(output)
+        out["downloaded"] = len(bids & {b.upper() for b in on_disk}) if bids \
+            else len(on_disk)
         st = getattr(self, "_update_state", {}) or {}
         out["last_data"] = st.get("data_db_baseline") or st.get("data_cheats_baseline")
         return out

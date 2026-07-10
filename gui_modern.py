@@ -269,9 +269,10 @@ class ModernApp(ScraperGUI):
         if not hasattr(self, "_dash_vars"):
             return
         import threading
+        output = self.dl_output.get()   # Tk var snapshot on the main thread
 
         def work():
-            stats = self._dashboard_stats()
+            stats = self._dashboard_stats(output)
             try:
                 self.root.after(0, lambda: self._paint_dashboard(stats))
             except Exception:
