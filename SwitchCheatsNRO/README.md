@@ -1,17 +1,38 @@
-# Switch Cheats Downloader (NRO Homebrew)
+# Switch Cheats Scraper & Downloader (NRO Homebrew) — v2.0
 
-Eigenständige **Nintendo-Switch-Homebrew-App** (`.nro`), die auf einer gemoddeten
-Switch direkt aus dem `data`-Release von
-[DevCatSKZ/Switch-Cheats-Scraper-Downloader](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data)
-die aktuelle **`switch-cheats.zip`** herunterlädt und **direkt auf der SD-Karte**
-im richtigen Atmosphère-Layout entpackt (`atmosphere/contents/<TitleID>/cheats/<BuildID>.txt`).
+**Der vollständige Port der Windows-Software auf die Nintendo Switch.** Seit
+v2.0 ist die `.nro` kein reiner Downloader mehr, sondern bildet dieselbe
+Informationsarchitektur und dieselbe **„Prisma / Holo-Glass"-Designsprache** wie
+das Desktop-Tool auf der Konsole ab: eine Sidebar-Shell mit den Seiten
+**Start · Bibliothek · Quellen · CheatSlips · Einstellungen · Protokoll** plus
+Spiel-Detailseite und Cheat-Editor.
 
-Dies ist ein eigenständiges Teilprojekt neben dem Python-Desktop-Tool
-(`@/c/Coding/Switch Cheats Scraper/scraper.py`, `@/c/Coding/Switch Cheats Scraper/gui.py`)
-im selben Repository — beide teilen sich nur die Datenquelle (die vom Desktop-Tool
-gepflegte `switch-cheats.zip`), aber keinen Code.
+Datenbasis ist dasselbe `data`-Release von
+[DevCatSKZ/Switch-Cheats-Scraper-Downloader](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data):
+die **`database.db`** (durchsuchbare Bibliothek mit ~3000 Spielen) und die
+**`switch-cheats.zip`** (alle Cheat-Dateien im Atmosphère-Layout
+`atmosphere/contents/<TitleID>/cheats/<BuildID>.txt`).
 
-## Funktionsumfang
+## Was auf der Switch (fast) genauso funktioniert wie am PC
+
+| Windows-Tool | Switch v2.0 |
+|---|---|
+| Holo-Glass-Sidebar + Rechteck-Aktivmarkierung + Badges | ✅ |
+| Start-Dashboard (Spiele/Cheats/installiert/DB-Größe + „Zuletzt aktualisiert") | ✅ (Live-SQLite-Stats) |
+| Bibliothek: Suche, Filter-Chips, Spalten, **Cover-Galerie**, Installiert-Status | ✅ Tabelle **und** Kachel-Galerie (Cover async geladen) |
+| Spiel-Detailseite: Fakten, Build-Karten, Cheat-Namen, Favoriten | ✅ |
+| **CheatSlips-API** (Token, Cheats pro Spiel) | ✅ Token per swkbd, Y auf der Spielseite lädt & installiert |
+| Community-Quellen (Hamlet / Sthetix / Breeze …) | ✅ eigene **Quellen-Seite**, lädt direkt ins Atmosphère-Layout |
+| **Cheat-Editor** mit Syntax-Validierung | ✅ Zeilen ansehen/bearbeiten (swkbd), Fehler rot, Header gold |
+| Export als ZIP · Reset/Clean | ✅ ZIP auf SD-Wurzel · 2-stufiges Löschen |
+| Auto-Update (App + Daten) · 6 Sprachen | ✅ |
+
+Der einzige Desktop-Teil, der auf der Konsole **physisch unmöglich** ist, ist das
+Playwright-**Browser**-Scraping (kein Chromium auf der Switch). Sein Ersatz ist
+genau das, was ohnehin schon da ist: die **CheatSlips-API** + das vom Desktop-Tool
+gepflegte, aggregierte `data`-Release — funktional deckungsgleich.
+
+## Funktionsumfang (Basis-Downloader, weiterhin vorhanden)
 
 - **Update-Erkennung, integriert in den Download-Bereich**: fragt die
   GitHub-API nach dem `updated_at`-Zeitstempel des Release-Assets

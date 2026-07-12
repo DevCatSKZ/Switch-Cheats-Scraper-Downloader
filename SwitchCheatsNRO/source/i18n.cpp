@@ -61,8 +61,8 @@ const Entry kTable[] = {
     {"footer.offline", {"Offline", "Offline", "Sin conexión", "Hors ligne", "Offline", "\xe3\x82\xaa\xe3\x83\x95\xe3\x83\xa9\xe3\x82\xa4\xe3\x83\xb3"}},
     {"footer.cancel",  {"B Abbrechen     +  Beenden erzwingen", "B Cancel     +  Force Exit", "B Cancelar     +  Forzar salida", "B Annuler     +  Forcer la sortie", "B Annulla     +  Forza uscita", "B \xe3\x82\xad\xe3\x83\xa3\xe3\x83\xb3\xe3\x82\xbb\xe3\x83\xab   + \xe5\xbc\xb7\xe5\x88\xb6\xe7\xb5\x82\xe4\xba\x86"}},
     {"footer.nav",     {"L/R Seite   Hoch/Runter Wählen   A OK   + Beenden", "L/R Page   Up/Down Select   A OK   + Exit", "L/R Página   Arriba/Abajo Elegir   A OK   + Salir", "L/R Page   Haut/Bas Choisir   A OK   + Quitter", "L/R Pagina   Su/Giù Scegli   A OK   + Esci", "L/R \xe3\x83\x9a\xe3\x83\xbc\xe3\x82\xb8   \xe4\xb8\x8a\xe4\xb8\x8b \xe9\x81\xb8\xe6\x8a\x9e   A \xe6\xb1\xba\xe5\xae\x9a   + \xe7\xb5\x82\xe4\xba\x86"}},
-    {"footer.library", {"Hoch/Runter Wählen   Links/Rechts Blättern   A Öffnen   X Filter   Y Suche", "Up/Down Select   Left/Right Page   A Open   X Filter   Y Search", "Arriba/Abajo Elegir   Izq/Der Página   A Abrir   X Filtro   Y Buscar", "Haut/Bas Choisir   G/D Page   A Ouvrir   X Filtre   Y Recherche", "Su/Giù Scegli   Sin/Des Pagina   A Apri   X Filtro   Y Cerca", "\xe4\xb8\x8a\xe4\xb8\x8b \xe9\x81\xb8\xe6\x8a\x9e   \xe5\xb7\xa6\xe5\x8f\xb3 \xe3\x83\x9a\xe3\x83\xbc\xe3\x82\xb8   A \xe9\x96\x8b\xe3\x81\x8f   X \xe3\x83\x95\xe3\x82\xa3\xe3\x83\xab\xe3\x82\xbf   Y \xe6\xa4\x9c\xe7\xb4\xa2"}},
-    {"footer.detail",  {"Hoch/Runter Build   A Cheats   X Favorit   B Zurück", "Up/Down Build   A Cheats   X Favorite   B Back", "Arriba/Abajo Build   A Trucos   X Favorito   B Volver", "Haut/Bas Build   A Cheats   X Favori   B Retour", "Su/Giù Build   A Trucchi   X Preferito   B Indietro", "\xe4\xb8\x8a\xe4\xb8\x8b \xe3\x83\x93\xe3\x83\xab\xe3\x83\x89   A \xe3\x83\x81\xe3\x83\xbc\xe3\x83\x88   X \xe3\x81\x8a\xe6\xb0\x97\xe3\x81\xab\xe5\x85\xa5\xe3\x82\x8a   B \xe6\x88\xbb\xe3\x82\x8b"}},
+    {"footer.library", {"A Öffnen   X Filter   Y Suche   - Galerie", "A Open   X Filter   Y Search   - Gallery", "A Abrir   X Filtro   Y Buscar   - Galería", "A Ouvrir   X Filtre   Y Recherche   - Galerie", "A Apri   X Filtro   Y Cerca   - Galleria", "A \xe9\x96\x8b\xe3\x81\x8f   X \xe3\x83\x95\xe3\x82\xa3\xe3\x83\xab\xe3\x82\xbf   Y \xe6\xa4\x9c\xe7\xb4\xa2   - \xe3\x82\xae\xe3\x83\xa3\xe3\x83\xa9\xe3\x83\xaa\xe3\x83\xbc"}},
+    {"footer.detail",  {"A Cheats   Y CheatSlips laden   ZR Editor   X Favorit   B Zurück", "A Cheats   Y Fetch CheatSlips   ZR Editor   X Favorite   B Back", "A Trucos   Y CheatSlips   ZR Editor   X Favorito   B Volver", "A Cheats   Y CheatSlips   ZR Éditeur   X Favori   B Retour", "A Trucchi   Y CheatSlips   ZR Editor   X Preferito   B Indietro", "A \xe3\x83\x81\xe3\x83\xbc\xe3\x83\x88   Y CheatSlips   ZR \xe3\x82\xa8\xe3\x83\x87\xe3\x82\xa3\xe3\x82\xbf\xe3\x83\xbc   X \xe3\x81\x8a\xe6\xb0\x97\xe3\x81\xab\xe5\x85\xa5\xe3\x82\x8a   B \xe6\x88\xbb\xe3\x82\x8b"}},
 
     {"status.checkinternet", {"Prüfe Internetverbindung...", "Checking internet connection...", "Comprobando la conexión a Internet...", "Vérification de la connexion Internet...", "Controllo della connessione Internet...", "\xe3\x82\xa4\xe3\x83\xb3\xe3\x82\xbf\xe3\x83\xbc\xe3\x83\x8d\xe3\x83\x83\xe3\x83\x88\xe6\x8e\xa5\xe7\xb6\x9a\xe3\x82\x92\xe7\xa2\xba\xe8\xaa\x8d\xe4\xb8\xad..."}},
     {"status.connecting",    {"Verbinde mit GitHub...", "Connecting to GitHub...", "Conectando con GitHub...", "Connexion à GitHub...", "Connessione a GitHub...", "GitHub\xe3\x81\xab\xe6\x8e\xa5\xe7\xb6\x9a\xe4\xb8\xad..."}},
@@ -175,7 +175,7 @@ const Entry kTable[] = {
     {"game.installed",        {"installiert", "installed", "instalado", "installé", "installato", "インストール済み"}},
     {"game.nobuilds",         {"Keine Builds gefunden.", "No builds found.", "No hay builds.", "Aucun build.", "Nessuna build.", "ビルドがありません。"}},
     {"game.cheats.none",      {"(keine Cheat-Namen hinterlegt)", "(no cheat names stored)", "(sin nombres de trucos)", "(pas de noms de cheats)", "(nessun nome di trucco)", "（チート名がありません）"}},
-    {"game.hint",             {"A Cheats zeigen   X Favorit   B Zurück", "A Show cheats   X Favorite   B Back", "A Ver trucos   X Favorito   B Volver", "A Voir cheats   X Favori   B Retour", "A Mostra trucchi   X Preferito   B Indietro", "A チート表示   X お気に入り   B 戻る"}},
+    {"game.hint",             {"Y = Cheats von CheatSlips laden   ZR = Editor", "Y = fetch cheats from CheatSlips   ZR = editor", "Y = trucos de CheatSlips   ZR = editor", "Y = cheats depuis CheatSlips   ZR = éditeur", "Y = trucchi da CheatSlips   ZR = editor", "Y = CheatSlipsから取得   ZR = エディター"}},
 
     {"set.section.lang", {"Sprache", "Language", "Idioma", "Langue", "Lingua", "言語"}},
     {"set.section.app",  {"App-Update", "App update", "Actualización de la app", "Mise à jour de l'app", "Aggiornamento app", "アプリの更新"}},
@@ -184,6 +184,76 @@ const Entry kTable[] = {
     {"set.reload.done",  {"Bibliothek neu geladen.", "Library reloaded.", "Biblioteca recargada.", "Bibliothèque rechargée.", "Libreria ricaricata.", "ライブラリを再読み込みしました。"}},
 
     {"log.empty", {"Noch keine Einträge.", "No entries yet.", "Aún no hay entradas.", "Pas encore d'entrées.", "Ancora nessuna voce.", "まだ項目がありません。"}},
+
+    // ------------------------------------------------------------------
+    // v2.0 Phase 2/3 - Quellen, CheatSlips, Galerie, Editor, Export/Clean
+    // ------------------------------------------------------------------
+    {"nav.sources",    {"Quellen", "Sources", "Fuentes", "Sources", "Fonti", "ソース"}},
+    {"nav.cheatslips", {"CheatSlips", "CheatSlips", "CheatSlips", "CheatSlips", "CheatSlips", "CheatSlips"}},
+    {"eyebrow.sources",    {"Sammeln", "Collect", "Recopilar", "Collecter", "Raccogli", "収集"}},
+    {"eyebrow.cheatslips", {"Konto", "Account", "Cuenta", "Compte", "Account", "アカウント"}},
+    {"sub.sources",    {"Community-Archive direkt auf die SD-Karte laden.", "Load community archives straight onto the SD card.", "Carga archivos de la comunidad directamente a la SD.", "Chargez les archives communautaires directement sur la SD.", "Carica gli archivi della community direttamente sulla SD.", "コミュニティのアーカイブを直接SDカードへ。"}},
+    {"sub.cheatslips", {"API-Token verwalten und Cheats pro Spiel laden.", "Manage your API token and fetch cheats per game.", "Gestiona tu token y descarga trucos por juego.", "Gérez votre jeton et récupérez des cheats par jeu.", "Gestisci il token e scarica trucchi per gioco.", "APIトークンの管理とゲーム別チート取得。"}},
+
+    {"src.hamlet.name",   {"Hamlet TitleDB (komplett)", "Hamlet TitleDB (complete)", "Hamlet TitleDB (completo)", "Hamlet TitleDB (complet)", "Hamlet TitleDB (completo)", "Hamlet TitleDB（完全版）"}},
+    {"src.hamlet.desc",   {"Das komplette switch-cheats-db-Archiv (GBAtemp + TitleDB).", "The complete switch-cheats-db archive (GBAtemp + TitleDB).", "El archivo completo de switch-cheats-db.", "L'archive complète switch-cheats-db.", "L'archivio completo di switch-cheats-db.", "switch-cheats-dbの完全アーカイブ。"}},
+    {"src.hamlet60.name", {"Hamlet 60FPS/Res/GFX", "Hamlet 60FPS/Res/GFX", "Hamlet 60FPS/Res/GFX", "Hamlet 60FPS/Res/GFX", "Hamlet 60FPS/Res/GFX", "Hamlet 60FPS/Res/GFX"}},
+    {"src.hamlet60.desc", {"Nur Performance-/Grafik-Cheats (60 FPS, Auflösung).", "Performance/graphics cheats only (60 FPS, resolution).", "Solo trucos de rendimiento/gráficos.", "Uniquement les cheats performance/graphismes.", "Solo trucchi di prestazioni/grafica.", "パフォーマンス/グラフィック系チートのみ。"}},
+    {"src.sthetix.name",  {"Sthetix TitleDB (aggregiert)", "Sthetix TitleDB (aggregated)", "Sthetix TitleDB (agregado)", "Sthetix TitleDB (agrégé)", "Sthetix TitleDB (aggregato)", "Sthetix TitleDB（集約版）"}},
+    {"src.sthetix.desc",  {"Täglich aggregiert: GBAtemp + GFX + switch-cheats-db + CheatSlips.", "Aggregated daily: GBAtemp + GFX + switch-cheats-db + CheatSlips.", "Agregado a diario de varias fuentes.", "Agrégé quotidiennement depuis plusieurs sources.", "Aggregato ogni giorno da più fonti.", "毎日複数ソースを集約。"}},
+    {"src.breeze.name",   {"Breeze / NXCheatCode", "Breeze / NXCheatCode", "Breeze / NXCheatCode", "Breeze / NXCheatCode", "Breeze / NXCheatCode", "Breeze / NXCheatCode"}},
+    {"src.breeze.desc",   {"Die Breeze/EdiZon-SE-Datenbank (eigenes Code-Korpus).", "The Breeze/EdiZon-SE database (separate code corpus).", "La base de datos de Breeze/EdiZon-SE.", "La base Breeze/EdiZon-SE.", "Il database Breeze/EdiZon-SE.", "Breeze/EdiZon-SEのデータベース。"}},
+    {"src.note",  {"A lädt das gewählte Archiv und installiert es ins Atmosphère-Layout.", "A downloads the selected archive and installs it in Atmosphère layout.", "A descarga el archivo elegido y lo instala en formato Atmosphère.", "A télécharge l'archive choisie et l'installe au format Atmosphère.", "A scarica l'archivio scelto e lo installa nel formato Atmosphère.", "Aで選択したアーカイブをAtmosphère形式でインストールします。"}},
+    {"src.note2", {"Die übrigen Desktop-Quellen stecken bereits im Daten-Release (Start-Seite).", "The remaining desktop sources are already in the data release (Home page).", "Las demás fuentes ya están en el data-release (Inicio).", "Les autres sources sont déjà dans la data-release (Accueil).", "Le altre fonti sono già nel data-release (Home).", "その他のソースはデータリリース（ホーム）に含まれています。"}},
+    {"status.downloading.src", {"Lade Archiv herunter...", "Downloading archive...", "Descargando archivo...", "Téléchargement de l'archive...", "Download dell'archivio...", "アーカイブをダウンロード中..."}},
+    {"unit.files", {"Dateien", "files", "archivos", "fichiers", "file", "ファイル"}},
+    {"unit.games", {"Spiele", "games", "juegos", "jeux", "giochi", "ゲーム"}},
+
+    {"cs.fetching",      {"Hole Cheats von CheatSlips...", "Fetching cheats from CheatSlips...", "Obteniendo trucos de CheatSlips...", "Récupération des cheats depuis CheatSlips...", "Recupero trucchi da CheatSlips...", "CheatSlipsからチートを取得中..."}},
+    {"cs.badtoken",      {"Token fehlt/ungültig - auf der CheatSlips-Seite eintragen.", "Token missing/invalid - set it on the CheatSlips page.", "Token ausente/no válido: configúralo en la página CheatSlips.", "Jeton absent/invalide : réglez-le sur la page CheatSlips.", "Token mancante/non valido: impostalo nella pagina CheatSlips.", "トークンが無効です。CheatSlipsページで設定してください。"}},
+    {"cs.notfound",      {"Spiel nicht auf cheatslips.com.", "Game not on cheatslips.com.", "El juego no está en cheatslips.com.", "Jeu absent de cheatslips.com.", "Gioco non presente su cheatslips.com.", "cheatslips.comにないゲームです。"}},
+    {"cs.tokenok",       {"Token funktioniert - Inhalte werden geliefert.", "Token works - content is being served.", "El token funciona.", "Le jeton fonctionne.", "Il token funziona.", "トークンは有効です。"}},
+    {"cs.token.header",  {"CheatSlips-API-Token eingeben (leer = löschen)", "Enter CheatSlips API token (empty = clear)", "Introduce el token de CheatSlips (vacío = borrar)", "Saisir le jeton CheatSlips (vide = effacer)", "Inserisci il token CheatSlips (vuoto = cancella)", "CheatSlips APIトークンを入力（空=削除）"}},
+    {"cs.token.title",   {"API-Token", "API token", "Token de API", "Jeton API", "Token API", "APIトークン"}},
+    {"cs.token.set",     {"Token gespeichert: ", "Token saved: ", "Token guardado: ", "Jeton enregistré : ", "Token salvato: ", "トークン保存済み: "}},
+    {"cs.token.none",    {"Kein Token - A drücken und Token aus deinem CheatSlips-Konto eintragen.", "No token - press A and paste the token from your CheatSlips account.", "Sin token: pulsa A e introduce el token de tu cuenta.", "Pas de jeton : appuyez sur A et saisissez le jeton du compte.", "Nessun token: premi A e inserisci il token del tuo account.", "トークン未設定。Aを押してアカウントのトークンを入力。"}},
+    {"cs.token.hint",    {"A = Token eingeben/ändern   ·   Y = Token testen", "A = enter/change token   ·   Y = test token", "A = introducir/cambiar token   ·   Y = probar token", "A = saisir/modifier le jeton   ·   Y = tester", "A = inserisci/cambia token   ·   Y = prova token", "A = トークン入力/変更   ·   Y = テスト"}},
+    {"cs.token.saved",   {"Token gespeichert.", "Token saved.", "Token guardado.", "Jeton enregistré.", "Token salvato.", "トークンを保存しました。"}},
+    {"cs.token.cleared", {"Token gelöscht.", "Token cleared.", "Token borrado.", "Jeton effacé.", "Token cancellato.", "トークンを削除しました。"}},
+    {"cs.token.missing", {"Kein CheatSlips-Token - zuerst auf der CheatSlips-Seite eintragen.", "No CheatSlips token - set one on the CheatSlips page first.", "Sin token de CheatSlips: configúralo primero.", "Pas de jeton CheatSlips : réglez-le d'abord.", "Nessun token CheatSlips: impostalo prima.", "CheatSlipsトークンがありません。先に設定してください。"}},
+    {"cs.how.title",     {"So funktioniert's", "How it works", "Cómo funciona", "Comment ça marche", "Come funziona", "使い方"}},
+    {"cs.how.1",         {"1. Kostenloses Konto auf cheatslips.com anlegen und das API-Token kopieren.", "1. Create a free account on cheatslips.com and copy the API token.", "1. Crea una cuenta gratis en cheatslips.com y copia el token.", "1. Créez un compte gratuit sur cheatslips.com et copiez le jeton.", "1. Crea un account gratuito su cheatslips.com e copia il token.", "1. cheatslips.comで無料アカウントを作成しトークンをコピー。"}},
+    {"cs.how.2",         {"2. Token hier mit A eintragen (einmalig).", "2. Enter the token here with A (once).", "2. Introduce el token aquí con A (una vez).", "2. Saisissez le jeton ici avec A (une fois).", "2. Inserisci il token qui con A (una volta).", "2. ここでAを押してトークンを入力（1回のみ）。"}},
+    {"cs.how.3",         {"3. Auf einer Spielseite Y drücken - die Cheats landen direkt auf der SD.", "3. Press Y on a game page - cheats go straight to the SD card.", "3. Pulsa Y en la página de un juego: los trucos van a la SD.", "3. Appuyez sur Y sur une page de jeu : les cheats vont sur la SD.", "3. Premi Y nella pagina di un gioco: i trucchi vanno sulla SD.", "3. ゲームページでYを押すとチートがSDへ保存されます。"}},
+    {"cs.note",          {"Hinweis: Die Download-Quota deines Kontos gilt auch für die API.", "Note: your account's download quota also applies to the API.", "Nota: la cuota de tu cuenta también aplica a la API.", "Note : le quota de votre compte s'applique aussi à l'API.", "Nota: la quota del tuo account vale anche per l'API.", "注意: アカウントのダウンロード枠はAPIにも適用されます。"}},
+
+    {"exp.title",       {"Cheats als ZIP exportieren", "Export cheats as ZIP", "Exportar trucos como ZIP", "Exporter les cheats en ZIP", "Esporta trucchi come ZIP", "チートをZIPにエクスポート"}},
+    {"exp.desc",        {"Packt alle installierten Cheats nach sdmc:/switch-cheats-export.zip.", "Packs every installed cheat into sdmc:/switch-cheats-export.zip.", "Empaqueta todos los trucos en sdmc:/switch-cheats-export.zip.", "Regroupe tous les cheats dans sdmc:/switch-cheats-export.zip.", "Impacchetta tutti i trucchi in sdmc:/switch-cheats-export.zip.", "全チートをsdmc:/switch-cheats-export.zipへ。"}},
+    {"exp.running",     {"Exportiere...", "Exporting...", "Exportando...", "Exportation...", "Esportazione...", "エクスポート中..."}},
+    {"exp.done.prefix", {"Export fertig: ", "Export done: ", "Exportación lista: ", "Export terminé : ", "Esportazione completata: ", "エクスポート完了: "}},
+    {"exp.done.suffix", {" Dateien -> sdmc:/switch-cheats-export.zip", " files -> sdmc:/switch-cheats-export.zip", " archivos -> sdmc:/switch-cheats-export.zip", " fichiers -> sdmc:/switch-cheats-export.zip", " file -> sdmc:/switch-cheats-export.zip", " ファイル -> sdmc:/switch-cheats-export.zip"}},
+
+    {"clean.title",       {"Alle Cheats von der SD entfernen", "Remove all cheats from the SD card", "Eliminar todos los trucos de la SD", "Supprimer tous les cheats de la SD", "Rimuovi tutti i trucchi dalla SD", "SDからすべてのチートを削除"}},
+    {"clean.desc",        {"Löscht alle Cheat-Dateien + Cover. Datenbank und Einstellungen bleiben.", "Deletes every cheat file + covers. Database and settings stay.", "Borra todos los trucos y carátulas. La base y ajustes quedan.", "Supprime cheats et jaquettes. Base et réglages conservés.", "Elimina trucchi e copertine. Database e impostazioni restano.", "チートとカバーを削除。DBと設定は残ります。"}},
+    {"clean.confirm",     {"Wirklich? A erneut drücken zum Löschen - B bricht ab.", "Really? Press A again to delete - B cancels.", "¿Seguro? Pulsa A de nuevo para borrar.", "Vraiment ? Rappuyez sur A pour supprimer.", "Sicuro? Premi di nuovo A per eliminare.", "本当に削除しますか？もう一度Aで削除。"}},
+    {"clean.running",     {"Entferne Cheats...", "Removing cheats...", "Eliminando trucos...", "Suppression des cheats...", "Rimozione trucchi...", "チートを削除中..."}},
+    {"clean.done.prefix", {"Säuberung fertig: ", "Cleanup done: ", "Limpieza lista: ", "Nettoyage terminé : ", "Pulizia completata: ", "クリーンアップ完了: "}},
+    {"clean.done.suffix", {" Dateien entfernt.", " files removed.", " archivos eliminados.", " fichiers supprimés.", " file rimossi.", " ファイルを削除しました。"}},
+
+    {"ed.eyebrow",        {"Editor", "Editor", "Editor", "Éditeur", "Editor", "エディター"}},
+    {"ed.back",           {"Zurück (ohne Speichern)", "Back (without saving)", "Volver (sin guardar)", "Retour (sans enregistrer)", "Indietro (senza salvare)", "戻る（保存しない）"}},
+    {"ed.lines",          {"Zeilen", "lines", "líneas", "lignes", "righe", "行"}},
+    {"ed.errors",         {"Fehler", "errors", "errores", "erreurs", "errori", "エラー"}},
+    {"ed.dirty",          {"  ·  ungespeichert!", "  ·  unsaved!", "  ·  ¡sin guardar!", "  ·  non enregistré !", "  ·  non salvato!", "  ·  未保存！"}},
+    {"ed.saved",          {"Cheat-Datei gespeichert.", "Cheat file saved.", "Archivo guardado.", "Fichier enregistré.", "File salvato.", "チートファイルを保存しました。"}},
+    {"ed.discarded",      {"Editor ohne Speichern verlassen.", "Left the editor without saving.", "Saliste sin guardar.", "Éditeur quitté sans enregistrer.", "Uscito senza salvare.", "保存せずに終了しました。"}},
+    {"ed.notinstalled",   {"Build ist nicht installiert - erst Cheats laden.", "Build is not installed - fetch cheats first.", "El build no está instalado.", "Le build n'est pas installé.", "La build non è installata.", "ビルドが未インストールです。"}},
+    {"ed.line.header",    {"Zeile bearbeiten", "Edit line", "Editar línea", "Modifier la ligne", "Modifica riga", "行を編集"}},
+    {"ed.newline.header", {"Neue Zeile einfügen", "Insert new line", "Insertar línea nueva", "Insérer une ligne", "Inserisci nuova riga", "新しい行を挿入"}},
+
+    {"gal.cheats.suffix", {" Cheats", " cheats", " trucos", " cheats", " trucchi", " チート"}},
+    {"footer.editor",     {"A Zeile bearbeiten   Y Neue Zeile   X Löschen   - Speichern   B Zurück", "A Edit line   Y New line   X Delete   - Save   B Back", "A Editar   Y Nueva línea   X Borrar   - Guardar   B Volver", "A Modifier   Y Nouvelle ligne   X Supprimer   - Enregistrer   B Retour", "A Modifica   Y Nuova riga   X Elimina   - Salva   B Indietro", "A 編集   Y 新規行   X 削除   - 保存   B 戻る"}},
+    {"footer.cheatslips", {"A Token eingeben   Y Token testen   L/R Seite", "A Enter token   Y Test token   L/R Page", "A Token   Y Probar   L/R Página", "A Jeton   Y Tester   L/R Page", "A Token   Y Prova   L/R Pagina", "A トークン入力   Y テスト   L/R ページ"}},
 };
 // clang-format on
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 #include <functional>
 #include <atomic>
 
@@ -35,6 +36,21 @@ ReleaseInfo fetchLatestReleaseInfo();
 
 // Dasselbe fuer ein BELIEBIGES Asset des data-Release (z.B. database.db).
 ReleaseInfo fetchAssetInfo(const char* assetName);
+
+// Neuestes Release eines beliebigen GitHub-Repos ("owner/name") abfragen und
+// das erste Asset aus der Kandidatenliste liefern (fuer die Community-Quellen
+// wie HamletDuFromage/switch-cheats-db).
+ReleaseInfo fetchRepoLatestAsset(const std::string& repo,
+                                 const std::vector<std::string>& assetCandidates);
+
+// true, sobald curl global initialisiert wurde (fuer Worker, die nicht selbst
+// initialisieren duerfen, z.B. den Cover-Downloader).
+bool curlReady();
+
+// Einfacher authentifizierter/plain GET, Antwort als String (fuer die
+// CheatSlips-API). extraHeader z.B. "X-API-TOKEN: ..."; leer = keiner.
+long httpGet(const std::string& url, const std::string& extraHeader,
+             std::string& response, std::string& error);
 
 // Fortschritts-Callback: (bytesDownloaded, bytesTotal) -> return false zum Abbrechen
 using ProgressCb = std::function<bool(long long done, long long total)>;

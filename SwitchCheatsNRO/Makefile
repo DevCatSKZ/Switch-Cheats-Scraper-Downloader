@@ -25,7 +25,7 @@ ROMFS		:=	romfs
 
 APP_TITLE   := Switch Cheats Scraper & Downloader
 APP_AUTHOR  := DevCatSKZ
-APP_VERSION := 2.0
+APP_VERSION := 2.0.0
 
 # Einzige Quelle der Versionsnummer: wird als APP_VERSION-Makro in den Code
 # durchgereicht (config.hpp: kAppVersion + kUserAgent) und von den
@@ -46,7 +46,7 @@ DEFINES += -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_WAL -DSQLITE_OMIT_LOAD_EXTENSION 
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
-CFLAGS	:=	`$(PREFIX)pkg-config --cflags sdl2 SDL2_ttf minizip` -Wall -O2 -ffunction-sections \
+CFLAGS	:=	`$(PREFIX)pkg-config --cflags sdl2 SDL2_ttf SDL2_image minizip` -Wall -O2 -ffunction-sections \
 			$(ARCH) $(DEFINES)
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__
@@ -57,7 +57,7 @@ ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS	:=	-Wl,--start-group \
-			`$(PREFIX)pkg-config --libs sdl2 SDL2_ttf minizip` \
+			`$(PREFIX)pkg-config --libs sdl2 SDL2_ttf SDL2_image minizip` \
 			-lcurl -lmbedtls -lmbedx509 -lmbedcrypto -lz \
 			-lnx \
 			-Wl,--end-group

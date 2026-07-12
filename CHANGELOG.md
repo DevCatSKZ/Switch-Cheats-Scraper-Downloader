@@ -2,6 +2,47 @@
 
 All notable changes to this project are documented here.
 
+## Switch app v2.0.0 — 2026-07-12 (full port of the Windows tool)
+
+The Nintendo Switch homebrew (`SwitchCheatsNRO`, the `nro` release) grows from a
+plain cheat-downloader into the **complete Windows software on the console**,
+1:1 in the Prisma / Holo-Glass design language.
+
+### Added
+- **Sidebar shell** (Start / Bibliothek / Quellen / CheatSlips / Einstellungen /
+  Protokoll) with the clean active-row rectangle, games-count badge, spaced
+  eyebrow page heads and a footer with online dot, live status and per-page
+  button hints.
+- **On-console SQLite library**: vendored SQLite amalgamation (3.53.3), built
+  `THREADSAFE=0 / OMIT_WAL`, opened read-only through a custom **“nx” VFS** that
+  passes `sdmc:/…` device paths through unchanged. Loads the published
+  `database.db` (~3000 games) into RAM; C++ search / filter / paging.
+- **Home dashboard**: live stat cards (games / cheats total / cheat files on SD /
+  DB size), “get everything” (now downloads **database.db** first, then
+  switch-cheats.zip), recently-updated list, clock warning.
+- **Library**: table **and cover gallery** (async cover downloads via
+  SDL2_image), search (swkbd), filter chips (All / Has cheats / Installed /
+  Favorites), drawn install checkmarks, key-repeat + touch.
+- **Game detail page**: facts, build cards, expandable cheat names, favorite
+  toggle (persisted in settings.txt).
+- **CheatSlips API**: token entry (swkbd) + test on the CheatSlips page; **Y** on
+  a game page fetches that game’s cheats and installs them to the SD.
+- **Sources page**: Hamlet (complete / 60fps) / Sthetix / Breeze — downloads the
+  latest release archive and maps `…/<TID>/cheats/<BID>.txt` into the Atmosphère
+  layout (verified live: 925 files / 531 games).
+- **Cheat editor**: view/edit a build’s lines via swkbd with the same syntax
+  validation as the desktop (header gold, master violet, error lines red), save
+  with Minus.
+- **Export** (all installed cheats → `sdmc:/switch-cheats-export.zip`) and
+  **Reset/Clean** (2-step) in Settings.
+- **Text-render cache** (per font/colour/string) — Library went from ~30 to a
+  steady 60 FPS.
+- ~110 new i18n keys across all 6 languages.
+
+### Data release
+- Republished `database.db` in **DELETE journal mode** (a WAL-marked file reads
+  as “file is not a database” on the `OMIT_WAL` console build).
+
 ## v1.3 — 2026-07-11 (modern-UI polish & fixes)
 
 ### Fixed

@@ -25,6 +25,7 @@ struct GameRow {
     int builds = 0;          // Anzahl Builds in der Gruppe
     long long cheats = 0;    // Summe cheat_count
     std::string lastUpdated; // MAX(last_updated) der Gruppe (ISO, "" moeglich)
+    std::string image;       // erste bekannte Cover-URL ("" moeglich)
     // Alle (title_id, build_id)-Paare der Gruppe - fuer den Installiert-Check
     // gegen die auf SD liegenden Cheat-Dateien.
     std::vector<std::pair<std::string, std::string>> pairs;

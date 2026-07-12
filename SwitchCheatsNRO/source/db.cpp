@@ -98,7 +98,7 @@ bool reload() {
     // Eine flache Abfrage; gruppiert wird in C++ (haelt SQL trivial und
     // erlaubt es, die (tid,bid)-Paare fuer den Installiert-Check mitzunehmen).
     const char* sql =
-        "SELECT title_id, build_id, game_title, region, cheat_count, last_updated "
+        "SELECT title_id, build_id, game_title, region, cheat_count, last_updated, image "
         "FROM builds WHERE title_id IS NOT NULL AND title_id<>''";
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(h, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -115,11 +115,13 @@ bool reload() {
         std::string region = colText(stmt, 3);
         int cheats = sqlite3_column_int(stmt, 4);
         std::string updated = colText(stmt, 5);
+        std::string image = colText(stmt, 6);
 
         GameRow& g = groups[baseOf(tid)];
         if (g.baseTid.empty()) g.baseTid = baseOf(tid);
         if (g.title.empty() && !name.empty()) g.title = name;
         if (g.region.empty() && !region.empty()) g.region = region;
+        if (g.image.empty() && !image.empty()) g.image = image;
         g.builds += 1;
         g.cheats += cheats;
         if (updated > g.lastUpdated) g.lastUpdated = updated;

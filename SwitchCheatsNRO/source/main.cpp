@@ -13,6 +13,7 @@
 #include <switch.h>
 #include <SDL.h>
 #include <SDL_ttf.h>
+#include <SDL_image.h>
 #include <curl/curl.h>
 
 #include <string>
@@ -26,6 +27,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <ctime>
+#include <dirent.h>
+#include <unistd.h>
 
 #include "config.hpp"
 #include "updater.hpp"
@@ -35,6 +38,8 @@
 #include "installer.hpp"
 #include "settings.hpp"
 #include "applog.hpp"
+#include "cheatslips.hpp"
+#include "covers.hpp"
 
 using i18n::tr;
 
@@ -45,6 +50,8 @@ using i18n::tr;
 #define JOY_Y     3
 #define JOY_L     6
 #define JOY_R     7
+#define JOY_ZL    8
+#define JOY_ZR    9
 #define JOY_PLUS  10
 #define JOY_MINUS 11
 #define JOY_LEFT  12
@@ -79,7 +86,8 @@ static constexpr time_t kMinSaneEpoch = 1735689600LL;
 // ---------------------------------------------------------------------------
 // Geteilter Zustand zwischen UI-Thread und Hintergrund-Worker
 // ---------------------------------------------------------------------------
-enum class Action { None, Checking, Installing, AppChecking, AppInstalling };
+enum class Action { None, Checking, Installing, AppChecking, AppInstalling,
+                    Source, CheatSlips, Export, Clean };
 
 static std::atomic<Action> g_action{Action::None};
 static std::atomic<bool>   g_cancelRequested{false};
@@ -506,6 +514,227 @@ static void startAppInstall() {
 }
 
 // ---------------------------------------------------------------------------
+// Community-Quellen (Quellen-Seite): GitHub-latest-Release-Archive im
+// titles/<TID>/cheats/<BID>.txt-Layout -> direkt ins Atmosphere-Layout.
+// Dieselben Quellen wie die Desktop-Buttons (die uebrigen Desktop-Quellen
+// stecken bereits aggregiert im data-Release).
+// ---------------------------------------------------------------------------
+struct SourceDef {
+    const char* key;        // i18n-Prefix (src.<key>.name / .desc)
+    const char* repo;
+    const char* asset;
+};
+static const SourceDef kSources[] = {
+    {"hamlet",  "HamletDuFromage/switch-cheats-db", "titles_complete.zip"},
+    {"hamlet60","HamletDuFromage/switch-cheats-db", "titles_60fps-res-gfx.zip"},
+    {"sthetix", "sthetix/nx-cheats-db",             "titles_complete.zip"},
+    {"breeze",  "tomvita/NXCheatCode",              "titles.zip"},
+};
+static constexpr int kSourceCount = 4;
+static std::atomic<int> g_sourceRunning{-1}; // Index in kSources waehrend Action::Source
+
+static void runSourceWorker(int idx) {
+    g_cancelRequested = false;
+    g_bytesDone = 0;
+    g_bytesTotal = 0;
+    g_zipIndex = 0;
+    g_zipTotal = 0;
+    const SourceDef& src = kSources[idx];
+
+    setStatus(tr("status.checkinternet"));
+    bool net = updater::isInternetAvailable();
+    g_online = net;
+    if (!net) {
+        setResult(false, tr("result.noInternet"));
+        g_sourceRunning = -1;
+        g_action = Action::None;
+        return;
+    }
+
+    setStatus(tr("status.connecting"));
+    auto info = updater::fetchRepoLatestAsset(src.repo, {src.asset});
+    if (!info.ok) {
+        setResult(false, std::string(tr("result.errorPrefix")) + info.error);
+        g_sourceRunning = -1;
+        g_action = Action::None;
+        return;
+    }
+
+    std::string tmpZip = std::string(cfg::kAppDir) + "/source.zip.part";
+    updater::removeIfExists(tmpZip.c_str());
+    setStatus(tr("status.downloading.src"));
+    auto dl = updater::downloadFile(info.downloadUrl, tmpZip,
+        [](long long done, long long total) -> bool {
+            g_bytesDone = done;
+            g_bytesTotal = total;
+            return !g_cancelRequested.load();
+        });
+    if (dl.cancelled || !dl.ok) {
+        updater::removeIfExists(tmpZip.c_str());
+        setResult(false, dl.cancelled ? tr("result.cancelled")
+                                      : std::string(tr("result.errorPrefix")) + dl.error);
+        g_sourceRunning = -1;
+        g_action = Action::None;
+        return;
+    }
+
+    setStatus(tr("status.extracting"));
+    auto ex = zipextract::extractCheatArchive(tmpZip,
+        [](int i, int total, const std::string&) -> bool {
+            g_zipIndex = i;
+            g_zipTotal = total;
+            return !g_cancelRequested.load();
+        });
+    updater::removeIfExists(tmpZip.c_str());
+    if (ex.cancelled) {
+        setResult(false, tr("result.cancelledInstall"));
+    } else if (!ex.ok) {
+        setResult(false, std::string(tr("result.extractErrorPrefix")) + ex.error);
+    } else {
+        installer::startScan();
+        char buf[160];
+        snprintf(buf, sizeof(buf), "%s: %d %s / %d %s", tr(("src." + std::string(src.key) + ".name").c_str()),
+                 ex.filesWritten, tr("unit.files"), ex.gamesSeen, tr("unit.games"));
+        setResult(true, buf);
+    }
+    g_sourceRunning = -1;
+    g_action = Action::None;
+}
+
+static void startSource(int idx) {
+    if (g_action.load() != Action::None) return;
+    joinWorkerIfDone();
+    updater::ensureCurlGlobalInit();
+    g_sourceRunning = idx;
+    g_action = Action::Source;
+    g_worker = std::thread(runSourceWorker, idx);
+}
+
+// -- CheatSlips: Cheats fuer EIN Spiel laden (von der Detailseite, Y) --------
+static std::string g_csTid;      // Ziel-TitleID des laufenden Fetches
+static std::atomic<bool> g_csDone{false}; // Detailseite soll neu laden
+
+static void runCheatslipsWorker() {
+    g_cancelRequested = false;
+    setStatus(tr("cs.fetching"));
+    bool net = updater::isInternetAvailable();
+    g_online = net;
+    if (!net) {
+        setResult(false, tr("result.noInternet"));
+        g_action = Action::None;
+        return;
+    }
+    auto r = cheatslips::fetchAndInstall(g_csTid);
+    if (!r.ok) {
+        setResult(false, std::string(tr("result.errorPrefix")) + r.error);
+    } else if (r.filesWritten == 0) {
+        std::string why = r.skippedNoToken > 0 ? tr("cs.badtoken") : tr("cs.notfound");
+        setResult(false, why);
+    } else {
+        installer::startScan();
+        char buf[128];
+        snprintf(buf, sizeof(buf), "CheatSlips: %d %s (%d Cheats)",
+                 r.filesWritten, tr("unit.files"), r.cheatsSeen);
+        setResult(true, buf);
+        g_csDone = true;
+    }
+    g_action = Action::None;
+}
+
+static void startCheatslipsFetch(const std::string& tid) {
+    if (g_action.load() != Action::None) return;
+    joinWorkerIfDone();
+    updater::ensureCurlGlobalInit();
+    g_csTid = tid;
+    g_action = Action::CheatSlips;
+    g_worker = std::thread(runCheatslipsWorker);
+}
+
+// -- Export: alle installierten Cheats als ZIP auf die SD-Wurzel -------------
+static void runExportWorker() {
+    g_cancelRequested = false;
+    g_zipIndex = 0;
+    g_zipTotal = 0;
+    setStatus(tr("exp.running"));
+    const char* dest = "sdmc:/switch-cheats-export.zip";
+    updater::removeIfExists(dest);
+    auto r = zipextract::zipInstalledCheats(dest,
+        [](int i, int, const std::string&) -> bool {
+            g_zipIndex = i;
+            return !g_cancelRequested.load();
+        });
+    if (r.cancelled) {
+        setResult(false, tr("result.cancelled"));
+    } else if (!r.ok) {
+        setResult(false, std::string(tr("result.errorPrefix")) + r.error);
+    } else {
+        char buf[160];
+        snprintf(buf, sizeof(buf), "%s%d%s", tr("exp.done.prefix"), r.filesWritten,
+                 tr("exp.done.suffix"));
+        setResult(true, buf);
+    }
+    g_action = Action::None;
+}
+
+static void startExport() {
+    if (g_action.load() != Action::None) return;
+    joinWorkerIfDone();
+    g_action = Action::Export;
+    g_worker = std::thread(runExportWorker);
+}
+
+// -- Clean: alle installierten Cheat-Dateien + Cover von der SD entfernen ----
+static void runCleanWorker() {
+    g_cancelRequested = false;
+    setStatus(tr("clean.running"));
+    int removed = 0;
+    std::string root = std::string(cfg::kSdRoot) + "atmosphere/contents";
+    DIR* d = opendir(root.c_str());
+    if (d) {
+        struct dirent* e;
+        while ((e = readdir(d)) != nullptr) {
+            std::string tid = e->d_name;
+            if (tid == "." || tid == "..") continue;
+            std::string cheatsDir = root + "/" + tid + "/cheats";
+            DIR* cd = opendir(cheatsDir.c_str());
+            if (!cd) continue;
+            std::vector<std::string> files;
+            struct dirent* ce;
+            while ((ce = readdir(cd)) != nullptr) {
+                std::string fn = ce->d_name;
+                if (fn.size() > 4 && fn.compare(fn.size() - 4, 4, ".txt") == 0) {
+                    files.push_back(cheatsDir + "/" + fn);
+                }
+            }
+            closedir(cd);
+            for (const auto& f : files) {
+                if (remove(f.c_str()) == 0) removed++;
+            }
+            // leere cheats/- und Titel-Ordner aufraeumen (scheitert harmlos,
+            // wenn noch andere Inhalte (exefs u.ae.) drinliegen)
+            rmdir(cheatsDir.c_str());
+            rmdir((root + "/" + tid).c_str());
+            if (g_cancelRequested.load()) break;
+        }
+        closedir(d);
+    }
+    covers::clearDisk();
+    updater::removeIfExists(cfg::kStateFile);
+    installer::startScan();
+    char buf[128];
+    snprintf(buf, sizeof(buf), "%s%d%s", tr("clean.done.prefix"), removed, tr("clean.done.suffix"));
+    setResult(true, buf);
+    g_action = Action::None;
+}
+
+static void startClean() {
+    if (g_action.load() != Action::None) return;
+    joinWorkerIfDone();
+    g_action = Action::Clean;
+    g_worker = std::thread(runCleanWorker);
+}
+
+// ---------------------------------------------------------------------------
 // Rendering-Hilfsfunktionen
 // ---------------------------------------------------------------------------
 static void setColor(SDL_Renderer* r, SDL_Color c) {
@@ -521,17 +750,55 @@ static void drawRectOutline(SDL_Renderer* r, int x, int y, int w, int h, SDL_Col
     setColor(r, c);
     SDL_RenderDrawRect(r, &rect);
 }
+// Text-Textur-Cache: TTF_Render + CreateTexture JEDE Frame war der
+// Haupt-FPS-Fresser (~30 FPS in der Bibliothek). Gerenderte Zeilen werden
+// pro (Font, Farbe, Text) gecacht und periodisch per LRU ausgeduennt.
+struct CachedText {
+    SDL_Texture* tex = nullptr;
+    int w = 0, h = 0;
+    Uint32 lastUse = 0;
+};
+static std::unordered_map<std::string, CachedText> g_textCache;
+
+static void textCacheMaintain() {
+    if (g_textCache.size() < 700) return;
+    Uint32 now = SDL_GetTicks();
+    for (auto it = g_textCache.begin(); it != g_textCache.end();) {
+        if (now - it->second.lastUse > 4000) {
+            if (it->second.tex) SDL_DestroyTexture(it->second.tex);
+            it = g_textCache.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+static void textCacheDestroy() {
+    for (auto& [k, v] : g_textCache) {
+        if (v.tex) SDL_DestroyTexture(v.tex);
+    }
+    g_textCache.clear();
+}
+
 static void drawText(SDL_Renderer* r, TTF_Font* font, const std::string& text, int x, int y, SDL_Color color) {
     if (text.empty() || !font) return;
-    SDL_Surface* surf = TTF_RenderUTF8_Blended(font, text.c_str(), color);
-    if (!surf) return;
-    SDL_Texture* tex = SDL_CreateTextureFromSurface(r, surf);
-    SDL_Rect dst{x, y, surf->w, surf->h};
-    SDL_FreeSurface(surf);
-    if (tex) {
-        SDL_RenderCopy(r, tex, nullptr, &dst);
-        SDL_DestroyTexture(tex);
+    char keyBuf[48];
+    snprintf(keyBuf, sizeof(keyBuf), "%p|%02x%02x%02x|", (void*)font, color.r, color.g, color.b);
+    std::string key = std::string(keyBuf) + text;
+    auto it = g_textCache.find(key);
+    if (it == g_textCache.end()) {
+        SDL_Surface* surf = TTF_RenderUTF8_Blended(font, text.c_str(), color);
+        if (!surf) return;
+        CachedText ct;
+        ct.tex = SDL_CreateTextureFromSurface(r, surf);
+        ct.w = surf->w;
+        ct.h = surf->h;
+        SDL_FreeSurface(surf);
+        if (!ct.tex) return;
+        it = g_textCache.emplace(std::move(key), ct).first;
     }
+    it->second.lastUse = SDL_GetTicks();
+    SDL_Rect dst{x, y, it->second.w, it->second.h};
+    SDL_RenderCopy(r, it->second.tex, nullptr, &dst);
 }
 static int textWidth(TTF_Font* font, const std::string& text) {
     if (!font || text.empty()) return 0;
@@ -651,7 +918,8 @@ static bool showKeyboard(const std::string& header, const std::string& initial,
 // ---------------------------------------------------------------------------
 // Seiten / Navigation
 // ---------------------------------------------------------------------------
-enum class Page { Home = 0, Library, Settings, Log, Count, Detail };
+enum class Page { Home = 0, Library, Sources, CheatSlips, Settings, Log,
+                  Detail, Editor };
 
 struct NavEntry {
     Page page;
@@ -660,12 +928,46 @@ struct NavEntry {
     const char* subKey;
 };
 static const NavEntry kNav[] = {
-    {Page::Home,     "nav.home",     "eyebrow.home",     "sub.home"},
-    {Page::Library,  "nav.library",  "eyebrow.library",  "sub.library"},
-    {Page::Settings, "nav.settings", "eyebrow.settings", "sub.settings"},
-    {Page::Log,      "nav.log",      "eyebrow.log",      "sub.log"},
+    {Page::Home,       "nav.home",       "eyebrow.home",       "sub.home"},
+    {Page::Library,    "nav.library",    "eyebrow.library",    "sub.library"},
+    {Page::Sources,    "nav.sources",    "eyebrow.sources",    "sub.sources"},
+    {Page::CheatSlips, "nav.cheatslips", "eyebrow.cheatslips", "sub.cheatslips"},
+    {Page::Settings,   "nav.settings",   "eyebrow.settings",   "sub.settings"},
+    {Page::Log,        "nav.log",        "eyebrow.log",        "sub.log"},
 };
-static constexpr int kNavCount = 4;
+static constexpr int kNavCount = 6;
+
+// ---------------------------------------------------------------------------
+// Cheat-Zeilen-Klassifizierung - der Port von classify_cheat_line() aus
+// gui.py: Header [..]/{..}, gueltige Codezeile = 1-4 Woerter aus je 8 Hex.
+// ---------------------------------------------------------------------------
+enum class LineKind { Empty, Header, Master, Code, Error };
+static LineKind classifyCheatLine(const std::string& raw) {
+    // trim
+    size_t a = raw.find_first_not_of(" \t\r\n");
+    if (a == std::string::npos) return LineKind::Empty;
+    size_t b = raw.find_last_not_of(" \t\r\n");
+    std::string s = raw.substr(a, b - a + 1);
+    if (s.front() == '[' && s.back() == ']') return LineKind::Header;
+    if (s.front() == '{' && s.back() == '}') return LineKind::Master;
+    // Woerter zaehlen und pruefen
+    int words = 0;
+    size_t i = 0;
+    while (i < s.size()) {
+        while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) i++;
+        if (i >= s.size()) break;
+        size_t start = i;
+        while (i < s.size() && s[i] != ' ' && s[i] != '\t') i++;
+        std::string w = s.substr(start, i - start);
+        if (w.size() != 8) return LineKind::Error;
+        for (char c : w) {
+            if (!std::isxdigit(static_cast<unsigned char>(c))) return LineKind::Error;
+        }
+        words++;
+        if (words > 4) return LineKind::Error;
+    }
+    return words >= 1 ? LineKind::Code : LineKind::Error;
+}
 
 // Bibliotheks-Filter (X-Taste zykliert) - Pendant der Windows-Chips.
 enum class LibFilter { All = 0, HasCheats, Installed, Favorites, Count };
@@ -720,6 +1022,8 @@ int main(int argc, char** argv) {
     SDL_JoystickEventState(SDL_ENABLE);
     SDL_Joystick* joy = SDL_JoystickOpen(0);
     TTF_Init();
+    IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
+    covers::init();
 
     SDL_Window* window = SDL_CreateWindow("Switch Cheats Scraper & Downloader",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -785,9 +1089,27 @@ int main(int argc, char** argv) {
     int detailNameScroll = 0;
     std::unordered_map<std::string, std::vector<std::string>> nameCache;
 
-    // Einstellungen
-    int setSel = 0;                // 0 = Sprache, 1 = App-Update, 2 = Neu laden
-    static constexpr int kSetCount = 3;
+    // Bibliothek: Tabellen- oder Galerie-Ansicht (Minus wechselt - das
+    // Pendant zum Table/Gallery-Toggle der Windows-Bibliothek).
+    bool libGallery = false;
+
+    // Quellen-Seite
+    int srcSel = 0;
+
+    // CheatSlips-Seite (eine Token-Karte)
+    // (kein eigener Zustand noetig - Token liegt in settings)
+
+    // Editor (verstecke Seite; ZR auf einem installierten Build im Detail)
+    std::string edTid, edBid;
+    std::vector<std::string> edLines;
+    bool edDirty = false;
+    int edSel = 0;
+    int edScroll = 0;
+
+    // Einstellungen: 0=Sprache 1=App-Update 2=Neu laden 3=Export 4=Clean
+    int setSel = 0;
+    static constexpr int kSetCount = 5;
+    bool cleanArmed = false;       // Sicherheitsstufe: 1. A scharf, 2. A loescht
 
     // Protokoll
     int logScroll = 0;             // 0 = ganz unten (neueste)
@@ -852,6 +1174,47 @@ int main(int argc, char** argv) {
         page = Page::Detail;
     };
 
+    auto openEditor = [&](const std::string& tid, const std::string& bid) {
+        std::string content = installer::readCheatFile(tid, bid);
+        edLines.clear();
+        std::string cur;
+        for (char c : content) {
+            if (c == '\n') {
+                if (!cur.empty() && cur.back() == '\r') cur.pop_back();
+                edLines.push_back(cur);
+                cur.clear();
+            } else {
+                cur += c;
+            }
+        }
+        if (!cur.empty()) edLines.push_back(cur);
+        if (edLines.empty()) edLines.push_back("");
+        edTid = tid;
+        edBid = bid;
+        edDirty = false;
+        edSel = 0;
+        edScroll = 0;
+        page = Page::Editor;
+    };
+
+    auto saveEditor = [&]() {
+        std::string path = std::string(cfg::kSdRoot) + "atmosphere/contents/" +
+                           edTid + "/cheats/" + edBid + ".txt";
+        FILE* f = fopen(path.c_str(), "wb");
+        if (!f) {
+            applog::add(std::string(tr("err.createFile")) + path);
+            return false;
+        }
+        for (size_t i = 0; i < edLines.size(); i++) {
+            fputs(edLines[i].c_str(), f);
+            if (i + 1 < edLines.size()) fputc('\n', f);
+        }
+        fclose(f);
+        edDirty = false;
+        applog::add(tr("ed.saved"));
+        return true;
+    };
+
     auto filterLabel = [&](LibFilter f) -> std::string {
         switch (f) {
             case LibFilter::HasCheats: return tr("lib.filter.cheats");
@@ -883,27 +1246,33 @@ int main(int argc, char** argv) {
                 exitRequested = true;
             } else if (event.type == SDL_JOYBUTTONDOWN) {
                 int btn = event.jbutton.button;
+                bool onNavPage = page != Page::Detail && page != Page::Editor;
                 if (btn == JOY_PLUS) {
                     if (busy) g_cancelRequested = true;
                     exitRequested = true;
                 } else if (btn == JOY_B) {
                     if (busy) {
                         g_cancelRequested = true;
+                    } else if (page == Page::Editor) {
+                        if (edDirty) applog::add(tr("ed.discarded"));
+                        page = Page::Detail;
                     } else if (page == Page::Detail) {
                         page = pageBeforeDetail;
                     }
-                } else if (btn == JOY_L && page != Page::Detail) {
+                } else if (btn == JOY_L && onNavPage) {
                     int idx = 0;
                     for (int i = 0; i < kNavCount; i++) {
                         if (kNav[i].page == page) idx = i;
                     }
                     page = kNav[(idx + kNavCount - 1) % kNavCount].page;
-                } else if (btn == JOY_R && page != Page::Detail) {
+                    cleanArmed = false;
+                } else if (btn == JOY_R && onNavPage) {
                     int idx = 0;
                     for (int i = 0; i < kNavCount; i++) {
                         if (kNav[i].page == page) idx = i;
                     }
                     page = kNav[(idx + 1) % kNavCount].page;
+                    cleanArmed = false;
                 } else if (btn == JOY_A) {
                     if (page == Page::Home) {
                         if (!busy) startInstall();
@@ -911,9 +1280,28 @@ int main(int argc, char** argv) {
                         if (!libRows.empty() && libSel < static_cast<int>(libRows.size())) {
                             openDetail(db::games()[libRows[libSel]]);
                         }
+                    } else if (page == Page::Sources) {
+                        if (!busy) startSource(srcSel);
+                    } else if (page == Page::CheatSlips) {
+                        // Token per Software-Tastatur eingeben/aendern
+                        std::string out;
+                        if (showKeyboard(tr("cs.token.header"), cheatslips::token(), out)) {
+                            cheatslips::setToken(out);
+                            applog::add(out.empty() ? tr("cs.token.cleared") : tr("cs.token.saved"));
+                        }
                     } else if (page == Page::Detail) {
                         detailExpanded = !detailExpanded;
                         detailNameScroll = 0;
+                    } else if (page == Page::Editor) {
+                        if (edSel < static_cast<int>(edLines.size())) {
+                            std::string out;
+                            if (showKeyboard(tr("ed.line.header"), edLines[edSel], out)) {
+                                if (out != edLines[edSel]) {
+                                    edLines[edSel] = out;
+                                    edDirty = true;
+                                }
+                            }
+                        }
                     } else if (page == Page::Settings) {
                         if (setSel == 1 && !busy) {
                             bool checked, available;
@@ -929,6 +1317,15 @@ int main(int argc, char** argv) {
                             installer::startScan();
                             libDirty = true;
                             applog::add(tr("set.reload.done"));
+                        } else if (setSel == 3 && !busy) {
+                            startExport();
+                        } else if (setSel == 4 && !busy) {
+                            if (!cleanArmed) {
+                                cleanArmed = true;
+                            } else {
+                                cleanArmed = false;
+                                startClean();
+                            }
                         }
                     }
                 } else if (btn == JOY_Y) {
@@ -936,6 +1333,26 @@ int main(int argc, char** argv) {
                         doSearch();
                     } else if (page == Page::Home && !busy) {
                         startCheck();
+                    } else if (page == Page::Detail && !busy && !detailTid.empty()) {
+                        if (cheatslips::hasToken()) {
+                            startCheatslipsFetch(detailTid);
+                        } else {
+                            applog::add(tr("cs.token.missing"));
+                        }
+                    } else if (page == Page::CheatSlips && !busy) {
+                        // Token testen
+                        updater::ensureCurlGlobalInit();
+                        std::string detail;
+                        bool ok = cheatslips::tokenWorks(detail);
+                        applog::add((ok ? "OK: " : "!! ") + detail);
+                    } else if (page == Page::Editor) {
+                        // neue Zeile nach der aktuellen einfuegen
+                        std::string out;
+                        if (showKeyboard(tr("ed.newline.header"), "", out)) {
+                            edLines.insert(edLines.begin() + edSel + 1, out);
+                            edSel++;
+                            edDirty = true;
+                        }
                     }
                 } else if (btn == JOY_X) {
                     if (page == Page::Library) {
@@ -947,17 +1364,43 @@ int main(int argc, char** argv) {
                     } else if (page == Page::Detail && !detailTid.empty()) {
                         settings::toggleFavorite(detailTid);
                         libDirty = true;
+                    } else if (page == Page::Editor) {
+                        if (edLines.size() > 1) {
+                            edLines.erase(edLines.begin() + edSel);
+                            if (edSel >= static_cast<int>(edLines.size()))
+                                edSel = static_cast<int>(edLines.size()) - 1;
+                            edDirty = true;
+                        } else if (!edLines[0].empty()) {
+                            edLines[0].clear();
+                            edDirty = true;
+                        }
+                    }
+                } else if (btn == JOY_MINUS) {
+                    if (page == Page::Library) {
+                        libGallery = !libGallery;
+                        libScroll = 0; // Scroll-Index wechselt die Bedeutung (Zeile/Reihe)
+                    } else if (page == Page::Editor && edDirty) {
+                        saveEditor();
+                    }
+                } else if (btn == JOY_ZR) {
+                    if (page == Page::Detail && detailSel < static_cast<int>(detailBuilds.size())) {
+                        const auto& b = detailBuilds[detailSel];
+                        if (installer::isInstalled(b.titleId, b.buildId)) {
+                            openEditor(b.titleId, b.buildId);
+                        } else {
+                            applog::add(tr("ed.notinstalled"));
+                        }
                     }
                 } else if (btn == JOY_LEFT) {
                     if (page == Page::Library) {
-                        libSel -= 10;
+                        libSel -= libGallery ? 1 : 10;
                         if (libSel < 0) libSel = 0;
                     } else if (page == Page::Settings && setSel == 0) {
                         i18n::prevLang();
                     }
                 } else if (btn == JOY_RIGHT) {
                     if (page == Page::Library) {
-                        libSel += 10;
+                        libSel += libGallery ? 1 : 10;
                         if (libSel >= static_cast<int>(libRows.size()))
                             libSel = static_cast<int>(libRows.size()) - 1;
                         if (libSel < 0) libSel = 0;
@@ -997,6 +1440,10 @@ int main(int argc, char** argv) {
             installer::startScan();
             libDirty = true;
         }
+        // CheatSlips-Fetch fertig -> Detailseite zeigt neuen Installiert-Stand.
+        if (g_csDone.exchange(false) && page == Page::Detail && !detailTid.empty()) {
+            detailBuilds = db::gameBuilds(detailTid);
+        }
 
         // Installiert-Scan fertig geworden / Zaehler geaendert -> Filter neu.
         {
@@ -1031,9 +1478,21 @@ int main(int argc, char** argv) {
                 if (page == Page::Library) {
                     int n = static_cast<int>(libRows.size());
                     if (n > 0) {
-                        libSel += step;
+                        // Galerie: Auf/Ab springt eine ganze Kachel-Reihe.
+                        libSel += step * (libGallery ? 6 : 1);
                         if (libSel < 0) libSel = 0;
                         if (libSel >= n) libSel = n - 1;
+                    }
+                } else if (page == Page::Sources) {
+                    srcSel += step;
+                    if (srcSel < 0) srcSel = 0;
+                    if (srcSel >= kSourceCount) srcSel = kSourceCount - 1;
+                } else if (page == Page::Editor) {
+                    int n = static_cast<int>(edLines.size());
+                    if (n > 0) {
+                        edSel += step;
+                        if (edSel < 0) edSel = 0;
+                        if (edSel >= n) edSel = n - 1;
                     }
                 } else if (page == Page::Detail) {
                     if (detailExpanded) {
@@ -1104,7 +1563,8 @@ int main(int argc, char** argv) {
         for (int i = 0; i < kNavCount; i++) {
             int y = navStartY + i * (navItemH + 4);
             bool active = (kNav[i].page == page) ||
-                          (page == Page::Detail && kNav[i].page == Page::Library);
+                          ((page == Page::Detail || page == Page::Editor) &&
+                           kNav[i].page == Page::Library);
             // Aktive Zeile = EIN durchgehendes Rechteck + Akzentbalken links
             // (exakt der gefixte Windows-Look).
             if (active) {
@@ -1133,11 +1593,12 @@ int main(int argc, char** argv) {
 
         // ---------------- Seitenkopf ----------------
         const NavEntry* nav = &kNav[0];
+        Page headPage = (page == Page::Detail || page == Page::Editor) ? Page::Library : page;
         for (int i = 0; i < kNavCount; i++) {
-            if (kNav[i].page == (page == Page::Detail ? Page::Library : page)) nav = &kNav[i];
+            if (kNav[i].page == headPage) nav = &kNav[i];
         }
         int cy = headerH + 20;
-        if (page != Page::Detail) {
+        if (page != Page::Detail && page != Page::Editor) {
             drawText(renderer, fontTiny, std::string("\xe2\x80\x94  ") + spaced(tr(nav->eyebrowKey)),
                      contentX, cy, kColAccent);
             cy += 26;
@@ -1380,6 +1841,70 @@ int main(int argc, char** argv) {
             }
             cy = chipY + 48;
 
+            if (libGallery) {
+                // ---- Galerie-Ansicht (Minus wechselt Tabelle/Galerie) ------
+                int n = static_cast<int>(libRows.size());
+                const int gcols = 6;
+                int gap = 12;
+                int tileW = (contentW - (gcols - 1) * gap) / gcols;
+                int imgH = tileW;
+                int tileH = imgH + 44;
+                int visRowsG = (cfg::kScreenH - footerH - cy - 8 + gap) / (tileH + gap);
+                if (visRowsG < 1) visRowsG = 1;
+                if (!db::loaded() || n == 0) {
+                    drawText(renderer, fontSmall, tr("lib.nodb"), contentX + 8, cy + 24, kColTextMuted);
+                } else {
+                    int selRow = libSel / gcols;
+                    int firstRow = libScroll;
+                    if (selRow < firstRow) firstRow = selRow;
+                    if (selRow >= firstRow + visRowsG) firstRow = selRow - visRowsG + 1;
+                    if (firstRow < 0) firstRow = 0;
+                    libScroll = firstRow;
+                    for (int vi = 0; vi < visRowsG; vi++) {
+                        int row = firstRow + vi;
+                        for (int c2 = 0; c2 < gcols; c2++) {
+                            int idx = row * gcols + c2;
+                            if (idx >= n) break;
+                            const auto& g = db::games()[libRows[idx]];
+                            int x = contentX + c2 * (tileW + gap);
+                            int y = cy + vi * (tileH + gap);
+                            bool sel = idx == libSel;
+                            drawCard(renderer, x, y, tileW, tileH, sel ? kColItemHover : kColPanel,
+                                     sel ? kColAccent : kColHairline);
+                            // Cover nur fuer SICHTBARE Kacheln anfordern (Lazy-Load
+                            // wie die Windows-Galerie).
+                            covers::request(g.baseTid, g.image);
+                            int cw = 0, ch = 0;
+                            SDL_Texture* tex = covers::get(renderer, g.baseTid, cw, ch);
+                            SDL_Rect imgRect{x + 4, y + 4, tileW - 8, imgH - 8};
+                            if (tex) {
+                                SDL_RenderCopy(renderer, tex, nullptr, &imgRect);
+                            } else {
+                                fillRect(renderer, imgRect.x, imgRect.y, imgRect.w, imgRect.h, kColItem);
+                                std::string ini = g.title.empty() ? "?" : g.title.substr(0, 1);
+                                int iw = textWidth(fontStat, ini);
+                                drawText(renderer, fontStat, ini, x + (tileW - iw) / 2,
+                                         y + imgH / 2 - 22, kColTextDim);
+                            }
+                            std::string nm = g.title.empty() ? tr("lib.unnamed") : g.title;
+                            drawText(renderer, fontTiny, truncated(fontTiny, nm, tileW - 12),
+                                     x + 6, y + imgH + 2, sel ? kColText : kColTextMuted);
+                            char cbuf2[32];
+                            snprintf(cbuf2, sizeof(cbuf2), "%lld", g.cheats);
+                            drawText(renderer, fontTiny,
+                                     std::string(cbuf2) + tr("gal.cheats.suffix"),
+                                     x + 6, y + imgH + 22, kColTextDim);
+                            HitBox hb;
+                            hb.rect = {x, y, tileW, tileH};
+                            hb.fn = [&, idx]() {
+                                if (libSel == idx) openDetail(db::games()[libRows[idx]]);
+                                else libSel = idx;
+                            };
+                            hits.push_back(hb);
+                        }
+                    }
+                }
+            } else {
             // Spaltenkoepfe
             int colTitleX = contentX + 12;
             int colRegionX = contentX + contentW - 330;
@@ -1466,6 +1991,108 @@ int main(int argc, char** argv) {
                     fillRect(renderer, contentX + contentW + 8, thumbY, 4, thumbH, kColAccent);
                 }
             }
+            } // Ende Tabellen-Ansicht
+        }
+
+        // ------------------------------------------------------------------
+        // Seite: QUELLEN (Community-Archive -> direkt auf die SD)
+        // ------------------------------------------------------------------
+        else if (page == Page::Sources) {
+            int runningIdx = g_sourceRunning.load();
+            for (int i = 0; i < kSourceCount; i++) {
+                int cardH = 86;
+                bool sel = i == srcSel;
+                bool running = runningIdx == i;
+                drawCard(renderer, contentX, cy, contentW, cardH,
+                         sel ? kColItemHover : kColPanel,
+                         sel ? kColAccent : kColHairline);
+                std::string nameKey = "src." + std::string(kSources[i].key) + ".name";
+                std::string descKey = "src." + std::string(kSources[i].key) + ".desc";
+                drawText(renderer, fontBody, tr(nameKey.c_str()), contentX + 20, cy + 12, kColText);
+                drawText(renderer, fontTiny, truncated(fontTiny, tr(descKey.c_str()), contentW - 260),
+                         contentX + 20, cy + 50, kColTextDim);
+                drawTextRight(renderer, fontTiny, kSources[i].repo,
+                              contentX + contentW - 20, cy + 14, kColTextDim);
+                if (running) {
+                    long long done = g_bytesDone.load(), total = g_bytesTotal.load();
+                    int zi = g_zipIndex.load(), zt = g_zipTotal.load();
+                    double frac = zt > 0 ? (double)zi / (double)zt
+                                 : (total > 0 ? (double)done / (double)total : 0);
+                    drawProgressBar(renderer, contentX + contentW - 240, cy + 46, 220, 18,
+                                    frac, kColAccent);
+                }
+                HitBox hb;
+                hb.rect = {contentX, cy, contentW, cardH};
+                hb.fn = [&, i]() {
+                    if (srcSel == i && !busy) startSource(i);
+                    else srcSel = i;
+                };
+                hits.push_back(hb);
+                cy += cardH + 12;
+            }
+            drawText(renderer, fontTiny, tr("src.note"), contentX, cy + 4, kColTextDim);
+            cy += 26;
+            drawText(renderer, fontTiny, tr("src.note2"), contentX, cy + 4, kColTextDim);
+            if (!busy) {
+                std::string resultMsg;
+                bool resultOk = false, haveResult2 = false;
+                {
+                    std::lock_guard<std::mutex> lk(g_dataMutex);
+                    resultMsg = g_resultLine;
+                    resultOk = g_resultSuccess;
+                    haveResult2 = g_haveResult;
+                }
+                if (haveResult2 && !resultMsg.empty()) {
+                    drawText(renderer, fontSmall, truncated(fontSmall, resultMsg, contentW),
+                             contentX, cy + 30, resultOk ? kColSuccess : kColError);
+                }
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Seite: CHEATSLIPS (API-Token + Anleitung)
+        // ------------------------------------------------------------------
+        else if (page == Page::CheatSlips) {
+            // Token-Karte
+            int cardH = 120;
+            drawCard(renderer, contentX, cy, contentW, cardH, kColPanel, kColAccent);
+            drawText(renderer, fontBody, tr("cs.token.title"), contentX + 20, cy + 12, kColText);
+            bool hasTok = cheatslips::hasToken();
+            std::string tokLine;
+            if (hasTok) {
+                std::string t2 = cheatslips::token();
+                std::string masked = t2.size() > 8 ? t2.substr(0, 4) + "..." + t2.substr(t2.size() - 4)
+                                                   : std::string("****");
+                tokLine = std::string(tr("cs.token.set")) + masked;
+            } else {
+                tokLine = tr("cs.token.none");
+            }
+            drawText(renderer, fontSmall, tokLine, contentX + 20, cy + 48,
+                     hasTok ? kColSuccess : kColGold);
+            drawText(renderer, fontTiny, tr("cs.token.hint"), contentX + 20, cy + 84, kColTextDim);
+            {
+                HitBox hb;
+                hb.rect = {contentX, cy, contentW, cardH};
+                hb.fn = [&]() {
+                    std::string out;
+                    if (showKeyboard(tr("cs.token.header"), cheatslips::token(), out)) {
+                        cheatslips::setToken(out);
+                        applog::add(out.empty() ? tr("cs.token.cleared") : tr("cs.token.saved"));
+                    }
+                };
+                hits.push_back(hb);
+            }
+            cy += cardH + 14;
+
+            // Anleitung
+            drawCard(renderer, contentX, cy, contentW, 150);
+            drawText(renderer, fontBody, tr("cs.how.title"), contentX + 20, cy + 12, kColText);
+            drawText(renderer, fontSmall, tr("cs.how.1"), contentX + 20, cy + 48, kColTextMuted);
+            drawText(renderer, fontSmall, tr("cs.how.2"), contentX + 20, cy + 76, kColTextMuted);
+            drawText(renderer, fontSmall, tr("cs.how.3"), contentX + 20, cy + 104, kColTextMuted);
+            cy += 150 + 14;
+
+            drawText(renderer, fontTiny, tr("cs.note"), contentX, cy, kColTextDim);
         }
 
         // ------------------------------------------------------------------
@@ -1650,6 +2277,70 @@ int main(int argc, char** argv) {
         }
 
         // ------------------------------------------------------------------
+        // Seite: CHEAT-EDITOR (ZR auf einem installierten Build)
+        // ------------------------------------------------------------------
+        else if (page == Page::Editor) {
+            int dy = headerH + 20;
+            drawText(renderer, fontTiny, std::string("B  ") + tr("ed.back"), contentX, dy, kColTextDim);
+            dy += 26;
+            drawText(renderer, fontTiny, std::string("\xe2\x80\x94  ") + spaced(tr("ed.eyebrow")),
+                     contentX, dy, kColAccent);
+            dy += 24;
+            drawText(renderer, fontTitle, edBid + ".txt", contentX, dy, kColText);
+            dy += 42;
+
+            // Fehlerzaehler (Validierung wie der Windows-Editor)
+            int errors = 0;
+            for (const auto& l : edLines) {
+                if (classifyCheatLine(l) == LineKind::Error) errors++;
+            }
+            char stat[160];
+            snprintf(stat, sizeof(stat), "%d %s  \xc2\xb7  %d %s%s", static_cast<int>(edLines.size()),
+                     tr("ed.lines"), errors, tr("ed.errors"), edDirty ? tr("ed.dirty") : "");
+            drawText(renderer, fontSmall, stat, contentX, dy,
+                     errors > 0 ? kColError : kColTextMuted);
+            dy += 30;
+            fillRect(renderer, contentX, dy, contentW, 1, kColHairline);
+            dy += 8;
+
+            int lineH = 28;
+            int visLines = (cfg::kScreenH - footerH - dy - 8) / lineH;
+            if (visLines < 1) visLines = 1;
+            int n = static_cast<int>(edLines.size());
+            if (edSel < edScroll) edScroll = edSel;
+            if (edSel >= edScroll + visLines) edScroll = edSel - visLines + 1;
+            if (edScroll < 0) edScroll = 0;
+
+            for (int vi = 0; vi < visLines; vi++) {
+                int idx = edScroll + vi;
+                if (idx >= n) break;
+                int y = dy + vi * lineH;
+                bool sel = idx == edSel;
+                if (sel) {
+                    fillRect(renderer, contentX, y, contentW, lineH - 2, kColItemHover);
+                    fillRect(renderer, contentX, y, 4, lineH - 2, kColAccent);
+                }
+                LineKind kind = classifyCheatLine(edLines[idx]);
+                SDL_Color col = kColTextMuted;
+                if (kind == LineKind::Header) col = kColGold;
+                else if (kind == LineKind::Master) col = kColAccent2;
+                else if (kind == LineKind::Error) col = kColError;
+                else if (kind == LineKind::Code) col = kColText;
+                char lno[16];
+                snprintf(lno, sizeof(lno), "%3d", idx + 1);
+                drawTextCentered(renderer, fontTiny, lno, contentX + 8, y, lineH - 2, kColTextDim);
+                std::string shown = edLines[idx].empty() ? " " : edLines[idx];
+                drawTextCentered(renderer, fontSmall,
+                                 truncated(fontSmall, shown, contentW - 80),
+                                 contentX + 52, y, lineH - 2, col);
+                HitBox hb;
+                hb.rect = {contentX, y, contentW, lineH - 2};
+                hb.fn = [&, idx]() { edSel = idx; };
+                hits.push_back(hb);
+            }
+        }
+
+        // ------------------------------------------------------------------
         // Seite: EINSTELLUNGEN
         // ------------------------------------------------------------------
         else if (page == Page::Settings) {
@@ -1668,14 +2359,14 @@ int main(int argc, char** argv) {
             }
 
             // -- Karte 1: Sprache ------------------------------------------
-            int cardH1 = 110;
+            int cardH1 = 88;
             drawCard(renderer, contentX, cy, contentW, cardH1,
                      kColPanel, setSel == 0 ? kColAccent : kColHairline);
-            drawText(renderer, fontBody, tr("set.section.lang"), contentX + 20, cy + 12, kColText);
+            drawText(renderer, fontBody, tr("set.section.lang"), contentX + 20, cy + 8, kColText);
             {
-                int lbW = 96, lbH = 40;
+                int lbW = 96, lbH = 34;
                 int lx2 = contentX + 20;
-                int lyy = cy + 52;
+                int lyy = cy + 44;
                 int cur = static_cast<int>(i18n::getLang());
                 for (int i = 0; i < static_cast<int>(i18n::Lang::Count); i++) {
                     bool isCur = i == cur;
@@ -1692,13 +2383,13 @@ int main(int argc, char** argv) {
                     lx2 += lbW + 12;
                 }
             }
-            cy += cardH1 + 14;
+            cy += cardH1 + 10;
 
             // -- Karte 2: App-Update ----------------------------------------
-            int cardH2 = 120;
+            int cardH2 = 92;
             drawCard(renderer, contentX, cy, contentW, cardH2,
                      kColPanel, setSel == 1 ? kColAccent : kColHairline);
-            drawText(renderer, fontBody, tr("set.section.app"), contentX + 20, cy + 12, kColText);
+            drawText(renderer, fontBody, tr("set.section.app"), contentX + 20, cy + 8, kColText);
             {
                 std::lock_guard<std::mutex> lk(g_dataMutex);
                 if (g_appUpdateAvailable) {
@@ -1715,7 +2406,7 @@ int main(int argc, char** argv) {
                     col = kColAccent;
                     long long done = g_bytesDone.load(), total = g_bytesTotal.load();
                     if (curAction == Action::AppInstalling && total > 0) {
-                        drawProgressBar(renderer, contentX + 20, cy + 76, contentW - 300, 20,
+                        drawProgressBar(renderer, contentX + 20, cy + 66, contentW - 300, 14,
                                         (double)done / (double)total, kColAccent);
                     }
                 } else if (appHaveResult) {
@@ -1723,17 +2414,17 @@ int main(int argc, char** argv) {
                     col = appResultOk ? kColSuccess : kColError;
                     if (appChecked && appAvailable) {
                         drawText(renderer, fontTiny, tr("appupdate.pressAgain"),
-                                 contentX + 20, cy + 76, kColAccent);
+                                 contentX + 20, cy + 64, kColAccent);
                     } else if (appJustInstalled) {
                         drawText(renderer, fontTiny, tr("appupdate.restartHint"),
-                                 contentX + 20, cy + 76, kColAccent);
+                                 contentX + 20, cy + 64, kColAccent);
                     }
                 } else {
                     line = std::string(tr("info.version")) + cfg::kAppVersion +
                            "  \xc2\xb7  A = " + tr("btn.check");
                 }
                 drawText(renderer, fontSmall, truncated(fontSmall, line, contentW - 60),
-                         contentX + 20, cy + 46, col);
+                         contentX + 20, cy + 38, col);
             }
             {
                 HitBox hb;
@@ -1753,14 +2444,14 @@ int main(int argc, char** argv) {
                 };
                 hits.push_back(hb);
             }
-            cy += cardH2 + 14;
+            cy += cardH2 + 10;
 
             // -- Karte 3: Daten ---------------------------------------------
-            int cardH3 = 84;
+            int cardH3 = 62;
             drawCard(renderer, contentX, cy, contentW, cardH3,
                      kColPanel, setSel == 2 ? kColAccent : kColHairline);
-            drawText(renderer, fontBody, tr("set.reload"), contentX + 20, cy + 12, kColText);
-            drawText(renderer, fontTiny, tr("set.reload.desc"), contentX + 20, cy + 48, kColTextDim);
+            drawText(renderer, fontBody, tr("set.reload"), contentX + 20, cy + 6, kColText);
+            drawText(renderer, fontTiny, tr("set.reload.desc"), contentX + 20, cy + 38, kColTextDim);
             {
                 HitBox hb;
                 hb.rect = {contentX, cy, contentW, cardH3};
@@ -1773,15 +2464,64 @@ int main(int argc, char** argv) {
                 };
                 hits.push_back(hb);
             }
-            cy += cardH3 + 14;
+            cy += cardH3 + 10;
 
-            // -- Info-Block ---------------------------------------------------
+            // -- Karte 4: Export (ZIP auf die SD-Wurzel) ----------------------
+            int cardH4 = 62;
+            drawCard(renderer, contentX, cy, contentW, cardH4,
+                     kColPanel, setSel == 3 ? kColAccent : kColHairline);
+            drawText(renderer, fontBody, tr("exp.title"), contentX + 20, cy + 6, kColText);
+            if (curAction == Action::Export) {
+                char eb[96];
+                snprintf(eb, sizeof(eb), "%s  (%d)", tr("exp.running"), g_zipIndex.load());
+                drawText(renderer, fontTiny, eb, contentX + 20, cy + 38, kColAccent);
+            } else {
+                drawText(renderer, fontTiny, tr("exp.desc"), contentX + 20, cy + 38, kColTextDim);
+            }
+            {
+                HitBox hb;
+                hb.rect = {contentX, cy, contentW, cardH4};
+                hb.fn = [&]() {
+                    setSel = 3;
+                    if (!busy) startExport();
+                };
+                hits.push_back(hb);
+            }
+            cy += cardH4 + 10;
+
+            // -- Karte 5: Saeubern (Cheats + Cover von der SD) ---------------
+            int cardH5 = 62;
+            drawCard(renderer, contentX, cy, contentW, cardH5,
+                     kColPanel, setSel == 4 ? (cleanArmed ? kColError : kColAccent) : kColHairline);
+            drawText(renderer, fontBody, tr("clean.title"), contentX + 20, cy + 6,
+                     cleanArmed ? kColError : kColText);
+            if (curAction == Action::Clean) {
+                drawText(renderer, fontTiny, tr("clean.running"), contentX + 20, cy + 38, kColAccent);
+            } else if (cleanArmed) {
+                drawText(renderer, fontTiny, tr("clean.confirm"), contentX + 20, cy + 38, kColError);
+            } else {
+                drawText(renderer, fontTiny, tr("clean.desc"), contentX + 20, cy + 38, kColTextDim);
+            }
+            {
+                HitBox hb;
+                hb.rect = {contentX, cy, contentW, cardH5};
+                hb.fn = [&]() {
+                    if (setSel != 4) {
+                        setSel = 4;
+                        cleanArmed = false;
+                    } else if (!busy) {
+                        if (!cleanArmed) cleanArmed = true;
+                        else { cleanArmed = false; startClean(); }
+                    }
+                };
+                hits.push_back(hb);
+            }
+            cy += cardH5 + 10;
+
+            // -- Info-Zeile ---------------------------------------------------
             drawText(renderer, fontTiny,
-                     std::string(tr("info.source")) + "github.com/" + cfg::kRepoOwner + "/" + cfg::kRepoName,
-                     contentX, cy, kColTextDim);
-            cy += 24;
-            drawText(renderer, fontTiny,
-                     std::string(tr("info.target")) + cfg::kSdRoot + " (Atmosphere)",
+                     std::string(tr("info.source")) + "github.com/" + cfg::kRepoOwner + "/" + cfg::kRepoName +
+                     "   \xc2\xb7   " + tr("info.target") + cfg::kSdRoot + " (Atmosphere)",
                      contentX, cy, kColTextDim);
         }
 
@@ -1835,10 +2575,13 @@ int main(int argc, char** argv) {
         std::string hints;
         if (busy) hints = tr("footer.cancel");
         else if (page == Page::Detail) hints = tr("footer.detail");
+        else if (page == Page::Editor) hints = tr("footer.editor");
         else if (page == Page::Library) hints = tr("footer.library");
+        else if (page == Page::CheatSlips) hints = tr("footer.cheatslips");
         else hints = tr("footer.nav");
         drawTextRight(renderer, fontTiny, hints, cfg::kScreenW - 28, fy2 + 17, kColTextMuted);
 
+        textCacheMaintain();
         SDL_RenderPresent(renderer);
     }
 
@@ -1850,12 +2593,15 @@ int main(int argc, char** argv) {
     }
     installer::shutdown();
 
+    covers::shutdown();
+    textCacheDestroy();
     if (fontTitle) TTF_CloseFont(fontTitle);
     if (fontStat) TTF_CloseFont(fontStat);
     if (fontBody) TTF_CloseFont(fontBody);
     if (fontSmall) TTF_CloseFont(fontSmall);
     if (fontTiny) TTF_CloseFont(fontTiny);
     TTF_Quit();
+    IMG_Quit();
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

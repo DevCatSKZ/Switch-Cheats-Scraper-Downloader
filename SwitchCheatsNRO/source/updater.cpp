@@ -130,6 +130,72 @@ static long httpGetString(const char* url, std::string& response, std::string& e
     return httpCode;
 }
 
+bool curlReady() { return g_curlInitialized; }
+
+long httpGet(const std::string& url, const std::string& extraHeader,
+             std::string& response, std::string& error) {
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        error = tr("err.internal");
+        return -1;
+    }
+    struct curl_slist* headers = curl_slist_append(nullptr, "Accept: application/json");
+    if (!extraHeader.empty()) {
+        headers = curl_slist_append(headers, extraHeader.c_str());
+    }
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeToString);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    char errbuf[CURL_ERROR_SIZE] = {0};
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+    applyCommonCurlOpts(curl);
+
+    CURLcode res = curl_easy_perform(curl);
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        error = std::string(tr("err.network")) + (errbuf[0] ? errbuf : curl_easy_strerror(res));
+        return -1;
+    }
+    return httpCode;
+}
+
+ReleaseInfo fetchRepoLatestAsset(const std::string& repo,
+                                 const std::vector<std::string>& assetCandidates) {
+    ReleaseInfo info;
+    std::string url = "https://api.github.com/repos/" + repo + "/releases/latest";
+    std::string response;
+    long httpCode = httpGetString(url.c_str(), response, info.error);
+    if (httpCode < 0) return info;
+    if (httpCode == 403 || httpCode == 429) {
+        info.error = tr("err.rateLimit");
+        return info;
+    }
+    if (httpCode != 200) {
+        info.error = std::string(tr("err.githubHttp")) + std::to_string(httpCode);
+        return info;
+    }
+    for (const auto& cand : assetCandidates) {
+        std::string assetObj = jsonutil::findAssetObject(response, cand);
+        if (assetObj.empty()) continue;
+        info.downloadUrl = jsonutil::extractJsonString(assetObj, "browser_download_url");
+        info.updatedAt = jsonutil::extractJsonString(assetObj, "updated_at");
+        info.sizeBytes = jsonutil::extractJsonNumber(assetObj, "size");
+        if (!info.downloadUrl.empty()) {
+            info.ok = true;
+            return info;
+        }
+    }
+    info.error = std::string(tr("err.assetNotFound")) +
+                 (assetCandidates.empty() ? "?" : assetCandidates.front());
+    return info;
+}
+
 bool isInternetAvailable() {
     Result rc = nifmInitialize(NifmServiceType_User);
     if (R_FAILED(rc)) return false;

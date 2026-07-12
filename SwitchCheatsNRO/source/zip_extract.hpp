@@ -36,4 +36,20 @@ inline bool isSafeEntryName(const std::string& name) {
 // autoritative, staendig aktualisierte Datenquelle).
 ExtractResult extractZipToPath(const std::string& zipPath, const std::string& destRoot, const ProgressCb& progress);
 
+// Entpackt ein Community-Cheat-Archiv (Hamlet/Sthetix/Breeze/...): Eintraege,
+// deren Pfad auf ".../<TID>/cheats/<BID>.txt" endet (16 Hex je ID, beliebiger
+// Praefix wie "titles/"), werden nach
+//   sdmc:/atmosphere/contents/<TID>/cheats/<BID>.txt
+// gemappt - exakt das Muster des Desktop-Imports. Alle anderen Eintraege
+// werden ignoriert. gamesSeen = Anzahl unterschiedlicher Title-IDs.
+struct ArchiveResult : ExtractResult {
+    int gamesSeen = 0;
+};
+ArchiveResult extractCheatArchive(const std::string& zipPath, const ProgressCb& progress);
+
+// Packt alle auf der SD installierten Cheat-Dateien
+// (atmosphere/contents/<TID>/cheats/*.txt) in eine ZIP unter zipPath -
+// das Konsolen-Pendant zu "Export to ZIP" des Desktop-Tools.
+ExtractResult zipInstalledCheats(const std::string& zipPath, const ProgressCb& progress);
+
 } // namespace zipextract
