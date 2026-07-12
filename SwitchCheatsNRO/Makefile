@@ -19,18 +19,27 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	SwitchCheatsDownloader
 BUILD		:=	build
-SOURCES		:=	source
-INCLUDES	:=	source
+SOURCES		:=	source sqlite
+INCLUDES	:=	source sqlite
 ROMFS		:=	romfs
 
-APP_TITLE   := Switch Cheats Downloader
+APP_TITLE   := Switch Cheats Scraper & Downloader
 APP_AUTHOR  := DevCatSKZ
-APP_VERSION := 1.3
+APP_VERSION := 2.0
 
 # Einzige Quelle der Versionsnummer: wird als APP_VERSION-Makro in den Code
 # durchgereicht (config.hpp: kAppVersion + kUserAgent) und von den
 # devkitPro-Regeln fuer die .nacp verwendet.
 DEFINES := -DAPP_VERSION=\"$(APP_VERSION)\"
+
+# SQLite-Amalgamation (sqlite/sqlite3.c) fuer die Bibliotheks-Datenbank.
+# Zugeschnitten auf die Switch: kein WAL/mmap/shm (newlib), kein dlopen,
+# Temp-Dateien im RAM, single-threaded (DB wird NUR vom UI-Thread benutzt).
+# Die DB wird ausschliesslich READ-ONLY mit dem "unix-none"-VFS geoeffnet
+# (keine fcntl-Locks - auf libnx nicht implementiert).
+DEFINES += -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_WAL -DSQLITE_OMIT_LOAD_EXTENSION \
+           -DSQLITE_TEMP_STORE=3 -DSQLITE_MAX_MMAP_SIZE=0 \
+           -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_OMIT_DEPRECATED
 
 #---------------------------------------------------------------------------------
 # options for code generation

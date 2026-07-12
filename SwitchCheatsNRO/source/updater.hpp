@@ -33,6 +33,9 @@ void removeIfExists(const char* path);
 // die Download-URL + das Upload/Update-Datum des switch-cheats.zip Assets.
 ReleaseInfo fetchLatestReleaseInfo();
 
+// Dasselbe fuer ein BELIEBIGES Asset des data-Release (z.B. database.db).
+ReleaseInfo fetchAssetInfo(const char* assetName);
+
 // Fortschritts-Callback: (bytesDownloaded, bytesTotal) -> return false zum Abbrechen
 using ProgressCb = std::function<bool(long long done, long long total)>;
 

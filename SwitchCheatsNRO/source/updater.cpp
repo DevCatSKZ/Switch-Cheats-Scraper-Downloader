@@ -145,6 +145,10 @@ bool isInternetAvailable() {
 }
 
 ReleaseInfo fetchLatestReleaseInfo() {
+    return fetchAssetInfo(cfg::kAssetName);
+}
+
+ReleaseInfo fetchAssetInfo(const char* assetName) {
     ReleaseInfo info;
 
     std::string response;
@@ -160,9 +164,9 @@ ReleaseInfo fetchLatestReleaseInfo() {
         return info;
     }
 
-    std::string assetObj = jsonutil::findAssetObject(response, cfg::kAssetName);
+    std::string assetObj = jsonutil::findAssetObject(response, assetName);
     if (assetObj.empty()) {
-        info.error = std::string(tr("err.assetNotFound")) + cfg::kAssetName;
+        info.error = std::string(tr("err.assetNotFound")) + assetName;
         return info;
     }
 

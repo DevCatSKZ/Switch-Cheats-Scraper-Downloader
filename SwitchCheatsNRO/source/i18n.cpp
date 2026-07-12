@@ -60,7 +60,9 @@ const Entry kTable[] = {
     {"footer.online",  {"Online", "Online", "En línea", "En ligne", "Online", "\xe3\x82\xaa\xe3\x83\xb3\xe3\x83\xa9\xe3\x82\xa4\xe3\x83\xb3"}},
     {"footer.offline", {"Offline", "Offline", "Sin conexión", "Hors ligne", "Offline", "\xe3\x82\xaa\xe3\x83\x95\xe3\x83\xa9\xe3\x82\xa4\xe3\x83\xb3"}},
     {"footer.cancel",  {"B Abbrechen     +  Beenden erzwingen", "B Cancel     +  Force Exit", "B Cancelar     +  Forzar salida", "B Annuler     +  Forcer la sortie", "B Annulla     +  Forza uscita", "B \xe3\x82\xad\xe3\x83\xa3\xe3\x83\xb3\xe3\x82\xbb\xe3\x83\xab   + \xe5\xbc\xb7\xe5\x88\xb6\xe7\xb5\x82\xe4\xba\x86"}},
-    {"footer.nav",     {"Hoch/Runter Navigieren   L/R Sprache   A Auswählen   + Beenden", "Up/Down Navigate   L/R Language   A Select   + Exit", "Arriba/Abajo Navegar   L/R Idioma   A Seleccionar   + Salir", "Haut/Bas Naviguer   L/R Langue   A Valider   + Quitter", "Su/Giù Naviga   L/R Lingua   A Seleziona   + Esci", "\xe4\xb8\x8a\xe4\xb8\x8b \xe7\xa7\xbb\xe5\x8b\x95   L/R \xe8\xa8\x80\xe8\xaa\x9e   A \xe6\xb1\xba\xe5\xae\x9a   + \xe7\xb5\x82\xe4\xba\x86"}},
+    {"footer.nav",     {"L/R Seite   Hoch/Runter Wählen   A OK   + Beenden", "L/R Page   Up/Down Select   A OK   + Exit", "L/R Página   Arriba/Abajo Elegir   A OK   + Salir", "L/R Page   Haut/Bas Choisir   A OK   + Quitter", "L/R Pagina   Su/Giù Scegli   A OK   + Esci", "L/R \xe3\x83\x9a\xe3\x83\xbc\xe3\x82\xb8   \xe4\xb8\x8a\xe4\xb8\x8b \xe9\x81\xb8\xe6\x8a\x9e   A \xe6\xb1\xba\xe5\xae\x9a   + \xe7\xb5\x82\xe4\xba\x86"}},
+    {"footer.library", {"Hoch/Runter Wählen   Links/Rechts Blättern   A Öffnen   X Filter   Y Suche", "Up/Down Select   Left/Right Page   A Open   X Filter   Y Search", "Arriba/Abajo Elegir   Izq/Der Página   A Abrir   X Filtro   Y Buscar", "Haut/Bas Choisir   G/D Page   A Ouvrir   X Filtre   Y Recherche", "Su/Giù Scegli   Sin/Des Pagina   A Apri   X Filtro   Y Cerca", "\xe4\xb8\x8a\xe4\xb8\x8b \xe9\x81\xb8\xe6\x8a\x9e   \xe5\xb7\xa6\xe5\x8f\xb3 \xe3\x83\x9a\xe3\x83\xbc\xe3\x82\xb8   A \xe9\x96\x8b\xe3\x81\x8f   X \xe3\x83\x95\xe3\x82\xa3\xe3\x83\xab\xe3\x82\xbf   Y \xe6\xa4\x9c\xe7\xb4\xa2"}},
+    {"footer.detail",  {"Hoch/Runter Build   A Cheats   X Favorit   B Zurück", "Up/Down Build   A Cheats   X Favorite   B Back", "Arriba/Abajo Build   A Trucos   X Favorito   B Volver", "Haut/Bas Build   A Cheats   X Favori   B Retour", "Su/Giù Build   A Trucchi   X Preferito   B Indietro", "\xe4\xb8\x8a\xe4\xb8\x8b \xe3\x83\x93\xe3\x83\xab\xe3\x83\x89   A \xe3\x83\x81\xe3\x83\xbc\xe3\x83\x88   X \xe3\x81\x8a\xe6\xb0\x97\xe3\x81\xab\xe5\x85\xa5\xe3\x82\x8a   B \xe6\x88\xbb\xe3\x82\x8b"}},
 
     {"status.checkinternet", {"Prüfe Internetverbindung...", "Checking internet connection...", "Comprobando la conexión a Internet...", "Vérification de la connexion Internet...", "Controllo della connessione Internet...", "\xe3\x82\xa4\xe3\x83\xb3\xe3\x82\xbf\xe3\x83\xbc\xe3\x83\x8d\xe3\x83\x83\xe3\x83\x88\xe6\x8e\xa5\xe7\xb6\x9a\xe3\x82\x92\xe7\xa2\xba\xe8\xaa\x8d\xe4\xb8\xad..."}},
     {"status.connecting",    {"Verbinde mit GitHub...", "Connecting to GitHub...", "Conectando con GitHub...", "Connexion à GitHub...", "Connessione a GitHub...", "GitHub\xe3\x81\xab\xe6\x8e\xa5\xe7\xb6\x9a\xe4\xb8\xad..."}},
@@ -105,6 +107,83 @@ const Entry kTable[] = {
     {"err.zipBroken",        {"ZIP-Archiv ist ungültig oder beschädigt", "ZIP archive is invalid or corrupted", "El archivo ZIP no es válido o está dañado", "L'archive ZIP est invalide ou endommagée", "L'archivio ZIP non è valido o danneggiato", "ZIP\xe3\x83\x95\xe3\x82\xa1\xe3\x82\xa4\xe3\x83\xab\xe3\x81\x8c\xe7\x84\xa1\xe5\x8a\xb9\xe3\x81\x8b\xe7\xa0\xb4\xe6\x90\x8d\xe3\x81\x97\xe3\x81\xa6\xe3\x81\x84\xe3\x81\xbe\xe3\x81\x99"}},
     {"err.zipEntry",         {"Konnte ZIP-Eintrag nicht lesen: ", "Could not read ZIP entry: ", "No se pudo leer la entrada del ZIP: ", "Impossible de lire l'entrée du ZIP : ", "Impossibile leggere la voce dello ZIP: ", "ZIP\xe3\x82\xa8\xe3\x83\xb3\xe3\x83\x88\xe3\x83\xaa\xe3\x82\x92\xe8\xaa\xad\xe3\x82\x81\xe3\x81\xbe\xe3\x81\x9b\xe3\x82\x93: "}},
     {"err.unsafePath",       {"Unsicherer Pfad im ZIP: ", "Unsafe path in ZIP: ", "Ruta insegura en el ZIP: ", "Chemin non sûr dans le ZIP : ", "Percorso non sicuro nello ZIP: ", "ZIP\xe5\x86\x85\xe3\x81\xae\xe4\xb8\x8d\xe6\xad\xa3\xe3\x81\xaa\xe3\x83\x91\xe3\x82\xb9: "}},
+
+    // ------------------------------------------------------------------
+    // v2.0 - Holo-Glass-Shell (Sidebar, Seiten, Bibliothek, Detailseite).
+    // Japanisch ab hier als literales UTF-8 (GCC kompiliert die Quelldatei
+    // als UTF-8; identisches Ergebnis wie die \x-Escapes darueber).
+    // ------------------------------------------------------------------
+    {"nav.menu",     {"Menü", "Menu", "Menú", "Menu", "Menu", "メニュー"}},
+    {"nav.home",     {"Start", "Home", "Inicio", "Accueil", "Home", "ホーム"}},
+    {"nav.library",  {"Bibliothek", "Library", "Biblioteca", "Bibliothèque", "Libreria", "ライブラリ"}},
+    {"nav.settings", {"Einstellungen", "Settings", "Ajustes", "Réglages", "Impostazioni", "設定"}},
+    {"nav.log",      {"Protokoll", "Log", "Registro", "Journal", "Registro", "ログ"}},
+
+    {"eyebrow.home",     {"Überblick", "Overview", "Resumen", "Aperçu", "Panoramica", "概要"}},
+    {"eyebrow.library",  {"Stöbern", "Browse", "Explorar", "Parcourir", "Sfoglia", "ブラウズ"}},
+    {"eyebrow.settings", {"Einrichten", "Configure", "Configurar", "Configurer", "Configura", "設定"}},
+    {"eyebrow.log",      {"Verlauf", "History", "Historial", "Historique", "Cronologia", "履歴"}},
+    {"eyebrow.game",     {"Spiel", "Game", "Juego", "Jeu", "Gioco", "ゲーム"}},
+
+    {"sub.home",     {"Alles für deine Switch-Cheats — gesammelt, verwaltet, geliefert.", "Everything for your Switch cheats — collected, managed, delivered.", "Todo para tus trucos de Switch: recopilados, gestionados, entregados.", "Tout pour vos cheats Switch — collectés, gérés, livrés.", "Tutto per i tuoi trucchi Switch: raccolti, gestiti, consegnati.", "Switchのチートをすべて — 収集・管理・お届け。"}},
+    {"sub.library",  {"Durchsuche und verwalte jeden Cheat in deiner Datenbank.", "Search, browse and manage every cheat in your database.", "Busca y gestiona cada truco de tu base de datos.", "Cherchez et gérez chaque cheat de votre base.", "Cerca e gestisci ogni trucco del tuo database.", "データベースのチートを検索・管理。"}},
+    {"sub.settings", {"Sprache, App-Update und Daten an einem Ort.", "Language, app update and data in one place.", "Idioma, actualización y datos en un solo lugar.", "Langue, mise à jour et données au même endroit.", "Lingua, aggiornamento e dati in un unico posto.", "言語・アプリ更新・データをここで。"}},
+    {"sub.log",      {"Was die App zuletzt getan hat.", "What the app has been doing.", "Lo que la app ha hecho últimamente.", "Ce que l'application a fait récemment.", "Cosa ha fatto l'app di recente.", "アプリの最近の動作。"}},
+
+    {"stat.games",     {"Spiele in deiner Datenbank", "games in your database", "juegos en tu base de datos", "jeux dans votre base", "giochi nel tuo database", "データベースのゲーム数"}},
+    {"stat.cheats",    {"Cheats gesamt", "cheats total", "trucos en total", "cheats au total", "trucchi in totale", "チート合計"}},
+    {"stat.installed", {"Cheat-Dateien auf SD", "cheat files on SD", "archivos de trucos en la SD", "fichiers de cheats sur la SD", "file di trucchi sulla SD", "SDのチートファイル"}},
+    {"stat.dbsize",    {"Datenbankgröße", "database size", "tamaño de la base", "taille de la base", "dimensione database", "データベースサイズ"}},
+
+    {"home.card.title", {"Alles aus dem DevCatSKZ-GitHub-Repo holen", "Get everything from the DevCatSKZ GitHub repo", "Obtener todo del repo de GitHub de DevCatSKZ", "Tout récupérer depuis le dépôt GitHub DevCatSKZ", "Prendi tutto dal repo GitHub di DevCatSKZ", "DevCatSKZのGitHubリポジトリからすべて取得"}},
+    {"home.card.d1",    {"Lädt die Datenbank (database.db) und alle Cheat-Dateien", "Downloads the database (database.db) and every cheat file", "Descarga la base de datos (database.db) y todos los archivos", "Télécharge la base (database.db) et tous les fichiers", "Scarica il database (database.db) e tutti i file", "データベース(database.db)と全チートファイルを"}},
+    {"home.card.d2",    {"(switch-cheats.zip) im Atmosphère-Layout auf die SD-Karte.", "(switch-cheats.zip) onto the SD card in Atmosphère layout.", "(switch-cheats.zip) a la SD con el formato de Atmosphère.", "(switch-cheats.zip) sur la carte SD au format Atmosphère.", "(switch-cheats.zip) sulla SD nel formato Atmosphère.", "(switch-cheats.zip) SDカードへAtmosphère形式で保存します。"}},
+    {"home.dbstate",    {"Datenbank-Stand: ", "Database state: ", "Estado de la base: ", "État de la base : ", "Stato del database: ", "データベースの状態: "}},
+    {"home.btn.getall", {"Komplett holen", "Get everything", "Descargar todo", "Tout télécharger", "Scarica tutto", "すべて取得"}},
+    {"home.recent",     {"Zuletzt aktualisiert", "Recently updated", "Actualizado recientemente", "Mises à jour récentes", "Aggiornati di recente", "最近の更新"}},
+    {"home.norecent",   {"Noch keine Einträge.", "No entries yet.", "Aún no hay entradas.", "Pas encore d'entrées.", "Ancora nessuna voce.", "まだ項目がありません。"}},
+
+    {"status.dbdownload", {"Lade database.db herunter...", "Downloading database.db...", "Descargando database.db...", "Téléchargement de database.db...", "Download di database.db...", "database.dbをダウンロード中..."}},
+    {"log.dbupdated",     {"Datenbank aktualisiert.", "Database updated.", "Base de datos actualizada.", "Base de données mise à jour.", "Database aggiornato.", "データベースを更新しました。"}},
+    {"log.dbrenamefail",  {"Konnte Datenbank nicht ersetzen.", "Could not replace the database.", "No se pudo reemplazar la base.", "Impossible de remplacer la base.", "Impossibile sostituire il database.", "データベースを置き換えられません。"}},
+    {"log.kbdfail",       {"Tastatur nicht verfügbar.", "Keyboard not available.", "Teclado no disponible.", "Clavier indisponible.", "Tastiera non disponibile.", "キーボードを利用できません。"}},
+
+    {"lib.search",         {"Suche", "Search", "Buscar", "Rechercher", "Cerca", "検索"}},
+    {"lib.search.prefix",  {"Suche: ", "Search: ", "Búsqueda: ", "Recherche : ", "Ricerca: ", "検索: "}},
+    {"lib.search.header",  {"Spiel suchen (Name oder Title-ID)", "Find a game (name or Title ID)", "Buscar juego (nombre o Title ID)", "Chercher un jeu (nom ou Title ID)", "Cerca un gioco (nome o Title ID)", "ゲームを検索（名前またはタイトルID）"}},
+    {"lib.filter.all",       {"Alle", "All", "Todos", "Tous", "Tutti", "すべて"}},
+    {"lib.filter.cheats",    {"Mit Cheats", "Has cheats", "Con trucos", "Avec cheats", "Con trucchi", "チートあり"}},
+    {"lib.filter.installed", {"Installiert", "Installed", "Instalados", "Installés", "Installati", "インストール済み"}},
+    {"lib.filter.favs",      {"Favoriten", "Favorites", "Favoritos", "Favoris", "Preferiti", "お気に入り"}},
+    {"lib.games.suffix",   {" Spiele", " games", " juegos", " jeux", " giochi", " 件"}},
+    {"lib.col.game",   {"Spiel", "Game", "Juego", "Jeu", "Gioco", "ゲーム"}},
+    {"lib.col.region", {"Region", "Region", "Región", "Région", "Regione", "リージョン"}},
+    {"lib.col.builds", {"Builds", "Builds", "Builds", "Builds", "Build", "ビルド"}},
+    {"lib.col.cheats", {"Cheats", "Cheats", "Trucos", "Cheats", "Trucchi", "チート"}},
+    {"lib.unnamed",    {"(unbenannt)", "(unnamed)", "(sin nombre)", "(sans nom)", "(senza nome)", "（名称未設定）"}},
+    {"lib.nodb",       {"Keine Datenbank - auf der Start-Seite 'Komplett holen' drücken.", "No database yet - press 'Get everything' on the Home page.", "Sin base de datos: pulsa 'Descargar todo' en Inicio.", "Pas de base : utilisez 'Tout télécharger' sur l'accueil.", "Nessun database: premi 'Scarica tutto' nella Home.", "データベースがありません。ホームで「すべて取得」を実行してください。"}},
+    {"lib.noresults",  {"Keine Treffer.", "No matches.", "Sin resultados.", "Aucun résultat.", "Nessun risultato.", "該当なし。"}},
+
+    {"game.back",             {"Zurück zur Bibliothek", "Back to Library", "Volver a la biblioteca", "Retour à la bibliothèque", "Torna alla libreria", "ライブラリに戻る"}},
+    {"game.titleid",          {"Title ID", "Title ID", "Title ID", "Title ID", "Title ID", "タイトルID"}},
+    {"game.players",          {"Spieler", "Players", "Jugadores", "Joueurs", "Giocatori", "プレイ人数"}},
+    {"game.languages",        {"Sprachen", "Languages", "Idiomas", "Langues", "Lingue", "対応言語"}},
+    {"game.rating",           {"Einstufung", "Rating", "Clasificación", "Classification", "Classificazione", "レーティング"}},
+    {"game.install.state",    {"Installiert", "Installed", "Instalado", "Installé", "Installato", "インストール状況"}},
+    {"game.installed.suffix", {" installiert", " installed", " instalados", " installés", " installati", " インストール済み"}},
+    {"game.builds.suffix",    {" Build(s)", " build(s)", " build(s)", " build(s)", " build", " ビルド"}},
+    {"game.installed",        {"installiert", "installed", "instalado", "installé", "installato", "インストール済み"}},
+    {"game.nobuilds",         {"Keine Builds gefunden.", "No builds found.", "No hay builds.", "Aucun build.", "Nessuna build.", "ビルドがありません。"}},
+    {"game.cheats.none",      {"(keine Cheat-Namen hinterlegt)", "(no cheat names stored)", "(sin nombres de trucos)", "(pas de noms de cheats)", "(nessun nome di trucco)", "（チート名がありません）"}},
+    {"game.hint",             {"A Cheats zeigen   X Favorit   B Zurück", "A Show cheats   X Favorite   B Back", "A Ver trucos   X Favorito   B Volver", "A Voir cheats   X Favori   B Retour", "A Mostra trucchi   X Preferito   B Indietro", "A チート表示   X お気に入り   B 戻る"}},
+
+    {"set.section.lang", {"Sprache", "Language", "Idioma", "Langue", "Lingua", "言語"}},
+    {"set.section.app",  {"App-Update", "App update", "Actualización de la app", "Mise à jour de l'app", "Aggiornamento app", "アプリの更新"}},
+    {"set.reload",       {"Bibliothek neu laden", "Reload library", "Recargar biblioteca", "Recharger la bibliothèque", "Ricarica libreria", "ライブラリを再読み込み"}},
+    {"set.reload.desc",  {"Liest die Datenbank neu ein und scannt die SD-Karte.", "Re-reads the database and rescans the SD card.", "Relee la base de datos y reescanea la SD.", "Relit la base et rescanne la carte SD.", "Rilegge il database e riscansiona la SD.", "データベースを再読み込みし、SDカードを再スキャンします。"}},
+    {"set.reload.done",  {"Bibliothek neu geladen.", "Library reloaded.", "Biblioteca recargada.", "Bibliothèque rechargée.", "Libreria ricaricata.", "ライブラリを再読み込みしました。"}},
+
+    {"log.empty", {"Noch keine Einträge.", "No entries yet.", "Aún no hay entradas.", "Pas encore d'entrées.", "Ancora nessuna voce.", "まだ項目がありません。"}},
 };
 // clang-format on
 

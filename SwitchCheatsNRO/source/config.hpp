@@ -35,6 +35,17 @@ constexpr const char* kTmpZipMetaPath = "sdmc:/switch/SwitchCheatsDownloader/swi
 constexpr const char* kSdRoot        = "sdmc:/";
 constexpr const char* kLangFile      = "sdmc:/switch/SwitchCheatsDownloader/lang.txt";
 
+// Bibliotheks-Datenbank: die vom Desktop-Tool veroeffentlichte database.db
+// (gleiches data-Release wie die Cheats). Wird nach kDbPath geladen; der
+// Stand (updated_at) steht in kDbStateFile - gleiche Reupload-Erkennung.
+constexpr const char* kDbAssetName   = "database.db";
+constexpr const char* kDbPath        = "sdmc:/switch/SwitchCheatsDownloader/cheats.db";
+constexpr const char* kTmpDbPath     = "sdmc:/switch/SwitchCheatsDownloader/cheats.db.part";
+constexpr const char* kDbStateFile   = "sdmc:/switch/SwitchCheatsDownloader/db_update.txt";
+
+// Persistente Einstellungen (key=value; Favoriten, Optionen).
+constexpr const char* kSettingsFile  = "sdmc:/switch/SwitchCheatsDownloader/settings.txt";
+
 constexpr const char* kAppVersion = APP_VERSION;
 constexpr const char* kUserAgent  = "SwitchCheatsDownloaderNRO/" APP_VERSION;
 
