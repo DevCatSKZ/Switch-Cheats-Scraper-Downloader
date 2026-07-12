@@ -430,6 +430,7 @@ Jede `.txt` enthält alle Cheat-Codes für diese Build-ID im Standardformat:
 - **„API token is invalid"**: E-Mail/Passwort prüfen oder ein gültiges Token aus dem CheatSlips-Account verwenden.
 - **Leere Datenbank beim Download**: Zuerst **Scrape**/`metadata` ausführen, damit Title-IDs in `cheats.db` stehen.
 - **503-Fehler beim Scrapen**: Die Seite drosselt — kurz warten; das Tool wiederholt automatisch mit Backoff.
+- **Switch-App — „Netzwerkfehler: SSL peer certificate or SSH remote key was not OK"**: Die **Konsolen-Uhr ist falsch gestellt**. Bei falschem Datum/Uhrzeit kann TLS das GitHub-Zertifikat nicht prüfen — es wirkt dann *noch nicht gültig* / *abgelaufen*. Häufig mit **90DNS**, das Nintendos Zeit-Synchronisation blockiert, wodurch die Uhr abweicht. **Lösung:** an der Konsole **Systemeinstellungen → Konsole → Datum und Uhrzeit** öffnen, Datum & Uhrzeit korrekt setzen (*Uhrzeit über Internet synchronisieren* kurz aktivieren, oder 90DNS vorübergehend entfernen, damit synchronisiert wird), dann die App neu starten — der Download funktioniert wieder.
 
 ## Disclaimer
 

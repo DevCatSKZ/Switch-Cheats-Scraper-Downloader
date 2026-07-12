@@ -267,6 +267,24 @@ eden.exe -g "C:\...\SwitchCheatsDownloader.nro"
   präzisen Testen die Tastatur verwenden. Auf echter Hardware liefert der
   Touchscreen exakte Koordinaten.
 
+## Fehlerbehebung
+
+**„Netzwerkfehler: SSL peer certificate or SSH remote key was not OK"**
+(erscheint direkt beim Prüfen/Herunterladen)
+
+- **Ursache:** Die **Konsolen-Uhr ist falsch gestellt.** Steht Datum/Uhrzeit
+  daneben, kann die TLS-Verifikation das GitHub-Zertifikat nicht prüfen — es
+  wirkt „noch nicht gültig" bzw. „abgelaufen", und curl bricht mit Fehler 60
+  (`CURLE_PEER_FAILED_VERIFICATION`) ab. Besonders häufig mit **90DNS**, das
+  Nintendos Zeit-Synchronisation blockiert, sodass die Uhr mit der Zeit abweicht.
+- **Lösung:** An der Konsole **Systemeinstellungen → Konsole → Datum und
+  Uhrzeit** öffnen und Datum & Uhrzeit korrekt setzen — entweder „Uhrzeit über
+  das Internet synchronisieren" kurz aktivieren, oder (bei 90DNS) dieses
+  vorübergehend entfernen, damit die Konsole einmal synchronisieren kann. Danach
+  die App neu starten; der Download funktioniert wieder. Das mitgelieferte
+  CA-Bundle (`romfs/cacert.pem`) enthält die nötigen Roots — ein Update daran ist
+  hierfür nicht erforderlich.
+
 ## Bekannte Einschränkungen / mögliche Erweiterungen
 
 - Ein Abbruch **während des Entpackens** (B-Taste oder Abbrechen-Button)

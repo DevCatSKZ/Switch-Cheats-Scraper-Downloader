@@ -491,6 +491,7 @@ Each `.txt` contains all cheat codes for that Build ID in the standard format:
 - **"API token is invalid"**: check email/password or use a valid token from your CheatSlips account.
 - **Empty database on download**: run **Scrape**/`metadata` first so Title IDs are in `cheats.db`.
 - **503 error while scraping**: the site is throttling — wait a bit; the tool retries automatically with backoff.
+- **Switch app — "Network error: SSL peer certificate or SSH remote key was not OK"**: the console clock is wrong. TLS cannot validate GitHub's certificate when the console's date/time is off — GitHub's certificate then looks *not yet valid* / *expired*. This is common with **90DNS**, which blocks Nintendo's time sync so the clock drifts. **Fix:** on the console open **System Settings → System → Date and Time**, set the correct date & time (turn *Synchronize Clock via the Internet* on briefly, or temporarily remove 90DNS so it can sync), then relaunch the app — the download works again.
 
 ## Disclaimer
 
