@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here.
 
+## Data quality — 2026-07-12 (duplicate-cheat fix, affects PC + Switch)
+
+### Fixed
+- **Duplicate cheat entries when building the database.** `merge_cheat_contents`
+  deduplicated cheat blocks with a **case-sensitive** key, so the same cheat
+  from two sources that only differed in **hex-code casing** (`00e0f762` vs
+  `00E0F762`) or whitespace was kept twice — inflating cheat counts and showing
+  every cheat 2–4× (23 % of builds were affected). The dedup key is now
+  normalised (hex code lines upper-cased, whitespace collapsed; names/headers
+  untouched), so identical cheats collapse while genuinely different codes with
+  the same name (e.g. "Max HP" for 12 different addresses) are all kept. One
+  fix point, because both the Windows tool and the Switch app consume the same
+  files (switch-cheats.zip) and DB (`cheat_names`/`cheat_count`).
+- One-time cleanup of the existing data: 2,541 pure-format duplicate blocks
+  across 423 files removed (dry-run proved every removal keeps a twin — nothing
+  real deleted), DB recounted, and the `data` release re-exported
+  (database.db + switch-cheats.zip + switch-cheats-emulator.zip). User download
+  paths already overwrite (never merge), so downloading always yields the clean,
+  authoritative content.
+
 ## Switch app v2.0.0 — 2026-07-12 (full port of the Windows tool)
 
 The Nintendo Switch homebrew (`SwitchCheatsNRO`, the `nro` release) grows from a

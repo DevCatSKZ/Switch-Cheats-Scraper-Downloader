@@ -2676,13 +2676,45 @@ def cheat_file_is_empty(text: str) -> bool:
     return not parse_valid_cheats(text)
 
 
+# Eine reine Hex-Code-Zeile (nur Hex-Ziffern + Whitespace), z.B.
+# "04000000 00E0F762 00000063". Atmosphère-Cheat-Codes sind gegenueber
+# Groß-/Kleinschreibung UNEMPFINDLICH: "00e0f762" und "00E0F762" sind derselbe
+# Code. Genau das war die Duplikat-Ursache - zwei Quellen mit unterschiedlicher
+# Hex-Schreibweise galten als verschiedene Cheats.
+_HEXLINE_RE = re.compile(r"^[0-9A-Fa-f]{2,}(?:\s+[0-9A-Fa-f]+)*$")
+
+
+def _cheat_block_key(block: str) -> str:
+    """Normalisierter Vergleichsschluessel eines Cheat-Blocks fuer die Dedup.
+
+    - leere Zeilen weg, Zeilen getrimmt, interner Whitespace kollabiert,
+    - reine Hex-CODE-Zeilen in Großbuchstaben (case-egal, wie Atmosphère),
+    - Header/Namen ([Name]/{Master}) bleiben unveraendert (case-sensitiv).
+
+    So kollabieren NUR wirklich identische Cheats; Bloecke mit anderen Codes
+    (z.B. "Max HP" fuer 12 verschiedene Adressen) bleiben unangetastet.
+    """
+    out: List[str] = []
+    for ln in block.splitlines():
+        s = ln.strip()
+        if not s:
+            continue
+        s = re.sub(r"[ \t]+", " ", s)
+        if _HEXLINE_RE.match(s):
+            s = s.upper()
+        out.append(s)
+    return "\n".join(out)
+
+
 def merge_cheat_contents(*texts: str) -> str:
     """Merge several cheat files into one, keeping the UNION of distinct cheats.
 
-    Identical cheat blocks collapse into one; blocks that differ in any way
-    (even with the same name but different codes) are all kept, so no cheat is
-    ever lost when the same build id is provided by more than one source.
-    Order is preserved (first source first).
+    Cheat blocks that are identical UP TO hex-code case and whitespace collapse
+    into one (Atmosphère treats hex case-insensitively, so two sources that only
+    differ in code casing were wrongly kept as duplicates); blocks that differ in
+    their actual codes (even with the same name, e.g. "Max HP" for 12 different
+    addresses) are all kept, so no real cheat is ever lost. Order is preserved
+    (first source first); the FIRST spelling of a duplicate is the one stored.
     """
     seen = set()
     out_blocks: List[str] = []
@@ -2690,7 +2722,7 @@ def merge_cheat_contents(*texts: str) -> str:
         if not text or not text.strip():
             continue
         for block in split_cheat_blocks(text):
-            key = "\n".join(ln.strip() for ln in block.splitlines() if ln.strip())
+            key = _cheat_block_key(block)
             if not key or key in seen:
                 continue
             seen.add(key)
