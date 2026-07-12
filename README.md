@@ -20,7 +20,7 @@ A complete **toolkit for Nintendo Switch cheat codes**. It scrapes and downloads
 - **Enrich** names, cover art, regions, versions and descriptions from titledb & more.
 - **Export** straight into the right layout for your **Switch SD card** (Atmosphère / Breeze / EdiZon), for **Switch emulators** (Eden / Suyu / Sudachi / Yuzu / Ryujinx) or as a ZIP.
 - **Stays current by itself** — silent, SHA-256-verified auto-updates (no admin/UAC) and an opt-in that keeps the cheat data fresh automatically.
-- **Companion apps** download the same cheats **on the Switch itself** (homebrew `.nro`) and on **Android** — no PC needed.
+- A **full console port** runs the same tool **on the Switch itself** (homebrew `.nro`), and an **Android** companion downloads the same cheats for emulators — no PC needed.
 - **6 languages** (EN/DE/ES/FR/IT/JA), three themes, Windows installer **and** portable.
 
 ## ⭐ Nintendo Switch Cheats Database — always up to date
@@ -76,11 +76,11 @@ No Python required — the EXE is self-contained. (The built-in Chromium ships w
 
 ## 🎮 Switch app (homebrew)
 
-The desktop tool has a **counterpart that runs directly on the Switch**: a standalone homebrew app (`SwitchCheatsDownloader.nro`) that fetches the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) **on the console** and extracts it straight into the Atmosphère layout on the SD card — no PC needed.
+The desktop tool has a **full counterpart that runs directly on the Switch** — the same Holo-Glass app **on the console**, not just a downloader. The standalone homebrew `.nro` (`SwitchCheatsDownloader.nro`) carries an **on-console game library** (~3000 games, SQLite) with cover gallery, search & filters, a **cheat viewer/editor**, community sources, the **CheatSlips API**, and a **System page** — installed & running games with their real **build id**, plus **save-game backup & restore**. It fetches the always-current [`data` release](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data) **on the console** and extracts it straight into the Atmosphère layout on the SD card — no PC needed.
 
 <p align="center"><img src="screenshots/switch-app.png" width="720" alt="Switch Cheats Downloader homebrew app"></p>
 
-**What it does:** on launch it checks whether new cheats are available (same "re-upload without version bump" detection as the desktop tool, incl. download size), and one press on **A** downloads and extracts everything to `atmosphere/contents/<TitleID>/cheats/`. Interrupted downloads **resume** where they stopped, the app can **update itself** from this repo, and the UI speaks **6 languages** (EN/DE/ES/FR/IT/JA, auto-detected from the console) with full Joy-Con **and** touch control.
+**What it does:** browse and manage your whole cheat library **on the console** — search, filter, open a game to see its builds, view/edit cheat codes, pull from the community sources & CheatSlips, and use the **System page** (installed/running games with their build id, save backup/restore). Or just grab everything: one press on **A** downloads the latest cheats and extracts them to `atmosphere/contents/<TitleID>/cheats/` (interrupted downloads **resume**; same "re-upload without version bump" detection as the desktop tool). The app can **update itself** from this repo, and the UI speaks **6 languages** (EN/DE/ES/FR/IT/JA, auto-detected from the console) with full Joy-Con **and** touch control.
 
 **Install:** download [`SwitchCheatsDownloader-Switch.zip`](../../releases/latest) from the latest release and extract it to the **root of your SD card** (it contains `switch/SwitchCheatsDownloader.nro`), then launch *Switch Cheats Downloader* from the Homebrew Menu. Requires a modded Switch (Atmosphère + hbmenu) and Wi-Fi.
 
