@@ -138,6 +138,36 @@ auf einmal in einen `exportall`-Ordner: `database.db` (copyright-sauber via
 `PRAGMA journal_mode=DELETE` → die exportierte DB ist eine saubere Einzeldatei
 (keine `-wal`/`-shm`-Sidecars). Alles in 6 Sprachen lokalisiert.
 
+**Modern-UI-Fixes (2026-07-11, Commit aac4ff5):**
+- **Aktiver Tab = sauberes Rechteck.** `_paint_nav` färbt jetzt die **ganze
+  Zeile** (`row` + `btn` + `mark` + `badge` teilen sich `rowbg`
+  = `featured_bg` aktiv / `surface` sonst). Vorher war nur der Button eingefärbt;
+  das kurze, leere Badge rechts war niedriger als der Button → der Zeilen-BG
+  blitzte oben/unten rechts durch (Notch). Zeilenzuordnung via
+  `dict(zip(self._nav_order, self._nav_rows))`.
+- **Sidebar-Jitter behoben.** Die aktive Zeile wird semibold (breiter); die
+  Sidebar hatte **keine feste Breite** → sie floss bei jeder Navigation neu um.
+  Jetzt: feste Breite aus der breitesten Nav-Beschriftung im Semibold-Zustand
+  (sprachsicher gemessen via `tkinter.font`) + `self._sidebar.pack_propagate(False)`.
+- **Badge als Pille.** Count-Badge = Chip (`bg=hover`, `fg=accent`); leere Badges
+  bekommen `bg=rowbg` (blenden in die Zeile, keine Kästchen). `_update_nav_badge`
+  ruft am Ende `_paint_nav()`, damit der Chip auch nach dem Setzen des Texts sitzt
+  (Paint kann davor laufen).
+- **Loses „Spiel"/„Game" entfernt.** `_build_main(parent, with_preview=True)`:
+  die Modern-Shell ruft `with_preview=False` → Tabelle füllt die volle Breite,
+  das alte Cover-Vorschau-Panel (kollabierte zu einem Sliver und ließ seinen
+  LabelFrame-Titel „Game" über der Tabelle schweben) wird **nicht** mehr gezeigt;
+  `cover_label`/`cheat_text` werden weiterhin erzeugt (off-layout), damit
+  `_on_select_row` sie befüllen kann.
+- **Button-Texte nicht mehr abgeschnitten.** Feste `width=7` an den Preset-Buttons
+  „Save…/Delete" und `width=13` an „Update/DLC IDs" entfernt — die längeren
+  Übersetzungen (DE „Speichern…/Löschen", „Update/DLC-IDs") wurden geclippt.
+- **Kein echter Dashboard-Bug:** Beim Screenshotten wirkten die Home-Kacheln leer
+  („—"). Ursache war nur der Screenshot-Harness (`root.update()` statt echtem
+  `mainloop()` → der Thread-`after()` in `_refresh_dashboard` feuert nicht).
+  Synchron (`_dashboard_stats` + `_paint_dashboard`) füllt es korrekt. Für
+  Screenshots das Dashboard daher **synchron** malen (siehe §9).
+
 **Merkzettel:** Details/Fallstricke stehen in den Memory-Notizen
 (`modern-gui-architecture`, `windows-auto-update`, `android-cheat-delivery`,
 `i18n-architecture`).
@@ -411,3 +441,42 @@ dann bleiben alle Links gueltig.
    einen Widescreen-Monitor - maximierte Aufnahmen wirken extrem in die
    Breite gezogen. Fenstergroesse ~1540x1250 (settings.json:
    "window_state": "normal" + passende "geometry" setzen).
+
+**Empfohlene In-Harness-Methode (2026-07-11, statt portable-Kopie).** Ein
+Python-Skript startet die GUI aus dem Quellcode und neutralisiert alles im
+Speicher — kein Kopieren, keine Pfadaenderung auf der Platte:
+- **Englisch erzwingen:** `i18n.set_language` VOR dem App-Bau monkeypatchen, sodass
+  es immer `"en"` setzt (die UI wird mit englischen `t()`-Strings gebaut).
+- **Cover strippen:** `app._load_cover_into = lambda *a, **k: None` (kein Box-Art,
+  Copyright).
+- **Beschreibungen strippen:** nach `open_game_page` rekursiv die `tk.Text`-Widgets
+  unter `app._detail_body` sammeln, dann `txt.master.destroy()` (erst sammeln,
+  dann zerstoeren — nicht mitten in `winfo_children()` loeschen).
+- **Neutrale Pfade:** `app.db_path.set(r"C:\SwitchCheatsScraper\cheats.db")` +
+  `app.dl_output.set(...cheatsdownload)` NUR fuer die Anzeige. `db_path`/`dl_output`
+  haben KEINE trace-Callbacks → kein Refresh, die Tabelle bleibt gefuellt. WICHTIG:
+  erst zur Library navigieren (Badge rechnet mit echtem Pfad via
+  `_db_build_count_games`), DANN neutral setzen, dann capturen.
+- **Dashboard:** im Harness (`root.update()` statt `mainloop()`) feuert der
+  Thread-`after()` nicht → Home synchron malen:
+  `s = app._dashboard_stats(app.dl_output.get(), fast=True); app._paint_dashboard(s)`.
+- **Capture:** Fenster-HWND ueber `GetParent(root.winfo_id())`, Bounds via
+  `DwmGetWindowAttribute(..., 9)` (extended frame bounds), `PIL.ImageGrab.grab(bbox)`;
+  Prozess DPI-aware machen (`SetProcessDpiAwareness(2)`), sonst passen Koordinaten
+  und physische Pixel nicht. Die obersten ~8 px abschneiden (Topmost-Wechsel faengt
+  gern einen Fremd-Streifen ein). Neutrales Nicht-Nintendo-Spiel fuer die
+  Detailseite (z. B. **Terraria**).
+
+**Website-Screenshots (`docs/`).** Neben `screenshots/windows-tool.png` (README)
+gibt es die Landingpage-Bilder: `shot-windows.png` (Home), `shot-win-library.png`,
+`shot-win-settings.png`, `shot-win-game.png` (+ `shot-android.png`, `shot-switch.png`).
+Gleiche Neutralitaets-Regeln. Dateinamen beibehalten.
+
+**Open-Graph-Vorschau (`docs/og-preview.png`, 1200x630).** Wird beim Teilen des
+Links angezeigt (`og:image`/`twitter:image` in `index.html`). Muss **zentriert
+komponiert** sein (Icon + Wortmarke im mittleren 630x630-Quadrat), weil Messenger
+wie Telegram die breite Card auf ein Quadrat zuschneiden — eine links/rechts-
+Komposition wird dabei haesslich beschnitten. Generator:
+`scratchpad/generate_og.py` (PIL: Petrol-Gradient + Glows, `app_icon.png` zentriert,
+Segoe-Fonts). Bei Aenderung NEUEN Dateinamen vergeben (bricht den Messenger-Cache);
+Telegram-Refresh erzwingen, indem man den Link an **@WebpageBot** schickt.
