@@ -231,8 +231,13 @@ static void runCheckWorker() {
     g_action = Action::None;
 }
 
-// "Komplett holen": database.db (Bibliothek) + switch-cheats.zip (Dateien).
+// true = "Komplett holen" (database.db + switch-cheats.zip); false = "Nur
+// Cheats" (nur switch-cheats.zip - das schlanke v1-Verhalten).
+static std::atomic<bool> g_installWithDb{true};
+
+// database.db (Bibliothek, optional) + switch-cheats.zip (Cheat-Dateien).
 static void runInstallWorker() {
+    bool withDb = g_installWithDb.load();
     g_cancelRequested = false;
     g_bytesDone = 0;
     g_bytesTotal = 0;
@@ -248,7 +253,8 @@ static void runInstallWorker() {
         return;
     }
 
-    // -- Schritt 1: database.db (klein, ohne Resume) ------------------------
+    // -- Schritt 1: database.db (klein, ohne Resume) - nur bei "Komplett" ---
+    if (withDb) {
     setStatus(tr("status.dbdownload"));
     updater::ReleaseInfo dbInfo = updater::fetchAssetInfo(cfg::kDbAssetName);
     if (dbInfo.ok) {
@@ -290,6 +296,7 @@ static void runInstallWorker() {
             }
         }
     }
+    } // Ende withDb
 
     // -- Schritt 2: switch-cheats.zip (gross, mit Resume) --------------------
     g_bytesDone = 0;
@@ -395,10 +402,11 @@ static void startCheck() {
     g_worker = std::thread(runCheckWorker);
 }
 
-static void startInstall() {
+static void startInstall(bool withDb = true) {
     if (g_action.load() != Action::None) return;
     joinWorkerIfDone();
     updater::ensureCurlGlobalInit();
+    g_installWithDb = withDb;
     g_action = Action::Installing;
     g_worker = std::thread(runInstallWorker);
 }
@@ -1275,7 +1283,7 @@ int main(int argc, char** argv) {
                     cleanArmed = false;
                 } else if (btn == JOY_A) {
                     if (page == Page::Home) {
-                        if (!busy) startInstall();
+                        if (!busy) startInstall(true);
                     } else if (page == Page::Library) {
                         if (!libRows.empty() && libSel < static_cast<int>(libRows.size())) {
                             openDetail(db::games()[libRows[libSel]]);
@@ -1355,7 +1363,9 @@ int main(int argc, char** argv) {
                         }
                     }
                 } else if (btn == JOY_X) {
-                    if (page == Page::Library) {
+                    if (page == Page::Home) {
+                        if (!busy) startInstall(false);   // Nur Cheats (v1-Verhalten)
+                    } else if (page == Page::Library) {
                         libFilter = static_cast<LibFilter>(
                             (static_cast<int>(libFilter) + 1) % static_cast<int>(LibFilter::Count));
                         libSel = 0;
@@ -1733,36 +1743,54 @@ int main(int argc, char** argv) {
                          lx, ly, resultOk ? kColSuccess : kColError);
             }
 
-            // Buttons unten in der Karte: A = Komplett holen, Y = Pruefen
-            int btnW = 250, btnH = 48;
-            int btnY = cardsY + cardsH - btnH - 16;
+            // Buttons: A = Komplett holen (DB + Cheats), X = Nur Cheats (das
+            // schlanke v1-Verhalten: nur switch-cheats.zip), Y = Pruefen.
+            int btnH = 46;
+            int gap2 = 10;
+            int interiorW = leftW - 40;
+            int btnY = cardsY + cardsH - btnH - 14;   // untere Reihe (sekundaer)
+            int btnYtop = btnY - btnH - gap2;         // obere Reihe (primaer)
             if (busy) {
-                fillRect(renderer, lx, btnY, btnW, btnH, kColItem);
-                drawRectOutline(renderer, lx, btnY, btnW, btnH, kColHairline);
-                drawTextCentered(renderer, fontSmall, std::string("B  ") + tr("btn.cancel"),
-                                 lx + 20, btnY, btnH, kColText);
+                std::string cl = std::string("B  ") + tr("btn.cancel");
+                fillRect(renderer, lx, btnY, interiorW, btnH, kColItem);
+                drawRectOutline(renderer, lx, btnY, interiorW, btnH, kColHairline);
+                drawTextCentered(renderer, fontSmall, cl,
+                                 lx + (interiorW - textWidth(fontSmall, cl)) / 2, btnY, btnH, kColText);
                 HitBox hb;
-                hb.rect = {lx, btnY, btnW, btnH};
+                hb.rect = {lx, btnY, interiorW, btnH};
                 hb.fn = []() { g_cancelRequested = true; };
                 hits.push_back(hb);
             } else {
-                drawGradientRectH(renderer, lx, btnY, btnW, btnH, kColAccent, kColAccent2);
+                // Primaer (oben, volle Breite): Komplett holen
+                drawGradientRectH(renderer, lx, btnYtop, interiorW, btnH, kColAccent, kColAccent2);
                 std::string lbl = std::string("A  ") + tr("home.btn.getall");
                 drawTextCentered(renderer, fontSmall, lbl,
-                                 lx + (btnW - textWidth(fontSmall, lbl)) / 2, btnY, btnH, kColOnAccent);
-                HitBox hb;
-                hb.rect = {lx, btnY, btnW, btnH};
-                hb.fn = []() { startInstall(); };
-                hits.push_back(hb);
+                                 lx + (interiorW - textWidth(fontSmall, lbl)) / 2, btnYtop, btnH, kColOnAccent);
+                HitBox hbA;
+                hbA.rect = {lx, btnYtop, interiorW, btnH};
+                hbA.fn = []() { startInstall(true); };
+                hits.push_back(hbA);
 
-                int b2x = lx + btnW + 14;
-                fillRect(renderer, b2x, btnY, 200, btnH, kColItem);
-                drawRectOutline(renderer, b2x, btnY, 200, btnH, kColHairline);
+                // Sekundaer (unten): Nur Cheats | Pruefen
+                int halfW = (interiorW - gap2) / 2;
+                std::string lblX = std::string("X  ") + tr("home.btn.cheatsonly");
+                fillRect(renderer, lx, btnY, halfW, btnH, kColItem);
+                drawRectOutline(renderer, lx, btnY, halfW, btnH, kColHairline);
+                drawTextCentered(renderer, fontSmall, lblX,
+                                 lx + (halfW - textWidth(fontSmall, lblX)) / 2, btnY, btnH, kColText);
+                HitBox hbX;
+                hbX.rect = {lx, btnY, halfW, btnH};
+                hbX.fn = []() { startInstall(false); };
+                hits.push_back(hbX);
+
+                int b2x = lx + halfW + gap2;
                 std::string lbl2 = std::string("Y  ") + tr("btn.check");
+                fillRect(renderer, b2x, btnY, halfW, btnH, kColItem);
+                drawRectOutline(renderer, b2x, btnY, halfW, btnH, kColHairline);
                 drawTextCentered(renderer, fontSmall, lbl2,
-                                 b2x + (200 - textWidth(fontSmall, lbl2)) / 2, btnY, btnH, kColText);
+                                 b2x + (halfW - textWidth(fontSmall, lbl2)) / 2, btnY, btnH, kColText);
                 HitBox hb2;
-                hb2.rect = {b2x, btnY, 200, btnH};
+                hb2.rect = {b2x, btnY, halfW, btnH};
                 hb2.fn = []() { startCheck(); };
                 hits.push_back(hb2);
             }
@@ -2578,6 +2606,7 @@ int main(int argc, char** argv) {
         else if (page == Page::Editor) hints = tr("footer.editor");
         else if (page == Page::Library) hints = tr("footer.library");
         else if (page == Page::CheatSlips) hints = tr("footer.cheatslips");
+        else if (page == Page::Home) hints = tr("footer.home");
         else hints = tr("footer.nav");
         drawTextRight(renderer, fontTiny, hints, cfg::kScreenW - 28, fy2 + 17, kColTextMuted);
 

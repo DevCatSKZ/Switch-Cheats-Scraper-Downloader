@@ -140,6 +140,7 @@ const Entry kTable[] = {
     {"home.card.d2",    {"(switch-cheats.zip) im Atmosphère-Layout auf die SD-Karte.", "(switch-cheats.zip) onto the SD card in Atmosphère layout.", "(switch-cheats.zip) a la SD con el formato de Atmosphère.", "(switch-cheats.zip) sur la carte SD au format Atmosphère.", "(switch-cheats.zip) sulla SD nel formato Atmosphère.", "(switch-cheats.zip) SDカードへAtmosphère形式で保存します。"}},
     {"home.dbstate",    {"Datenbank-Stand: ", "Database state: ", "Estado de la base: ", "État de la base : ", "Stato del database: ", "データベースの状態: "}},
     {"home.btn.getall", {"Komplett holen", "Get everything", "Descargar todo", "Tout télécharger", "Scarica tutto", "すべて取得"}},
+    {"home.btn.cheatsonly", {"Nur Cheats", "Cheats only", "Solo trucos", "Cheats seulement", "Solo trucchi", "チートのみ"}},
     {"home.recent",     {"Zuletzt aktualisiert", "Recently updated", "Actualizado recientemente", "Mises à jour récentes", "Aggiornati di recente", "最近の更新"}},
     {"home.norecent",   {"Noch keine Einträge.", "No entries yet.", "Aún no hay entradas.", "Pas encore d'entrées.", "Ancora nessuna voce.", "まだ項目がありません。"}},
 
@@ -254,6 +255,7 @@ const Entry kTable[] = {
     {"gal.cheats.suffix", {" Cheats", " cheats", " trucos", " cheats", " trucchi", " チート"}},
     {"footer.editor",     {"A Zeile bearbeiten   Y Neue Zeile   X Löschen   - Speichern   B Zurück", "A Edit line   Y New line   X Delete   - Save   B Back", "A Editar   Y Nueva línea   X Borrar   - Guardar   B Volver", "A Modifier   Y Nouvelle ligne   X Supprimer   - Enregistrer   B Retour", "A Modifica   Y Nuova riga   X Elimina   - Salva   B Indietro", "A 編集   Y 新規行   X 削除   - 保存   B 戻る"}},
     {"footer.cheatslips", {"A Token eingeben   Y Token testen   L/R Seite", "A Enter token   Y Test token   L/R Page", "A Token   Y Probar   L/R Página", "A Jeton   Y Tester   L/R Page", "A Token   Y Prova   L/R Pagina", "A トークン入力   Y テスト   L/R ページ"}},
+    {"footer.home", {"A Komplett holen   X Nur Cheats   Y Prüfen   L/R Seite", "A Get everything   X Cheats only   Y Check   L/R Page", "A Descargar todo   X Solo trucos   Y Comprobar   L/R Página", "A Tout télécharger   X Cheats seulement   Y Vérifier   L/R Page", "A Scarica tutto   X Solo trucchi   Y Verifica   L/R Pagina", "A すべて取得   X チートのみ   Y 確認   L/R ページ"}},
 };
 // clang-format on
 
