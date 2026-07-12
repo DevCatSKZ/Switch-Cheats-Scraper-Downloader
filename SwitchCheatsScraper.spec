@@ -36,6 +36,13 @@ import os as _os
 if _os.path.exists("app.ico"):
     datas += [("app.ico", ".")]
 
+# Lokale Versions-DB (build_id -> title_id/version/name) mit ausliefern, damit das
+# fertige Programm die Zuordnung sofort kennt (der Nutzer muss nichts nachladen).
+# Zur Laufzeit wird sie aus dem Bundle gelesen und in den beschreibbaren
+# Datenordner geschrieben, sobald sie waechst (record_buildid/sync).
+if _os.path.exists("buildid_map.csv"):
+    datas += [("buildid_map.csv", ".")]
+
 a = Analysis(
     ["SwitchCheatsScraper.py"],
     pathex=[],

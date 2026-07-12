@@ -466,7 +466,10 @@ def _post_download_with_session(session, page_url: str, html: str,
     except Exception:
         log("    BeautifulSoup not available — cannot parse download form.")
         return None
-    soup = BeautifulSoup(html, "lxml")
+    try:
+        soup = BeautifulSoup(html, "lxml")
+    except Exception:
+        soup = BeautifulSoup(html, "html.parser")
     form = soup.find("form")
     if not form:
         log("    No form found on page.")
@@ -505,9 +508,12 @@ def _find_source_build_pairs(html: str, slug: str) -> List[tuple]:
     """
     try:
         from bs4 import BeautifulSoup
-        soup = BeautifulSoup(html, "lxml")
     except Exception:
         return []
+    try:
+        soup = BeautifulSoup(html, "lxml")
+    except Exception:
+        soup = BeautifulSoup(html, "html.parser")
 
     pairs = []
     # Each build is typically in a .card with a link to /game/{slug}/{page_id}

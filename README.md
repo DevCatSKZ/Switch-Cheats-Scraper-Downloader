@@ -58,6 +58,8 @@ The Windows tool grew from a manager into a full **control centre** with a moder
 - **Silent self-update** — the installer is now **per-user (no admin / no UAC)**, so a found update downloads, is **SHA-256-verified** and installs silently, then the app restarts. Also: first-run welcome (one-click complete download), rotating DB safety backups before destructive actions, Windows toast notifications, and an opt-in "keep the cheat data up to date automatically".
 - **Share-safe DB export** — "Export DB" can strip the publisher eShop text (game descriptions/intros) so a database you redistribute is smaller and copyright-clean (`scraper.export_shared_db`).
 - **Android companion** — a "Download Android App" button fetches the latest, SHA-256-verified `.apk`.
+- **Local version database** — a self-maintained, growing archive (`buildid_map.csv`, shipped inside the app) mapping **Build ID → Title ID + version + name** — data no online source provides. Self-extracted/hand-entered versions are **authoritative** (they win over diverging online versions); versions newly found via TitleDB/CheatSlips are archived automatically. Button: **Get Versions (local)**.
+- **Runs out of the box** — the installer and portable bundle everything, **including the Chromium browser** — nothing to download to use the program. Even without optional packages the app degrades gracefully (HTML parser falls back to Python's built-in).
 
 ## ⬇️ Download (Windows)
 

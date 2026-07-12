@@ -389,8 +389,18 @@ def normalize_slug(name: str) -> str:
     return "".join(result)
 
 
+# Bevorzugt lxml (schnell); faellt aber automatisch auf Pythons eingebauten
+# html.parser zurueck, falls lxml nicht installiert ist – so laeuft das Programm
+# auch bei einer frischen Installation ohne Zusatzpaket.
+try:
+    import lxml  # noqa: F401
+    _HTML_PARSER = "lxml"
+except Exception:
+    _HTML_PARSER = "html.parser"
+
+
 def parse_html(text: str) -> BeautifulSoup:
-    return BeautifulSoup(text, "lxml")
+    return BeautifulSoup(text, _HTML_PARSER)
 
 
 def extract_version(text: str) -> Optional[str]:
@@ -689,6 +699,53 @@ def export_rows_csv(rows, dest: Path) -> int:
     return len(rows)
 
 
+# ---------------------------------------------------------------------------
+# Lokale Ergaenzungs-Datenbank: build_id -> (title_id, version, name)
+#
+# Die exakte Version zu einer Build-ID (plus Spielname) ist ONLINE nicht
+# verfuegbar. Diese Daten werden offline aus den installierten Spielen
+# extrahiert (main-NSO-Build-ID) und lokal in ``buildid_map.csv`` gepflegt
+# (neben cheats.db bzw. neben dem Programm; ";"-getrennt, Spalten
+# build_id;title_id;version;name). Liefert eine Cheat-Quelle beim Scrapen/
+# Downloaden keine Version/keinen Namen, fuellt diese Map das per Build-ID auf.
+# ---------------------------------------------------------------------------
+BUILDID_MAP_FILE = "buildid_map.csv"
+
+
+def load_buildid_map(*dirs) -> Dict[str, Dict[str, str]]:
+    """Liest buildid_map.csv aus den gegebenen Verzeichnissen (erste Fundstelle
+    pro build_id gewinnt) und liefert {BUILD_ID: {title_id, version, name}}."""
+    import csv as _csv
+    out: Dict[str, Dict[str, str]] = {}
+    for d in dirs:
+        if not d:
+            continue
+        fp = Path(d)
+        if fp.is_dir():
+            fp = fp / BUILDID_MAP_FILE
+        if not fp.exists():
+            continue
+        try:
+            with open(fp, encoding="utf-8-sig", newline="") as f:
+                for row in _csv.DictReader(f, delimiter=";"):
+                    bid = (row.get("build_id") or "").strip().upper()
+                    if len(bid) != 16:
+                        continue
+                    # source: "extracted" = selbst aus der Datei gelesen
+                    # (autoritativ, darf überschreiben) | "db"/sonst = archiviert
+                    # (nur Fallback, füllt nur Leeres).
+                    src = (row.get("source") or "extracted").strip().lower()
+                    out.setdefault(bid, {
+                        "title_id": (row.get("title_id") or "").strip().upper(),
+                        "version": (row.get("version") or "").strip(),
+                        "name": (row.get("name") or "").strip(),
+                        "source": src,
+                    })
+        except Exception as e:
+            print(f"buildid_map: Fehler beim Lesen von {fp}: {e}")
+    return out
+
+
 class GameDatabase:
     """Persistent SQLite database of every scraped game/build for lookup.
 
@@ -717,6 +774,86 @@ class GameDatabase:
         # "Get Names/Region/…" on selected rows only touches the selection.
         self._write_restrict = None
         self._ensure_tables()
+        # Lokale Versions-Datenbank (build_id -> title_id/version/name): neben
+        # cheats.db (Schreibort) und als Fallback neben dem Programm. Wird beim
+        # Scrapen/Downloaden gelesen (auffuellen/korrigieren) UND geschrieben
+        # (neue externe + manuelle Versionen werden archiviert).
+        # Schreibort ist IMMER der beschreibbare Datenordner neben cheats.db.
+        self._buildid_map_path = self.db_path.parent / BUILDID_MAP_FILE
+        try:
+            here = Path(__file__).resolve().parent
+            # Lese-Quellen (erste gewinnt): Datenordner, Programmordner und – im
+            # gepackten .exe – das eingebettete Bundle (sys._MEIPASS).
+            search = [self._buildid_map_path, self.db_path.parent, here]
+            bundled = getattr(sys, "_MEIPASS", None)
+            if bundled:
+                search.append(Path(bundled))
+            self._buildid_map = load_buildid_map(*search)
+        except Exception:
+            self._buildid_map = {}
+
+    # ------------------------------------------------------------- version-DB
+    def _write_buildid_map(self) -> None:
+        """Schreibt die lokale Versions-DB (self._buildid_map) nach
+        buildid_map.csv (build_id;title_id;version;name;source)."""
+        import csv as _csv
+        try:
+            with open(self._buildid_map_path, "w", newline="", encoding="utf-8-sig") as f:
+                w = _csv.writer(f, delimiter=";")
+                w.writerow(["build_id", "title_id", "version", "name", "source"])
+                for bid, rec in sorted(self._buildid_map.items(),
+                                       key=lambda kv: (kv[1].get("name") or "").lower()):
+                    w.writerow([bid, rec.get("title_id", ""), rec.get("version", ""),
+                                rec.get("name", ""), rec.get("source", "extracted")])
+        except Exception as e:
+            print(f"buildid_map schreiben fehlgeschlagen: {e}")
+
+    def record_buildid(self, build_id, title_id, version=None, name=None,
+                       source="manual", write=True) -> bool:
+        """Traegt einen build_id->title_id/version/name-Eintrag in die lokale
+        Versions-DB ein bzw. aktualisiert ihn.
+
+        - source='manual'/'extracted' = autoritativ (z.B. GUI-Eingabe): setzt
+          Version/Name immer.
+        - source='db' (aus externer Quelle archiviert): ergaenzt NUR, wenn noch
+          kein (autoritativer) Eintrag existiert - unsere DB gewinnt.
+        write=False sammelt nur im RAM (fuer Massen-Import); dann einmal
+        _write_buildid_map() aufrufen.
+        """
+        bid = (build_id or "").strip().upper()
+        if len(bid) != 16:
+            return False
+        tid = (title_id or "").strip().upper()
+        ver = (version or "").strip()
+        nm = (name or "").strip()
+        cur = self._buildid_map.get(bid)
+        authoritative = source in ("manual", "extracted")
+        if cur:
+            if not authoritative:
+                # Unsere DB gewinnt: bestehenden Eintrag NICHT durch externen
+                # ueberschreiben. Nur fehlende Felder auffuellen.
+                if cur.get("source") in ("manual", "extracted"):
+                    return False
+                if cur.get("version") and not (ver and not cur.get("version")):
+                    # hat schon eine Version -> nichts tun
+                    if not (nm and not cur.get("name")):
+                        return False
+            merged = {
+                "title_id": tid or cur.get("title_id", ""),
+                "version": ver or cur.get("version", ""),
+                "name": nm or cur.get("name", ""),
+                "source": source if authoritative else cur.get("source", source),
+            }
+        else:
+            if not ver:
+                return False  # ohne Version keine sinnvolle Zuordnung
+            merged = {"title_id": tid, "version": ver, "name": nm, "source": source}
+        if merged == cur:
+            return False
+        self._buildid_map[bid] = merged
+        if write:
+            self._write_buildid_map()
+        return True
 
     def set_write_restrict(self, title_ids) -> None:
         """Limit subsequent enrichment writes/queries to these title ids
@@ -894,7 +1031,11 @@ class GameDatabase:
     def upsert_build(self, row: Dict):
         # Fill any missing keys with None so the named query always binds.
         full = {c: row.get(c) for c in self.COLUMNS}
-        if is_blocked_pair(full.get("title_id"), full.get("build_id")):
+        # Ungueltige/Platzhalter-Build-IDs (all-zeros/-ones/-F, title==build) sind
+        # Fehl-Uploads (nicht ladbar) und wuerden sonst bei jedem Scrape wieder als
+        # nicht-downloadbare Zeile auftauchen -> gar nicht erst speichern.
+        if (is_blocked_pair(full.get("title_id"), full.get("build_id"))
+                or is_placeholder_build_id(full.get("build_id"), full.get("title_id"))):
             return
         # Respect an active enrichment restrict (e.g. API refresh of selected rows).
         if self._restricted(full.get("title_id")):
@@ -906,6 +1047,19 @@ class GameDatabase:
         override = TITLE_NAME_OVERRIDES.get((full.get("title_id") or "").upper())
         if override:
             full["game_title"] = override
+        # Lokale Ergaenzungs-DB: fehlende Version/Name per build_id auffuellen -
+        # greift genau dann, wenn die Cheat-Quelle diese Daten nicht liefert.
+        # Nur wenn die Title-ID der Map zur eingefuegten Title-ID passt (dieselbe
+        # Build-ID darf nicht einen fremden Titel mit-befuellen).
+        supp = self._buildid_map.get((full.get("build_id") or "").upper())
+        if supp and supp.get("title_id") == (full.get("title_id") or "").upper():
+            auth = supp.get("source", "extracted") in ("extracted", "manual")
+            # Autoritative (eigene) Version gewinnt und ueberschreibt die der
+            # Quelle; sonst (archiviert) nur fehlende Version auffuellen.
+            if supp.get("version") and (auth or not full.get("version")):
+                full["version"] = supp["version"]
+            if not full.get("game_title") and supp.get("name"):
+                full["game_title"] = supp["name"]
         with self._conn:
             self._conn.execute(
                 """INSERT INTO builds
@@ -1072,6 +1226,15 @@ class GameDatabase:
                 "DELETE FROM builds WHERE UPPER(build_id) = UPPER(title_id)"
             )
             removed += cur3.rowcount
+            # Platzhalter-Build-IDs (all-zeros/-ones/-F etc.) = Fehl-Uploads.
+            if _PLACEHOLDER_BUILD_IDS:
+                ph = list(_PLACEHOLDER_BUILD_IDS)
+                cur4 = self._conn.execute(
+                    "DELETE FROM builds WHERE UPPER(build_id) IN (%s)"
+                    % ",".join("?" * len(ph)),
+                    [p.upper() for p in ph],
+                )
+                removed += cur4.rowcount
             for btid, bbid in BLOCKED_BUILD_PAIRS:
                 cur2 = self._conn.execute(
                     "DELETE FROM builds WHERE title_id = ? AND build_id = ?", (btid, bbid)
@@ -4447,6 +4610,91 @@ def fetch_nx_gfx_readme_names(cache_dir=".", cache_days: int = 7) -> Dict[str, s
     return _parse_nx_gfx_readme_table(text)
 
 
+def apply_buildid_map(db: "GameDatabase", overwrite: bool = True) -> int:
+    """Fuellt version + game_title vorhandener Builds aus der lokalen Ergaenzungs-
+    DB (build_id -> version/name). Eine Build-ID entspricht eindeutig genau einer
+    Version, und unsere Werte stammen aus der echten installierten Datei - daher
+    wird die Version standardmaessig AUTORITATIV gesetzt (overwrite=True). Der
+    Name wird nur gefuellt, wenn noch keiner/ein Platzhalter da ist.
+    Rueckgabe: Anzahl tatsaechlich geaenderter Zeilen."""
+    m = getattr(db, "_buildid_map", None)
+    if not m:
+        return 0
+    changed = 0
+    with db._conn:
+        for bid, rec in m.items():
+            tid = rec.get("title_id") or ""
+            if not tid:
+                continue  # ohne Title-ID nicht zuordenbar (Kollisionsschutz)
+            ver = rec.get("version") or None
+            name = rec.get("name") or None
+            if not ver and not name:
+                continue
+            # Nur selbst-extrahierte/manuelle Eintraege duerfen ueberschreiben;
+            # aus der DB archivierte ("db") fuellen nur Leeres (Fallback/Archiv).
+            ov = overwrite and rec.get("source", "extracted") in ("extracted", "manual")
+            vcond = ("version IS NULL OR version = '' OR version != ?"
+                     if ov else "version IS NULL OR version = ''")
+            # Gibt es die exakte (build_id + title_id)-Zeile? Wenn ja, strikt
+            # dort schreiben: eine falsch zugeordnete Build-ID (Datenfehler,
+            # fremder Titel) hat dann den richtigen Titel daneben und wird nur
+            # DORT getroffen - der fremde bleibt unberuehrt.
+            exact = db._conn.execute(
+                "SELECT 1 FROM builds WHERE build_id = ? AND title_id = ? LIMIT 1",
+                (bid, tid)).fetchone()
+            if exact:
+                if ver:
+                    cur = db._conn.execute(
+                        f"UPDATE builds SET version = ? WHERE build_id = ? AND title_id = ? AND ({vcond})",
+                        (ver, bid, tid, ver) if ov else (ver, bid, tid))
+                    changed += cur.rowcount
+                if name:
+                    cur = db._conn.execute(
+                        "UPDATE builds SET game_title = ? WHERE build_id = ? AND title_id = ? AND "
+                        "(game_title IS NULL OR game_title = '' OR UPPER(game_title) = UPPER(title_id))",
+                        (name, bid, tid))
+                    changed += cur.rowcount
+            elif ver:
+                # Editions-Fallback: dieselbe Build-ID kommt in der DB NUR unter
+                # anderen Title-IDs vor (verschiedene Editionen/Regionen desselben
+                # Spiels - identische Binary => identische Version). Nur Version
+                # setzen (der Name kann editionsspezifisch sein).
+                cur = db._conn.execute(
+                    f"UPDATE builds SET version = ? WHERE build_id = ? AND ({vcond})",
+                    (ver, bid, ver) if overwrite else (ver, bid))
+                changed += cur.rowcount
+    return changed
+
+
+def sync_buildid_map_from_db(db: "GameDatabase") -> int:
+    """Archiviert Versionen aus cheats.db in die lokale Versions-DB: jede
+    build_id (mit Version), die noch NICHT in der lokalen DB steht, wird als
+    source='db' ergaenzt (build_id -> title_id/version/name). Bereits vorhandene
+    (v.a. eigene, autoritative) Eintraege bleiben unangetastet - unsere DB
+    gewinnt. So wachsen extern geladene (CheatSlips/TitleDB) Versionen mit ein.
+    Rueckgabe: Anzahl neu archivierter Build-IDs."""
+    rows = db._conn.execute(
+        "SELECT build_id, title_id, version, game_title FROM builds "
+        "WHERE version IS NOT NULL AND version != '' AND build_id IS NOT NULL "
+        "AND length(build_id) = 16"
+    ).fetchall()
+    added = 0
+    for bid, tid, ver, name in rows:
+        b = (bid or "").upper()
+        if b in db._buildid_map:
+            continue  # schon vorhanden -> unsere gewinnt
+        db._buildid_map[b] = {
+            "title_id": (tid or "").upper(),
+            "version": (ver or "").strip(),
+            "name": (name or "").strip(),
+            "source": "db",
+        }
+        added += 1
+    if added:
+        db._write_buildid_map()
+    return added
+
+
 def apply_title_name_overrides(db: "GameDatabase") -> int:
     """Force-correct game names for title ids in TITLE_NAME_OVERRIDES.
 
@@ -4476,6 +4724,8 @@ def fill_known_title_names(db: "GameDatabase", progress_cb=None, should_stop=Non
     GAMES.md, etc.) but are known to the community. Returns the number of names filled.
     """
     filled = apply_title_name_overrides(db)
+    # Lokale Ergaenzungs-DB (build_id -> version/name) auf den Bestand anwenden.
+    filled += apply_buildid_map(db)
     if not KNOWN_TITLE_NAMES:
         return filled
     rows = db._conn.execute(

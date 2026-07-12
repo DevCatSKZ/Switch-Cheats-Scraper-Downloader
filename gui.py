@@ -101,6 +101,8 @@ from scraper import (
     remove_placeholder_builds,
     fill_missing_versions,
     fill_versions_from_titledb,
+    apply_buildid_map,
+    sync_buildid_map_from_db,
     fill_regions_from_titledb,
     fill_descriptions_from_titledb,
     parse_cheat_names_from_content,
@@ -3198,6 +3200,9 @@ class ScraperGUI:
         self.vc_btn = ttk.Button(enrich_group, text="Get Versions Cheatslips",
                                  command=self.on_get_versions_cheatslips)
         self.vc_btn.pack(side="left", padx=(0, 4))
+        self.vl_btn = ttk.Button(enrich_group, text="Get Versions (local)",
+                                 command=self.on_apply_buildid_map)
+        self.vl_btn.pack(side="left", padx=(0, 4))
         self.desc_btn = ttk.Button(enrich_group, text="Get Descriptions",
                                    command=self.on_get_descriptions)
         self.desc_btn.pack(side="left", padx=(0, 4))
@@ -3205,7 +3210,7 @@ class ScraperGUI:
                                      command=self.on_download_covers)
         self.covers_btn.pack(side="left", padx=(0, 4))
         self._action_buttons += [self.names_btn, self.region_btn, self.vt_btn,
-                                  self.vc_btn, self.desc_btn, self.covers_btn]
+                                  self.vc_btn, self.vl_btn, self.desc_btn, self.covers_btn]
         _Tooltip(self.names_btn,
                  "Fill missing game names + covers + metadata from titledb regions, "
                  "then the CheatSlips API, switchbrew, tinfoil, GitHub lists and "
@@ -3219,6 +3224,10 @@ class ScraperGUI:
         _Tooltip(self.vc_btn,
                  "Fill the remaining build versions from cheatslips' game pages "
                  "(HTML) — slower; only needed for builds titledb doesn't cover.")
+        _Tooltip(self.vl_btn,
+                 "Fill versions + names from the LOCAL supplement (buildid_map.csv) — "
+                 "the exact build-id→version mapping extracted offline from your own "
+                 "games. Not available online; corrects builds no source provides.")
         _Tooltip(self.desc_btn,
                  "Fill missing game descriptions + intro texts for all titles from "
                  "titledb (English regions). Downloads/caches the region files.")
@@ -6583,6 +6592,14 @@ class ScraperGUI:
                     "cheat_id": None,
                 }],
             }, source="manual")
+            # Manuelle Eingabe autoritativ in die lokale Versions-DB uebernehmen
+            # (build_id -> title_id/version/name), damit sie vollstaendiger wird.
+            if payload.get("version"):
+                try:
+                    db.record_buildid(bid, tid, payload["version"],
+                                      payload.get("name"), source="manual")
+                except Exception as e:
+                    print(f"record_buildid (manual) failed: {e}")
             db.close()
         except Exception as exc:
             return False, str(exc)
@@ -7590,6 +7607,7 @@ class ScraperGUI:
             n = fill_versions_from_titledb(db, progress_cb=prog,
                                            should_stop=self._stop_event.is_set)
             print(f"titledb versions: {n} filled.")
+            self._sync_local_version_db(db)
         self._start_info_task("Get Versions from TitleDB" + self._scope_suffix(title_ids), task)
 
     def on_get_versions_cheatslips(self, title_ids=None):
@@ -7603,7 +7621,33 @@ class ScraperGUI:
             n = fill_missing_versions(api, scraper, db, progress_cb=prog,
                                       should_stop=self._stop_event.is_set)
             print(f"cheatslips versions: {n} filled.")
+            self._sync_local_version_db(db)
         self._start_info_task("Get Versions Cheatslips" + self._scope_suffix(title_ids), task)
+
+    def on_apply_buildid_map(self, title_ids=None):
+        """Fill versions + names from the LOCAL build-id supplement (buildid_map.csv).
+
+        This is the offline-extracted, exact build_id -> version/name mapping that
+        no online source provides; it corrects/fills builds accordingly.
+        """
+        def task(db, cfg):
+            entries = len(getattr(db, "_buildid_map", {}) or {})
+            n = apply_buildid_map(db)
+            print(f"Local build-id map: {n} build row(s) updated from {entries} entries.")
+        self._start_info_task("Get Versions (local)", task)
+
+    def _sync_local_version_db(self, db):
+        """Nach externem Versions-Import: (1) unsere autoritativen Versionen
+        gewinnen -> abweichende extern gesetzte werden korrigiert; (2) neue,
+        extern gefundene Versionen werden in die lokale Versions-DB archiviert.
+        So waechst die lokale build_id->version/title/name-Zuordnung mit."""
+        try:
+            corrected = apply_buildid_map(db)
+            added = sync_buildid_map_from_db(db)
+            print(f"local version-DB: {corrected} row(s) corrected to ours, "
+                  f"{added} new build-id(s) archived.")
+        except Exception as e:
+            print(f"local version-DB sync failed: {e}")
 
     def on_get_descriptions(self, title_ids=None):
         """Fill missing game descriptions + intro texts from titledb for all titles."""

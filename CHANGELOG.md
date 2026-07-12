@@ -2,6 +2,54 @@
 
 All notable changes to this project are documented here.
 
+## Switch app v2.1.0 — 2026-07-12 (system detection + save backup/restore)
+
+### Added
+- **System page**: enumerates **installed games** (Title ID + real **Build ID** +
+  version + name, EdiZon-style) via `ns`, detects the **running game** through
+  `pm:dmnt`/`pminfo`, and reads the running title's build id from its main NSO
+  module (`ldr:dmnt`). Per-game build-id display on the game pages.
+- **Save-game backup & restore** (Checkpoint-style): back up a title's save to
+  SD and restore it, committing through `fsdevCommitDevice`. Restore is
+  destructive and is gated behind an explicit confirm.
+- **Navigation**: B-button back-history stack, Left/Right to move focus between
+  the sidebar and the content, Up/Down cursor in the menu.
+
+## Windows tool — 2026-07-12 (local version database, robustness, data fixes)
+
+### Added
+- **Local version database (`buildid_map.csv`)** — a growing, self-maintained
+  archive mapping **Build ID → Title ID + version + name** (data that no online
+  source provides). Bidirectional and source-aware:
+  - `source = extracted`/`manual` = **authoritative** (self-extracted or entered
+    by hand) → overrides diverging versions from online sources. *Our data wins.*
+  - `source = db` = fallback/archive (grown from an external source) → fills only
+    what is empty.
+  - **Reads** during scrape/download to fill and correct versions/names
+    (`upsert_build`, `apply_buildid_map`, "Get Versions (local)" button).
+  - **Writes** so the archive grows: manual version edits in the GUI are recorded
+    automatically (`record_buildid`), and versions newly found via TitleDB/
+    CheatSlips scans are archived (`sync_buildid_map_from_db`). Shipped inside the
+    build so the mapping works out of the box.
+- Offline **Build-ID extractor** toolkit (`buildid_tools/`) that reads the real
+  main-NSO build id from installed `.nsp`/`.nsz` with `prod.keys` — how the
+  archive is seeded (currently 211 games, 986 entries).
+
+### Fixed
+- **Dependency robustness** so a fresh install never dies with a cryptic import
+  error: the HTML parser falls back from `lxml` to Python's built-in
+  `html.parser`; the launcher checks the *critical* packages (requests,
+  BeautifulSoup) at start and shows an actionable message; optional packages
+  (lxml, Pillow, tqdm) degrade gracefully. The packaged installer & portable
+  already bundle everything incl. the Chromium browser — nothing to download.
+- **Placeholder build ids** (all-zeros/-ones/-F, or build id == title id) are
+  mis-uploads that kept reappearing as undownloadable rows; they are now refused
+  at `upsert_build` and removed by "Clean invalid" (`purge_invalid`).
+- **Corrupted cheat names**: repaired `U+FFFD` replacement characters that were
+  baked into a few source cheat files (e.g. `Pok�mon` → `Pokémon`, `exp�2` →
+  `exp×2`) in both the `.txt` files and the DB, where the correct character was
+  unambiguous.
+
 ## Data quality — 2026-07-12 (duplicate-cheat fix, affects PC + Switch)
 
 ### Fixed

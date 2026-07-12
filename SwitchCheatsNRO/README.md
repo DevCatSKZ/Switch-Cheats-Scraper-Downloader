@@ -1,38 +1,17 @@
-# Switch Cheats Scraper & Downloader (NRO Homebrew) — v2.0
+# Switch Cheats Downloader (NRO Homebrew)
 
-**Der vollständige Port der Windows-Software auf die Nintendo Switch.** Seit
-v2.0 ist die `.nro` kein reiner Downloader mehr, sondern bildet dieselbe
-Informationsarchitektur und dieselbe **„Prisma / Holo-Glass"-Designsprache** wie
-das Desktop-Tool auf der Konsole ab: eine Sidebar-Shell mit den Seiten
-**Start · Bibliothek · Quellen · CheatSlips · Einstellungen · Protokoll** plus
-Spiel-Detailseite und Cheat-Editor.
+Eigenständige **Nintendo-Switch-Homebrew-App** (`.nro`), die auf einer gemoddeten
+Switch direkt aus dem `data`-Release von
+[DevCatSKZ/Switch-Cheats-Scraper-Downloader](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data)
+die aktuelle **`switch-cheats.zip`** herunterlädt und **direkt auf der SD-Karte**
+im richtigen Atmosphère-Layout entpackt (`atmosphere/contents/<TitleID>/cheats/<BuildID>.txt`).
 
-Datenbasis ist dasselbe `data`-Release von
-[DevCatSKZ/Switch-Cheats-Scraper-Downloader](https://github.com/DevCatSKZ/Switch-Cheats-Scraper-Downloader/releases/tag/data):
-die **`database.db`** (durchsuchbare Bibliothek mit ~3000 Spielen) und die
-**`switch-cheats.zip`** (alle Cheat-Dateien im Atmosphère-Layout
-`atmosphere/contents/<TitleID>/cheats/<BuildID>.txt`).
+Dies ist ein eigenständiges Teilprojekt neben dem Python-Desktop-Tool
+(`@/c/Coding/Switch Cheats Scraper/scraper.py`, `@/c/Coding/Switch Cheats Scraper/gui.py`)
+im selben Repository — beide teilen sich nur die Datenquelle (die vom Desktop-Tool
+gepflegte `switch-cheats.zip`), aber keinen Code.
 
-## Was auf der Switch (fast) genauso funktioniert wie am PC
-
-| Windows-Tool | Switch v2.0 |
-|---|---|
-| Holo-Glass-Sidebar + Rechteck-Aktivmarkierung + Badges | ✅ |
-| Start-Dashboard (Spiele/Cheats/installiert/DB-Größe + „Zuletzt aktualisiert") | ✅ (Live-SQLite-Stats) |
-| Bibliothek: Suche, Filter-Chips, Spalten, **Cover-Galerie**, Installiert-Status | ✅ Tabelle **und** Kachel-Galerie (Cover async geladen) |
-| Spiel-Detailseite: Fakten, Build-Karten, Cheat-Namen, Favoriten | ✅ |
-| **CheatSlips-API** (Token, Cheats pro Spiel) | ✅ Token per swkbd, Y auf der Spielseite lädt & installiert |
-| Community-Quellen (Hamlet / Sthetix / Breeze …) | ✅ eigene **Quellen-Seite**, lädt direkt ins Atmosphère-Layout |
-| **Cheat-Editor** mit Syntax-Validierung | ✅ Zeilen ansehen/bearbeiten (swkbd), Fehler rot, Header gold |
-| Export als ZIP · Reset/Clean | ✅ ZIP auf SD-Wurzel · 2-stufiges Löschen |
-| Auto-Update (App + Daten) · 6 Sprachen | ✅ |
-
-Der einzige Desktop-Teil, der auf der Konsole **physisch unmöglich** ist, ist das
-Playwright-**Browser**-Scraping (kein Chromium auf der Switch). Sein Ersatz ist
-genau das, was ohnehin schon da ist: die **CheatSlips-API** + das vom Desktop-Tool
-gepflegte, aggregierte `data`-Release — funktional deckungsgleich.
-
-## Funktionsumfang (Basis-Downloader, weiterhin vorhanden)
+## Funktionsumfang
 
 - **Update-Erkennung, integriert in den Download-Bereich**: fragt die
   GitHub-API nach dem `updated_at`-Zeitstempel des Release-Assets
@@ -70,6 +49,22 @@ gepflegte, aggregierte `data`-Release — funktional deckungsgleich.
 - **App-Self-Update**: analog zur "Nach Updates suchen"-Funktion kann die App
   auch ihre **eigene neue `.nro`-Version** von einem GitHub-Release laden und
   sich selbst ersetzen (Details siehe unten).
+- **System / Meine Spiele (v2.1)** — erkennt über die libnx-Systemdienste
+  (`ns`, `pm:dmnt`/`pminfo`, `ldr:dmnt`) alle **installierten Spiele** (Name,
+  Title-ID, Version) und das **aktuell laufende Spiel** inkl. **Build-ID**
+  (per Forwarder nutzbar, während ein Spiel läuft — wie EdiZon). Spiele, für die
+  Cheats in der Datenbank liegen, sind mit einem grünen Haken markiert; **ZR**
+  springt direkt in die Cheat-Detailseite des laufenden bzw. gewählten Spiels.
+  Zusätzlich **Speicherstand-Verwaltung (wie Checkpoint)**: erkennt Account-Saves
+  (`fsOpenSaveDataInfoReader` + `account`), erstellt **Backups** nach
+  `sdmc:/switch/SwitchCheatsDownloader/saves/<TitleID>/<Zeitstempel>/` und
+  **stellt** sie wieder her (`fsdevMountSaveData` + `fsdevCommitDevice`). Der
+  Restore ist mit einer **Sicherheitsabfrage** geschützt (zweimal **A**), da er
+  den aktuellen Spielstand vollständig überschreibt.
+  > ⚠️ Diese Systemfunktionen setzen echte CFW-Hardware (Atmosphère) voraus. Im
+  > Emulator sind nur die **Liste installierter Spiele** und der **DB-Abgleich**
+  > testbar (bestätigt in Eden); Build-ID des laufenden Spiels sowie
+  > Save-Backup/Restore müssen auf der Konsole verifiziert werden.
 - **"Prisma (Holo-Glas)"-Design** — dasselbe Signatur-Theme wie die
   Windows-Version (tiefes Petrol-Schwarz, Teal-Mint-Akzent,
   Teal→Violett-Verlaufs-Button, Gold-Highlights): linke Kategorie-Leiste +
@@ -104,6 +99,8 @@ gepflegte, aggregierte `data`-Release — funktional deckungsgleich.
 | `source/version_util.hpp` | Reine Versions-String-Logik fürs Self-Update (`normalizeVersion`, `isNewerVersion`) — ohne Switch-Abhängigkeiten, auf dem Host testbar |
 | `source/i18n.hpp/.cpp` | Übersetzungstabelle (6 Sprachen, inkl. aller Fehlermeldungen), Systemsprach-Erkennung (`set`-Service), Persistenz der manuellen Sprachwahl, `i18n::tr()`-Lookup |
 | `source/config.hpp` | Zentrale Konstanten (Repo, Tag, Asset-Name, Pfade, NRO-Release-Tag); die App-Version kommt aus dem Makefile (`APP_VERSION`) |
+| `source/sysinfo.hpp/.cpp` | System-Erkennung (v2.1): installierte Spiele (`ns` → NACP Name/Version), laufendes Spiel + Build-ID (`pm:dmnt`/`pminfo` → PID/Title-ID, `ldr:dmnt` → Haupt-NSO-Build-ID, `dmnt:cht`-Fallback) — Vorbild EdiZon-SE |
+| `source/saves.hpp/.cpp` | Speicherstand-Verwaltung (v2.1): Erkennen (`fsOpenSaveDataInfoReader` + `account`-Nicknames), Backup (`fsdevMountSaveData` → rekursiv nach sdmc) und Restore (sdmc → Save, `fsdevCommitDevice`) — Vorbild Checkpoint |
 | `tests/test_logic.cpp` | Host-Tests für die pure Logik (JSON-Extraktor, Versionsvergleich, Zip-Slip-Schutz) — mit normalem `g++` kompilierbar, kein devkitPro nötig |
 | `icon.jpg` | App-Icon (256×256 JPEG) für hbmenu — erzeugt aus dem offiziellen App-Logo der Windows-Software (`app_icon.png`), wird vom Makefile automatisch eingebettet |
 | `romfs/cacert.pem` | Mozilla-CA-Bundle, wird für die TLS-Zertifikatsprüfung von libcurl/mbedTLS benötigt (die Switch hat keinen eigenen System-CA-Store für Homebrew) |

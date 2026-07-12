@@ -45,7 +45,46 @@ def _data_dir() -> Path:
     return Path(base) / "SwitchCheatsScraper"
 
 
+def _check_dependencies() -> None:
+    """Beim Start aus dem Quellcode sicherstellen, dass die KRITISCHEN Pakete da
+    sind. Bei der gebuendelten .exe sind alle Pakete eingebettet -> ueberspringen.
+
+    Nur ``requests`` und ``beautifulsoup4`` sind kritisch (ohne sie kann gar nicht
+    gescrapt werden). Optionale Pakete blockieren NICHT den Start und degradieren
+    im Code sauber: ``lxml`` -> Fallback auf html.parser, ``Pillow`` -> ohne
+    Vorschaubilder, ``tqdm`` -> ohne Fortschrittsbalken. Fehlt etwas Kritisches,
+    kommt eine klare Meldung mit dem exakten Installationsbefehl statt eines
+    spaeteren kryptischen ImportErrors. Kein input()-Prompt (haengt sonst in
+    Fenster-/Hintergrund-Starts).
+    """
+    if getattr(sys, "frozen", False):
+        return
+    import importlib.util as _u
+    critical = {"requests": "requests", "bs4": "beautifulsoup4"}  # import -> pip
+    missing = [pip for mod, pip in critical.items() if _u.find_spec(mod) is None]
+    if not missing:
+        return
+    here = Path(__file__).resolve().parent
+    req = here / "requirements.txt"
+    cmd = [sys.executable, "-m", "pip", "install"]
+    cmd += ["-r", str(req)] if req.exists() else missing
+    msg = ("Fehlende Pakete: " + ", ".join(missing) +
+           "\n\nBitte installieren mit:\n  " +
+           " ".join(f'"{c}"' if " " in c else c for c in cmd))
+    print(msg, file=sys.stderr)
+    try:
+        import tkinter as _tk
+        from tkinter import messagebox as _mb
+        _r = _tk.Tk(); _r.withdraw()
+        _mb.showerror("Fehlende Pakete", msg)
+        _r.destroy()
+    except Exception:
+        pass
+    sys.exit(1)
+
+
 def main() -> None:
+    _check_dependencies()
     data_dir = _data_dir()
     try:
         data_dir.mkdir(parents=True, exist_ok=True)

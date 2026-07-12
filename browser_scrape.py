@@ -101,7 +101,10 @@ def extract_cheat_text_from_html(html: str) -> str:
         from bs4 import BeautifulSoup
     except Exception:
         return ""
-    soup = BeautifulSoup(html, "lxml")
+    try:
+        soup = BeautifulSoup(html, "lxml")
+    except Exception:
+        soup = BeautifulSoup(html, "html.parser")
 
     candidates: List[str] = []
     for tag in soup.find_all(["pre", "code", "textarea"]):
@@ -157,7 +160,10 @@ class CookieCheatScraper:
             from bs4 import BeautifulSoup
         except Exception:
             return None
-        soup = BeautifulSoup(html, "lxml")
+        try:
+            soup = BeautifulSoup(html, "lxml")
+        except Exception:
+            soup = BeautifulSoup(html, "html.parser")
         form = soup.find("form")
         if not form:
             return None

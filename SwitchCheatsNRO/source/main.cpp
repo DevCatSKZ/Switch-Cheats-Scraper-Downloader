@@ -40,6 +40,10 @@
 #include "applog.hpp"
 #include "cheatslips.hpp"
 #include "covers.hpp"
+#include "sysinfo.hpp"
+#include "saves.hpp"
+#include <unordered_set>
+#include <strings.h>
 
 using i18n::tr;
 
@@ -87,7 +91,8 @@ static constexpr time_t kMinSaneEpoch = 1735689600LL;
 // Geteilter Zustand zwischen UI-Thread und Hintergrund-Worker
 // ---------------------------------------------------------------------------
 enum class Action { None, Checking, Installing, AppChecking, AppInstalling,
-                    Source, CheatSlips, Export, Clean };
+                    Source, CheatSlips, Export, Clean,
+                    SysScan, SaveBackup, SaveRestore };
 
 static std::atomic<Action> g_action{Action::None};
 static std::atomic<bool>   g_cancelRequested{false};
@@ -126,6 +131,17 @@ static std::string g_selfNroPath;
 
 static std::thread g_worker;
 
+// System-Seite: installierte Spiele, laufendes Spiel und Speicherstaende.
+// Vom SysScan-Worker gefuellt, per g_dataMutex geschuetzt, vom UI-Thread gelesen.
+static std::vector<sysinfo::InstalledTitle> g_sysTitles;
+static sysinfo::RunningGame                 g_sysRunning;
+static std::vector<saves::SaveEntry>        g_saves;
+static std::atomic<bool> g_sysScanned{false}; // mindestens einmal gescannt
+static std::atomic<bool> g_sysDirty{false};   // Worker hat neue Daten -> UI kopiert
+// Parameter der Save-Worker (nur vom UI-Thread gesetzt, bevor der Worker startet).
+static saves::SaveEntry g_saveTarget;
+static std::string      g_saveBackupPath;
+
 static void setStatus(const std::string& s) {
     {
         std::lock_guard<std::mutex> lk(g_dataMutex);
@@ -136,6 +152,12 @@ static void setStatus(const std::string& s) {
 static std::string getStatus() {
     std::lock_guard<std::mutex> lk(g_dataMutex);
     return g_statusLine;
+}
+// Wie setStatus, aber OHNE Protokoll-Eintrag - fuer haeufige Fortschritts-
+// Updates (z.B. jede kopierte Save-Datei), die das Log sonst fluten wuerden.
+static void setStatusQuiet(const std::string& s) {
+    std::lock_guard<std::mutex> lk(g_dataMutex);
+    g_statusLine = s;
 }
 static void setResult(bool success, const std::string& msg) {
     {
@@ -774,6 +796,78 @@ static void startClean() {
 }
 
 // ---------------------------------------------------------------------------
+// System-Erkennung: installierte Spiele + laufendes Spiel + Saves scannen.
+// Alle libnx-Systemdienste (ns/pm/ldr/fs/account) werden hier im Hintergrund
+// abgefragt - der UI-Thread liest nur die gepufferten Ergebnisse.
+// ---------------------------------------------------------------------------
+static void runSysScanWorker() {
+    setStatus(tr("sys.scanning"));
+    sysinfo::init();
+    sysinfo::RunningGame run = sysinfo::currentGame();
+    auto titles = sysinfo::listInstalled();
+    auto sv = saves::listSaves();
+    {
+        std::lock_guard<std::mutex> lk(g_dataMutex);
+        g_sysRunning = run;
+        g_sysTitles = std::move(titles);
+        g_saves = std::move(sv);
+    }
+    g_sysScanned = true;
+    g_sysDirty = true;
+    char buf[96];
+    snprintf(buf, sizeof(buf), "%s%d%s", tr("sys.scandone.prefix"),
+             (int)g_sysTitles.size(), tr("sys.scandone.suffix"));
+    setResult(true, buf);
+    g_action = Action::None;
+}
+static void startSysScan() {
+    if (g_action.load() != Action::None) return;
+    joinWorkerIfDone();
+    g_action = Action::SysScan;
+    g_worker = std::thread(runSysScanWorker);
+}
+
+static void runSaveBackupWorker() {
+    saves::SaveEntry e;
+    { std::lock_guard<std::mutex> lk(g_dataMutex); e = g_saveTarget; }
+    setStatus(tr("save.backing"));
+    std::string outPath, err;
+    bool ok = saves::backup(e, outPath, err, [](const std::string& f) {
+        setStatusQuiet(std::string(tr("save.file")) + " " + f);
+    });
+    if (ok) setResult(true, tr("save.backup.ok"));
+    else    setResult(false, std::string(tr("save.backup.fail")) + " (" + err + ")");
+    g_action = Action::None;
+}
+static void startSaveBackup(const saves::SaveEntry& e) {
+    if (g_action.load() != Action::None) return;
+    joinWorkerIfDone();
+    { std::lock_guard<std::mutex> lk(g_dataMutex); g_saveTarget = e; }
+    g_action = Action::SaveBackup;
+    g_worker = std::thread(runSaveBackupWorker);
+}
+
+static void runSaveRestoreWorker() {
+    saves::SaveEntry e; std::string path;
+    { std::lock_guard<std::mutex> lk(g_dataMutex); e = g_saveTarget; path = g_saveBackupPath; }
+    setStatus(tr("save.restoring"));
+    std::string err;
+    bool ok = saves::restore(e, path, err, [](const std::string& f) {
+        setStatusQuiet(std::string(tr("save.file")) + " " + f);
+    });
+    if (ok) setResult(true, tr("save.restore.ok"));
+    else    setResult(false, std::string(tr("save.restore.fail")) + " (" + err + ")");
+    g_action = Action::None;
+}
+static void startSaveRestore(const saves::SaveEntry& e, const std::string& path) {
+    if (g_action.load() != Action::None) return;
+    joinWorkerIfDone();
+    { std::lock_guard<std::mutex> lk(g_dataMutex); g_saveTarget = e; g_saveBackupPath = path; }
+    g_action = Action::SaveRestore;
+    g_worker = std::thread(runSaveRestoreWorker);
+}
+
+// ---------------------------------------------------------------------------
 // Rendering-Hilfsfunktionen
 // ---------------------------------------------------------------------------
 static void setColor(SDL_Renderer* r, SDL_Color c) {
@@ -997,8 +1091,8 @@ static bool showKeyboard(const std::string& header, const std::string& initial,
 // ---------------------------------------------------------------------------
 // Seiten / Navigation
 // ---------------------------------------------------------------------------
-enum class Page { Home = 0, Library, Sources, CheatSlips, Settings, Log,
-                  Detail, Editor };
+enum class Page { Home = 0, Library, Sources, CheatSlips, System, SaveGames,
+                  Settings, Log, Detail, Editor, SysDetail, Saves };
 
 struct NavEntry {
     Page page;
@@ -1011,10 +1105,12 @@ static const NavEntry kNav[] = {
     {Page::Library,    "nav.library",    "eyebrow.library",    "sub.library"},
     {Page::Sources,    "nav.sources",    "eyebrow.sources",    "sub.sources"},
     {Page::CheatSlips, "nav.cheatslips", "eyebrow.cheatslips", "sub.cheatslips"},
+    {Page::System,     "nav.system",     "eyebrow.system",     "sub.system"},
+    {Page::SaveGames,  "nav.saves",      "eyebrow.saves",      "sub.saves"},
     {Page::Settings,   "nav.settings",   "eyebrow.settings",   "sub.settings"},
     {Page::Log,        "nav.log",        "eyebrow.log",        "sub.log"},
 };
-static constexpr int kNavCount = 6;
+static constexpr int kNavCount = 8;
 
 // ---------------------------------------------------------------------------
 // Cheat-Zeilen-Klassifizierung - der Port von classify_cheat_line() aus
@@ -1186,6 +1282,28 @@ int main(int argc, char** argv) {
     int edSel = 0;
     int edScroll = 0;
 
+    // System-Seiten: installierte Spiele / laufendes Spiel / Speicherstaende.
+    // ui*-Kopien werden aus den g_sys*-Puffern uebernommen (SQLite/libnx-Dienste
+    // laufen im Worker; der UI-Thread arbeitet nur auf diesen Kopien).
+    std::vector<sysinfo::InstalledTitle> uiTitles;
+    sysinfo::RunningGame                 uiRunning;
+    std::vector<saves::SaveEntry>        uiSaves;
+    int sysSel = 0, sysScroll = 0;                 // Auswahl Installiert-Liste
+    sysinfo::InstalledTitle sysDetailTitle;        // in SysDetail geoeffnetes Spiel
+    int saveSel = 0, saveScroll = 0;               // Auswahl auf der Saves-Seite
+    int sgSel = 0, sgScroll = 0;                    // Auswahl auf der Speicherstaende-Seite
+    Page savesReturn = Page::System;               // wohin B von der Saves-Seite zurueckkehrt
+    int saveUserSel = 0;                           // gewaehlter Nutzer-Save (Restore-Ziel)
+    bool restoreArmed = false;                     // Restore-Sicherheitsstufe (wie cleanArmed)
+    std::vector<saves::Backup> saveBackups;        // Backups des offenen Spiels (UI-Cache)
+    std::vector<db::BuildRow> sysDetailBuilds;      // Build-IDs des offenen Spiels (aus DB)
+    std::unordered_set<std::string> dbBaseSet;     // Basis-TIDs mit Cheats (O(1)-Lookup)
+    bool dbBaseSetReady = false;
+    Action prevAct = Action::None;                 // Erkennung "Save-Worker fertig"
+    std::vector<Page> pageStack;                   // Navigations-Verlauf (B = zurueck)
+    bool menuFocus = false;                         // Fokus links (Menue) statt rechts (Inhalt)
+    int  menuSel = 0;                               // Cursor-Position im linken Menue
+
     // Einstellungen: 0=Sprache 1=App-Update 2=Neu laden 3=Export 4=Clean
     int setSel = 0;
     static constexpr int kSetCount = 5;
@@ -1242,6 +1360,23 @@ int main(int argc, char** argv) {
         libDirty = false;
     };
 
+    // Nav-Seiten (Hauptmenue) vs. Unterseiten (Detail/Editor/SysDetail/Saves,
+    // die ihr eigenes B-Zurueck haben).
+    auto isNavPage = [](Page p) {
+        return p != Page::Detail && p != Page::Editor &&
+               p != Page::SysDetail && p != Page::Saves;
+    };
+    // Wechsel zwischen Menueseiten mit Verlauf: die aktuelle Nav-Seite wird
+    // gemerkt, damit B eine Navigation zurueckspringt (normale Switch-Zurueck-Geste).
+    auto navTo = [&](Page target) {
+        if (target == page) return;
+        if (isNavPage(page)) {
+            pageStack.push_back(page);
+            if (pageStack.size() > 16) pageStack.erase(pageStack.begin());
+        }
+        page = target;
+    };
+
     auto openDetail = [&](const db::GameRow& g) {
         detailTid = g.baseTid;
         detailTitle = g.title.empty() ? g.baseTid : g.title;
@@ -1252,6 +1387,48 @@ int main(int argc, char** argv) {
         detailNameScroll = 0;
         pageBeforeDetail = page;
         page = Page::Detail;
+    };
+
+    // Basis-TID-Menge (Spiele mit Cheats in unserer DB) fuer O(1)-Markierung
+    // installierter Spiele. Wird bei DB-Reload neu aufgebaut.
+    auto rebuildDbBaseSet = [&]() {
+        dbBaseSet.clear();
+        for (auto& g : db::games()) dbBaseSet.insert(g.baseTid);
+        dbBaseSetReady = true;
+    };
+    auto titleHasCheats = [&](uint64_t tid) -> bool {
+        if (!dbBaseSetReady) rebuildDbBaseSet();
+        return dbBaseSet.count(sysinfo::baseGroup(tid)) > 0;
+    };
+    // Springt zur Cheat-Detailseite des Spiels (Basis-Gruppe) - von der
+    // System-/SysDetail-Seite aus (B kehrt dank pageBeforeDetail korrekt zurueck).
+    auto openCheatsForTid = [&](uint64_t tid) -> bool {
+        std::string base = sysinfo::baseGroup(tid);
+        for (auto& g : db::games()) {
+            if (strcasecmp(g.baseTid.c_str(), base.c_str()) == 0) { openDetail(g); return true; }
+        }
+        applog::add(tr("sys.nocheats"));
+        return false;
+    };
+    auto openSysDetail = [&](const sysinfo::InstalledTitle& t) {
+        sysDetailTitle = t;
+        saveBackups = saves::listBackups(t.titleId);           // Zaehler ohne Frame-I/O
+        sysDetailBuilds = db::gameBuilds(sysinfo::baseGroup(t.titleId)); // Build-IDs aus DB
+        page = Page::SysDetail;
+    };
+    auto openSavesPage = [&](uint64_t tid) {
+        savesReturn = page;   // Ruecksprungziel merken (SysDetail oder Speicherstaende)
+        saveBackups = saves::listBackups(tid);
+        saveSel = 0; saveScroll = 0; saveUserSel = 0; restoreArmed = false;
+        page = Page::Saves;
+    };
+    // Saves (aus uiSaves) fuer eine bestimmte Title-ID (Basis, low nibble egal).
+    auto curSaves = [&](uint64_t tid) {
+        std::vector<saves::SaveEntry> v;
+        uint64_t mask = 0xFFFFFFFFFFFFFFF0ULL;
+        for (auto& e : uiSaves)
+            if ((e.titleId & mask) == (tid & mask)) v.push_back(e);
+        return v;
     };
 
     auto openEditor = [&](const std::string& tid, const std::string& bid) {
@@ -1326,39 +1503,91 @@ int main(int argc, char** argv) {
                 exitRequested = true;
             } else if (event.type == SDL_JOYBUTTONDOWN) {
                 int btn = event.jbutton.button;
-                bool onNavPage = page != Page::Detail && page != Page::Editor;
+                bool onNavPage = page != Page::Detail && page != Page::Editor &&
+                                 page != Page::SysDetail && page != Page::Saves;
                 if (btn == JOY_PLUS) {
                     if (busy) g_cancelRequested = true;
                     exitRequested = true;
                 } else if (btn == JOY_B) {
                     if (busy) {
                         g_cancelRequested = true;
+                    } else if (menuFocus) {
+                        menuFocus = false;   // B im Menue-Fokus -> zurueck in den Inhalt
                     } else if (page == Page::Editor) {
                         if (edDirty) applog::add(tr("ed.discarded"));
                         page = Page::Detail;
                     } else if (page == Page::Detail) {
                         page = pageBeforeDetail;
+                    } else if (page == Page::Saves) {
+                        page = savesReturn;
+                    } else if (page == Page::SysDetail) {
+                        page = Page::System;
+                    } else if (!pageStack.empty()) {
+                        // Nav-Seite: eine Navigation zurueck (Verlaufs-Stack).
+                        page = pageStack.back();
+                        pageStack.pop_back();
+                        cleanArmed = false;
                     }
                 } else if (btn == JOY_L && onNavPage) {
                     int idx = 0;
                     for (int i = 0; i < kNavCount; i++) {
                         if (kNav[i].page == page) idx = i;
                     }
-                    page = kNav[(idx + kNavCount - 1) % kNavCount].page;
+                    navTo(kNav[(idx + kNavCount - 1) % kNavCount].page);
                     cleanArmed = false;
+                    menuFocus = false;
                 } else if (btn == JOY_R && onNavPage) {
                     int idx = 0;
                     for (int i = 0; i < kNavCount; i++) {
                         if (kNav[i].page == page) idx = i;
                     }
-                    page = kNav[(idx + 1) % kNavCount].page;
+                    navTo(kNav[(idx + 1) % kNavCount].page);
                     cleanArmed = false;
+                    menuFocus = false;
                 } else if (btn == JOY_A) {
-                    if (page == Page::Home) {
+                    if (menuFocus) {
+                        navTo(kNav[menuSel].page);   // A im Menue -> gewaehlte Seite oeffnen
+                        menuFocus = false;
+                    } else if (page == Page::Home) {
                         if (!busy) startInstall(true);
                     } else if (page == Page::Library) {
                         if (!libRows.empty() && libSel < static_cast<int>(libRows.size())) {
                             openDetail(db::games()[libRows[libSel]]);
+                        }
+                    } else if (page == Page::System) {
+                        if (!busy && !uiTitles.empty() &&
+                            sysSel < static_cast<int>(uiTitles.size()))
+                            openSysDetail(uiTitles[sysSel]);
+                    } else if (page == Page::SysDetail) {
+                        if (!busy) openSavesPage(sysDetailTitle.titleId);
+                    } else if (page == Page::SaveGames) {
+                        if (!busy && !uiTitles.empty() &&
+                            sgSel < static_cast<int>(uiTitles.size())) {
+                            sysDetailTitle = uiTitles[sgSel];
+                            openSavesPage(sysDetailTitle.titleId);
+                        }
+                    } else if (page == Page::Saves) {
+                        // Zeilen: [0..nUsers) Save-Quellen (Backup), danach Backups (Restore).
+                        auto cs = curSaves(sysDetailTitle.titleId);
+                        int nUsers = static_cast<int>(cs.size());
+                        if (!busy) {
+                            if (saveSel < nUsers) {
+                                saveUserSel = saveSel;
+                                restoreArmed = false;
+                                startSaveBackup(cs[saveSel]);
+                            } else {
+                                int bi = saveSel - nUsers;
+                                if (nUsers > 0 && bi >= 0 &&
+                                    bi < static_cast<int>(saveBackups.size())) {
+                                    if (!restoreArmed) {
+                                        restoreArmed = true;   // 1x A = scharf schalten
+                                    } else {
+                                        restoreArmed = false;
+                                        int u = (saveUserSel < nUsers) ? saveUserSel : 0;
+                                        startSaveRestore(cs[u], saveBackups[bi].path);
+                                    }
+                                }
+                            }
                         }
                     } else if (page == Page::Sources) {
                         if (!busy) startSource(srcSel);
@@ -1413,6 +1642,9 @@ int main(int argc, char** argv) {
                         doSearch();
                     } else if (page == Page::Home && !busy) {
                         startCheck();
+                    } else if ((page == Page::System || page == Page::SysDetail ||
+                                page == Page::SaveGames) && !busy) {
+                        startSysScan();
                     } else if (page == Page::Detail && !busy && !detailTid.empty()) {
                         if (cheatslips::hasToken()) {
                             startCheatslipsFetch(detailTid);
@@ -1437,6 +1669,20 @@ int main(int argc, char** argv) {
                 } else if (btn == JOY_X) {
                     if (page == Page::Home) {
                         if (!busy) startInstall(false);   // Nur Cheats (v1-Verhalten)
+                    } else if (page == Page::Saves && !busy) {
+                        auto cs = curSaves(sysDetailTitle.titleId);
+                        int nUsers = static_cast<int>(cs.size());
+                        int bi = saveSel - nUsers;
+                        if (bi >= 0 && bi < static_cast<int>(saveBackups.size())) {
+                            if (saves::deleteBackup(saveBackups[bi].path)) {
+                                saveBackups = saves::listBackups(sysDetailTitle.titleId);
+                                int total = nUsers + static_cast<int>(saveBackups.size());
+                                if (saveSel >= total) saveSel = total - 1;
+                                if (saveSel < 0) saveSel = 0;
+                                restoreArmed = false;
+                                applog::add(tr("save.deleted"));
+                            }
+                        }
                     } else if (page == Page::Library) {
                         libFilter = static_cast<LibFilter>(
                             (static_cast<int>(libFilter) + 1) % static_cast<int>(LibFilter::Count));
@@ -1465,7 +1711,11 @@ int main(int argc, char** argv) {
                         saveEditor();
                     }
                 } else if (btn == JOY_ZR) {
-                    if (page == Page::Detail && detailSel < static_cast<int>(detailBuilds.size())) {
+                    if (page == Page::System && uiRunning.running) {
+                        openCheatsForTid(uiRunning.titleId);
+                    } else if (page == Page::SysDetail) {
+                        openCheatsForTid(sysDetailTitle.titleId);
+                    } else if (page == Page::Detail && detailSel < static_cast<int>(detailBuilds.size())) {
                         const auto& b = detailBuilds[detailSel];
                         if (installer::isInstalled(b.titleId, b.buildId)) {
                             openEditor(b.titleId, b.buildId);
@@ -1474,15 +1724,24 @@ int main(int argc, char** argv) {
                         }
                     }
                 } else if (btn == JOY_LEFT) {
-                    if (page == Page::Library) {
-                        libSel -= libGallery ? 1 : 10;
-                        if (libSel < 0) libSel = 0;
+                    if (menuFocus) {
+                        // bereits im linken Menue
+                    } else if (page == Page::Library && libGallery && (libSel % 6) != 0) {
+                        libSel -= 1;   // innerhalb der Galerie-Reihe nach links
                     } else if (page == Page::Settings && setSel == 0) {
                         i18n::prevLang();
+                    } else if (isNavPage(page)) {
+                        menuFocus = true;   // Links -> ans linke Menue
+                        menuSel = 0;        // Cursor auf die aktuelle Seite setzen
+                        for (int i = 0; i < kNavCount; i++)
+                            if (kNav[i].page == page) menuSel = i;
                     }
                 } else if (btn == JOY_RIGHT) {
-                    if (page == Page::Library) {
-                        libSel += libGallery ? 1 : 10;
+                    if (menuFocus) {
+                        navTo(kNav[menuSel].page);   // Rechts -> gewaehlte Seite oeffnen
+                        menuFocus = false;
+                    } else if (page == Page::Library && libGallery) {
+                        libSel += 1;        // Galerie nach rechts
                         if (libSel >= static_cast<int>(libRows.size()))
                             libSel = static_cast<int>(libRows.size()) - 1;
                         if (libSel < 0) libSel = 0;
@@ -1521,6 +1780,37 @@ int main(int argc, char** argv) {
             db::reload();
             installer::startScan();
             libDirty = true;
+            dbBaseSetReady = false;   // Cheat-Markierungen der System-Liste neu aufbauen
+        }
+
+        // System-/Speicherstaende-Seite: beim ersten Betreten automatisch scannen.
+        if ((page == Page::System || page == Page::SaveGames) &&
+            !g_sysScanned.load() && g_action.load() == Action::None) {
+            startSysScan();
+        }
+        // Worker hat neue System-Daten geliefert -> in UI-lokale Kopien uebernehmen.
+        if (g_sysDirty.exchange(false)) {
+            std::lock_guard<std::mutex> lk(g_dataMutex);
+            uiTitles = g_sysTitles;
+            uiRunning = g_sysRunning;
+            uiSaves = g_saves;
+            if (sysSel >= static_cast<int>(uiTitles.size()))
+                sysSel = static_cast<int>(uiTitles.size()) - 1;
+            if (sysSel < 0) sysSel = 0;
+            if (sgSel >= static_cast<int>(uiTitles.size()))
+                sgSel = static_cast<int>(uiTitles.size()) - 1;
+            if (sgSel < 0) sgSel = 0;
+        }
+        // Save-Backup/Restore abgeschlossen -> Backup-Liste der Saves-Seite auffrischen.
+        {
+            Action curAct = g_action.load();
+            if (prevAct != curAct) {
+                if ((prevAct == Action::SaveBackup || prevAct == Action::SaveRestore) &&
+                    curAct == Action::None && page == Page::Saves) {
+                    saveBackups = saves::listBackups(sysDetailTitle.titleId);
+                }
+                prevAct = curAct;
+            }
         }
         // CheatSlips-Fetch fertig -> Detailseite zeigt neuen Installiert-Stand.
         if (g_csDone.exchange(false) && page == Page::Detail && !detailTid.empty()) {
@@ -1557,7 +1847,13 @@ int main(int argc, char** argv) {
             }
             int step = repUpDown.step(dir, now);
             if (step != 0) {
-                if (page == Page::Library) {
+                if (menuFocus) {
+                    // Menue-Fokus: Hoch/Runter bewegt den Cursor (ohne Seitenwechsel);
+                    // A/Rechts oeffnet die gewaehlte Seite.
+                    menuSel += step;
+                    if (menuSel < 0) menuSel = 0;
+                    if (menuSel >= kNavCount) menuSel = kNavCount - 1;
+                } else if (page == Page::Library) {
                     int n = static_cast<int>(libRows.size());
                     if (n > 0) {
                         // Galerie: Auf/Ab springt eine ganze Kachel-Reihe.
@@ -1595,6 +1891,29 @@ int main(int argc, char** argv) {
                 } else if (page == Page::Log) {
                     logScroll -= step; // hoch = aeltere Zeilen
                     if (logScroll < 0) logScroll = 0;
+                } else if (page == Page::System) {
+                    int n = static_cast<int>(uiTitles.size());
+                    if (n > 0) {
+                        sysSel += step;
+                        if (sysSel < 0) sysSel = 0;
+                        if (sysSel >= n) sysSel = n - 1;
+                    }
+                } else if (page == Page::SaveGames) {
+                    int n = static_cast<int>(uiTitles.size());
+                    if (n > 0) {
+                        sgSel += step;
+                        if (sgSel < 0) sgSel = 0;
+                        if (sgSel >= n) sgSel = n - 1;
+                    }
+                } else if (page == Page::Saves) {
+                    int n = static_cast<int>(curSaves(sysDetailTitle.titleId).size()) +
+                            static_cast<int>(saveBackups.size());
+                    if (n > 0) {
+                        saveSel += step;
+                        if (saveSel < 0) saveSel = 0;
+                        if (saveSel >= n) saveSel = n - 1;
+                    }
+                    restoreArmed = false;
                 }
             }
         }
@@ -1644,14 +1963,21 @@ int main(int argc, char** argv) {
 
         for (int i = 0; i < kNavCount; i++) {
             int y = navStartY + i * (navItemH + 4);
-            bool active = (kNav[i].page == page) ||
-                          ((page == Page::Detail || page == Page::Editor) &&
-                           kNav[i].page == Page::Library);
+            bool active = menuFocus
+                ? (i == menuSel)   // Menue-Fokus: der Cursor bestimmt das Highlight
+                : ((kNav[i].page == page) ||
+                   ((page == Page::Detail || page == Page::Editor) &&
+                    kNav[i].page == Page::Library) ||
+                   ((page == Page::SysDetail || page == Page::Saves) &&
+                    kNav[i].page == Page::System));
             // Aktive Zeile = EIN durchgehendes Rechteck + Akzentbalken links
             // (exakt der gefixte Windows-Look).
             if (active) {
                 fillRect(renderer, 0, y, sidebarW, navItemH, kColItemHover);
-                fillRect(renderer, 0, y, 5, navItemH, kColAccent);
+                fillRect(renderer, 0, y, menuFocus ? 7 : 5, navItemH, kColAccent);
+                if (menuFocus)   // Fokus-Hinweis: der Cursor sitzt im linken Menue
+                    drawTextCentered(renderer, fontBody, ">", sidebarW - 30, y, navItemH,
+                                     kColAccent);
             }
             drawTextCentered(renderer, fontBody, tr(kNav[i].labelKey), 32, y, navItemH,
                              active ? kColAccent : kColTextMuted);
@@ -1668,19 +1994,22 @@ int main(int argc, char** argv) {
             HitBox hb;
             hb.rect = {0, y, sidebarW, navItemH};
             Page target = kNav[i].page;
-            hb.fn = [&page, target]() { page = target; };
+            hb.fn = [&navTo, &menuFocus, target]() { navTo(target); menuFocus = false; };
             hits.push_back(hb);
         }
         drawText(renderer, fontTiny, "by DevCatSKZ", 28, cfg::kScreenH - footerH - 30, kColTextDim);
 
         // ---------------- Seitenkopf ----------------
         const NavEntry* nav = &kNav[0];
-        Page headPage = (page == Page::Detail || page == Page::Editor) ? Page::Library : page;
+        Page headPage = (page == Page::Detail || page == Page::Editor) ? Page::Library
+                      : (page == Page::SysDetail || page == Page::Saves) ? Page::System
+                      : page;
         for (int i = 0; i < kNavCount; i++) {
             if (kNav[i].page == headPage) nav = &kNav[i];
         }
         int cy = headerH + 20;
-        if (page != Page::Detail && page != Page::Editor) {
+        if (page != Page::Detail && page != Page::Editor &&
+            page != Page::SysDetail && page != Page::Saves) {
             drawText(renderer, fontTiny, std::string("\xe2\x80\x94  ") + spaced(tr(nav->eyebrowKey)),
                      contentX, cy, kColAccent);
             cy += 26;
@@ -2654,6 +2983,321 @@ int main(int argc, char** argv) {
         }
 
         // ------------------------------------------------------------------
+        // Seite: SYSTEM (laufendes Spiel + installierte Spiele)
+        // ------------------------------------------------------------------
+        else if (page == Page::System) {
+            // --- Karte: laufendes Spiel -------------------------------------
+            int cardH = 118;
+            drawCard(renderer, contentX, cy, contentW, cardH, kColPanel, kColHairline);
+            int px = contentX + 20, py = cy + 14;
+            drawText(renderer, fontTiny, spaced(tr("sys.running")), px, py, kColAccent);
+            py += 24;
+            if (uiRunning.running) {
+                std::string nm = uiRunning.name.empty()
+                    ? sysinfo::hex16(uiRunning.titleId) : uiRunning.name;
+                drawText(renderer, fontBody, truncated(fontBody, nm, contentW - 240),
+                         px, py, kColGold);
+                py += 30;
+                std::string l1 = std::string(tr("sys.tid")) + " " +
+                                 sysinfo::hex16(uiRunning.titleId);
+                if (!uiRunning.version.empty())
+                    l1 += "    " + std::string(tr("sys.ver")) + " " + uiRunning.version;
+                drawText(renderer, fontSmall, l1, px, py, kColTextMuted);
+                py += 24;
+                std::string bid = uiRunning.buildId.empty()
+                    ? std::string(tr("sys.bid.unknown")) : uiRunning.buildId;
+                drawText(renderer, fontSmall,
+                         std::string(tr("sys.bid")) + " " + bid, px, py, kColText);
+                bool has = titleHasCheats(uiRunning.titleId);
+                drawTextRight(renderer, fontSmall,
+                              has ? tr("sys.cheats.yes") : tr("sys.cheats.no"),
+                              contentX + contentW - 20, cy + 40,
+                              has ? kColSuccess : kColTextDim);
+                if (has) {
+                    drawTextRight(renderer, fontTiny, tr("sys.open.zr"),
+                                  contentX + contentW - 20, cy + 70, kColAccent);
+                    HitBox hb; hb.rect = {contentX, cy, contentW, cardH};
+                    uint64_t tid = uiRunning.titleId;
+                    hb.fn = [&, tid]() { openCheatsForTid(tid); };
+                    hits.push_back(hb);
+                }
+            } else {
+                drawText(renderer, fontBody, tr("sys.norunning"), px, py, kColTextMuted);
+                py += 30;
+                drawText(renderer, fontSmall, tr("sys.norunning.hint"), px, py, kColTextDim);
+            }
+            cy += cardH + 16;
+
+            // --- Liste: installierte Spiele ---------------------------------
+            char hdr[96];
+            snprintf(hdr, sizeof(hdr), "%s (%d)", tr("sys.installed"),
+                     static_cast<int>(uiTitles.size()));
+            drawText(renderer, fontBody, hdr, contentX, cy, kColText);
+            drawTextRight(renderer, fontTiny,
+                          g_sysScanned.load() ? tr("sys.rescan") : tr("sys.scanhint"),
+                          contentX + contentW, cy + 4, kColTextDim);
+            cy += 34;
+            fillRect(renderer, contentX, cy, contentW, 1, kColHairline);
+            cy += 10;
+
+            int rowH = 50;
+            int listBottom = cfg::kScreenH - footerH - 12;
+            int visible = (listBottom - cy) / rowH;
+            if (visible < 1) visible = 1;
+            int n = static_cast<int>(uiTitles.size());
+            if (sysSel < sysScroll) sysScroll = sysSel;
+            if (sysSel >= sysScroll + visible) sysScroll = sysSel - visible + 1;
+            if (sysScroll < 0) sysScroll = 0;
+
+            if (n == 0) {
+                drawText(renderer, fontSmall, busy ? tr("sys.scanning") : tr("sys.empty"),
+                         contentX + 4, cy + 8, kColTextMuted);
+            }
+            for (int i = sysScroll; i < n && i < sysScroll + visible; i++) {
+                int ry = cy + (i - sysScroll) * rowH;
+                bool sel = (i == sysSel);
+                if (sel) {
+                    fillRect(renderer, contentX, ry, contentW, rowH - 6, kColItemHover);
+                    fillRect(renderer, contentX, ry, 4, rowH - 6, kColAccent);
+                }
+                const auto& t = uiTitles[i];
+                drawText(renderer, fontSmall, truncated(fontSmall, t.name, contentW - 270),
+                         contentX + 16, ry + 5, sel ? kColText : kColTextMuted);
+                std::string sub = sysinfo::hex16(t.titleId);
+                if (!t.version.empty()) sub += "   v" + t.version;
+                drawText(renderer, fontTiny, sub, contentX + 16, ry + 27, kColTextDim);
+                if (titleHasCheats(t.titleId)) {
+                    drawCheckmark(renderer, contentX + contentW - 128, ry + 18, 16, kColSuccess);
+                    drawText(renderer, fontTiny, tr("sys.hascheats"),
+                             contentX + contentW - 110, ry + 10, kColSuccess);
+                }
+                HitBox hb; hb.rect = {contentX, ry, contentW, rowH - 6};
+                int idx = i; hb.fn = [&sysSel, idx]() { sysSel = idx; };
+                hits.push_back(hb);
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Seite: SPEICHERSTAENDE (installierte Spiele -> direkte Save-Verwaltung)
+        // ------------------------------------------------------------------
+        else if (page == Page::SaveGames) {
+            char hdr[96];
+            snprintf(hdr, sizeof(hdr), "%s (%d)", tr("sys.installed"),
+                     static_cast<int>(uiTitles.size()));
+            drawText(renderer, fontBody, hdr, contentX, cy, kColText);
+            drawTextRight(renderer, fontTiny,
+                          g_sysScanned.load() ? tr("sys.rescan") : tr("sys.scanhint"),
+                          contentX + contentW, cy + 4, kColTextDim);
+            cy += 34;
+            fillRect(renderer, contentX, cy, contentW, 1, kColHairline);
+            cy += 10;
+
+            int rowH = 50;
+            int listBottom = cfg::kScreenH - footerH - 12;
+            int visible = (listBottom - cy) / rowH;
+            if (visible < 1) visible = 1;
+            int n = static_cast<int>(uiTitles.size());
+            if (sgSel < sgScroll) sgScroll = sgSel;
+            if (sgSel >= sgScroll + visible) sgScroll = sgSel - visible + 1;
+            if (sgScroll < 0) sgScroll = 0;
+
+            if (n == 0) {
+                drawText(renderer, fontSmall, busy ? tr("sys.scanning") : tr("sys.empty"),
+                         contentX + 4, cy + 8, kColTextMuted);
+            }
+            for (int i = sgScroll; i < n && i < sgScroll + visible; i++) {
+                int ry = cy + (i - sgScroll) * rowH;
+                bool sel = (i == sgSel);
+                if (sel) {
+                    fillRect(renderer, contentX, ry, contentW, rowH - 6, kColItemHover);
+                    fillRect(renderer, contentX, ry, 4, rowH - 6, kColAccent2);
+                }
+                const auto& t = uiTitles[i];
+                drawText(renderer, fontSmall, truncated(fontSmall, t.name, contentW - 260),
+                         contentX + 16, ry + 5, sel ? kColText : kColTextMuted);
+                std::string sub = sysinfo::hex16(t.titleId);
+                if (!t.version.empty()) sub += "   v" + t.version;
+                drawText(renderer, fontTiny, sub, contentX + 16, ry + 27, kColTextDim);
+                int nsv = static_cast<int>(curSaves(t.titleId).size());
+                if (nsv > 0) {
+                    char sm[48];
+                    snprintf(sm, sizeof(sm), "%s: %d", tr("sys.saves"), nsv);
+                    drawTextRight(renderer, fontTiny, sm,
+                                  contentX + contentW - 16, ry + 14, kColSuccess);
+                }
+                HitBox hb; hb.rect = {contentX, ry, contentW, rowH - 6};
+                int idx = i; hb.fn = [&sgSel, idx]() { sgSel = idx; };
+                hits.push_back(hb);
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Seite: SYSTEM-DETAIL (ein installiertes Spiel + DB + Saves-Einstieg)
+        // ------------------------------------------------------------------
+        else if (page == Page::SysDetail) {
+            drawText(renderer, fontTiny,
+                     std::string("\xe2\x80\x94  ") + spaced(tr("sys.detail.eyebrow")),
+                     contentX, cy, kColAccent);
+            cy += 26;
+            std::string nm = sysDetailTitle.name.empty()
+                ? sysinfo::hex16(sysDetailTitle.titleId) : sysDetailTitle.name;
+            drawText(renderer, fontTitle, truncated(fontTitle, nm, contentW),
+                     contentX, cy, kColText);
+            cy += 44;
+            fillRect(renderer, contentX, cy, contentW, 1, kColHairline);
+            cy += 16;
+
+            int cardH = 156;
+            drawCard(renderer, contentX, cy, contentW, cardH, kColPanel, kColHairline);
+            int ix = contentX + 20, iy = cy + 16;
+            auto infoRow = [&](const char* label, const std::string& val, SDL_Color c) {
+                drawText(renderer, fontSmall, tr(label), ix, iy, kColTextDim);
+                drawText(renderer, fontSmall, truncated(fontSmall, val, contentW - 230),
+                         ix + 190, iy, c);
+                iy += 32;
+            };
+            infoRow("sys.tid", sysinfo::hex16(sysDetailTitle.titleId), kColTextMuted);
+            infoRow("sys.ver", sysDetailTitle.version.empty() ? "-" : sysDetailTitle.version,
+                    kColTextMuted);
+            infoRow("sys.author", sysDetailTitle.author.empty() ? "-" : sysDetailTitle.author,
+                    kColTextMuted);
+            bool has = titleHasCheats(sysDetailTitle.titleId);
+            infoRow("sys.db", has ? tr("sys.db.yes") : tr("sys.db.no"),
+                    has ? kColSuccess : kColTextDim);
+            if (has)
+                drawTextRight(renderer, fontTiny, tr("sys.open.zr"),
+                              contentX + contentW - 20, cy + cardH - 28, kColAccent);
+            cy += cardH + 16;
+
+            // --- Build-ID(s) ---------------------------------------------
+            // Live-Build-ID (laufendes Spiel, autoritativ per pm/ldr) + die aus
+            // unserer Cheat-DB bekannten Build-IDs. Die Build-ID eines NICHT
+            // laufenden Spiels laesst sich ohne Keys nicht von der Konsole lesen.
+            uint64_t mask = 0xFFFFFFFFFFFFFFF0ULL;
+            bool running = uiRunning.running &&
+                (uiRunning.titleId & mask) == (sysDetailTitle.titleId & mask);
+            int nb = static_cast<int>(sysDetailBuilds.size());
+            int shown = nb > 3 ? 3 : nb;
+            int bcardH = 34 + (running ? 28 : 0) + (shown > 0 ? shown * 26 : 26) + 12;
+            drawCard(renderer, contentX, cy, contentW, bcardH, kColPanel, kColHairline);
+            int bx = contentX + 20, by = cy + 12;
+            drawText(renderer, fontTiny, spaced(tr("sys.bids")), bx, by, kColGold);
+            by += 28;
+            if (running) {
+                std::string lb = uiRunning.buildId.empty()
+                    ? std::string(tr("sys.bid.unknown")) : uiRunning.buildId;
+                drawText(renderer, fontSmall,
+                         std::string(tr("sys.bid.live")) + "  " + lb, bx, by, kColSuccess);
+                by += 28;
+            }
+            if (nb == 0) {
+                drawText(renderer, fontSmall, tr("sys.bid.none"), bx, by, kColTextDim);
+            } else {
+                for (int i = 0; i < shown; i++) {
+                    const auto& b = sysDetailBuilds[i];
+                    bool matchVer = !sysDetailTitle.version.empty() &&
+                                    b.version == sysDetailTitle.version;
+                    std::string line = b.buildId;
+                    if (!b.version.empty()) line += "   v" + b.version;
+                    char cc[40];
+                    snprintf(cc, sizeof(cc), "   %d%s", b.cheatCount, tr("gal.cheats.suffix"));
+                    line += cc;
+                    drawText(renderer, fontSmall, truncated(fontSmall, line, contentW - 60),
+                             bx, by, matchVer ? kColAccent : kColTextMuted);
+                    by += 26;
+                }
+                if (nb > shown) {
+                    char more[48];
+                    snprintf(more, sizeof(more), "+%d %s", nb - shown, tr("sys.bid.more"));
+                    drawTextRight(renderer, fontTiny, more,
+                                  contentX + contentW - 20, cy + bcardH - 24, kColTextDim);
+                }
+            }
+            cy += bcardH + 14;
+
+            auto cs = curSaves(sysDetailTitle.titleId);
+            int scardH = 96;
+            drawCard(renderer, contentX, cy, contentW, scardH, kColPanel, kColHairline);
+            drawText(renderer, fontTiny, spaced(tr("sys.saves")),
+                     contentX + 20, cy + 14, kColAccent2);
+            char sl[128];
+            snprintf(sl, sizeof(sl), "%s: %d      %s: %d",
+                     tr("sys.saves.users"), static_cast<int>(cs.size()),
+                     tr("sys.saves.backups"), static_cast<int>(saveBackups.size()));
+            drawText(renderer, fontSmall, sl, contentX + 20, cy + 40, kColTextMuted);
+            drawText(renderer, fontTiny, tr("sys.saves.enter"),
+                     contentX + 20, cy + 66, kColAccent);
+            cy += scardH + 8;
+        }
+
+        // ------------------------------------------------------------------
+        // Seite: SAVES (Backup erstellen / wiederherstellen / loeschen)
+        // ------------------------------------------------------------------
+        else if (page == Page::Saves) {
+            drawText(renderer, fontTiny,
+                     std::string("\xe2\x80\x94  ") + spaced(tr("sys.saves.eyebrow")),
+                     contentX, cy, kColAccent2);
+            cy += 26;
+            std::string nm = sysDetailTitle.name.empty()
+                ? sysinfo::hex16(sysDetailTitle.titleId) : sysDetailTitle.name;
+            drawText(renderer, fontTitle, truncated(fontTitle, nm, contentW),
+                     contentX, cy, kColText);
+            cy += 44;
+            fillRect(renderer, contentX, cy, contentW, 1, kColHairline);
+            cy += 12;
+
+            auto cs = curSaves(sysDetailTitle.titleId);
+            int nUsers = static_cast<int>(cs.size());
+            int total = nUsers + static_cast<int>(saveBackups.size());
+
+            int rowH = 50;
+            int listBottom = cfg::kScreenH - footerH - 12;
+            int visible = (listBottom - cy) / rowH;
+            if (visible < 1) visible = 1;
+            if (saveSel < saveScroll) saveScroll = saveSel;
+            if (saveSel >= saveScroll + visible) saveScroll = saveSel - visible + 1;
+            if (saveScroll < 0) saveScroll = 0;
+
+            if (total == 0) {
+                drawText(renderer, fontSmall, busy ? getStatus() : tr("sys.saves.none"),
+                         contentX + 4, cy + 8, kColTextMuted);
+            }
+            for (int i = saveScroll; i < total && i < saveScroll + visible; i++) {
+                int ry = cy + (i - saveScroll) * rowH;
+                bool sel = (i == saveSel);
+                bool isBackup = (i >= nUsers);
+                if (sel) {
+                    SDL_Color hl = (isBackup && restoreArmed) ? kColError : kColItemHover;
+                    fillRect(renderer, contentX, ry, contentW, rowH - 6, hl);
+                    fillRect(renderer, contentX, ry, 4, rowH - 6,
+                             isBackup ? kColGold : kColAccent);
+                }
+                if (!isBackup) {
+                    const auto& e = cs[i];
+                    std::string u = e.user.empty() ? std::string(tr("sys.saves.commonuser"))
+                                                   : e.user;
+                    drawText(renderer, fontSmall,
+                             std::string(tr("sys.saves.backup")) + "   \xc2\xb7   " + u,
+                             contentX + 16, ry + 5, sel ? kColText : kColAccent);
+                    drawText(renderer, fontTiny, tr("sys.saves.backup.hint"),
+                             contentX + 16, ry + 27, kColTextDim);
+                } else {
+                    const auto& b = saveBackups[i - nUsers];
+                    drawText(renderer, fontSmall, b.label,
+                             contentX + 16, ry + 5, sel ? kColText : kColTextMuted);
+                    const char* hint = (sel && restoreArmed)
+                        ? tr("sys.saves.restore.confirm") : tr("sys.saves.restore.hint");
+                    drawText(renderer, fontTiny, hint, contentX + 16, ry + 27,
+                             (sel && restoreArmed) ? kColError : kColTextDim);
+                }
+                HitBox hb; hb.rect = {contentX, ry, contentW, rowH - 6};
+                int idx = i;
+                hb.fn = [&saveSel, &restoreArmed, idx]() { saveSel = idx; restoreArmed = false; };
+                hits.push_back(hb);
+            }
+        }
+
+        // ------------------------------------------------------------------
         // Seite: PROTOKOLL
         // ------------------------------------------------------------------
         else if (page == Page::Log) {
@@ -2707,6 +3351,10 @@ int main(int argc, char** argv) {
         else if (page == Page::Library) hints = tr("footer.library");
         else if (page == Page::CheatSlips) hints = tr("footer.cheatslips");
         else if (page == Page::Home) hints = tr("footer.home");
+        else if (page == Page::System) hints = tr("footer.system");
+        else if (page == Page::SaveGames) hints = tr("footer.savegames");
+        else if (page == Page::SysDetail) hints = tr("footer.sysdetail");
+        else if (page == Page::Saves) hints = tr("footer.saves");
         else hints = tr("footer.nav");
         drawTextRight(renderer, fontTiny, hints, cfg::kScreenW - 28, fy2 + 17, kColTextMuted);
 
@@ -2721,6 +3369,7 @@ int main(int argc, char** argv) {
         g_worker.join();
     }
     installer::shutdown();
+    sysinfo::exit();   // ns/account/pm/dmnt:cht schliessen (No-op, wenn nie init.)
 
     covers::shutdown();
     textCacheDestroy();
