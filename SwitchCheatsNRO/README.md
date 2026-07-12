@@ -284,6 +284,10 @@ eden.exe -g "C:\...\SwitchCheatsDownloader.nro"
   die App neu starten; der Download funktioniert wieder. Das mitgelieferte
   CA-Bundle (`romfs/cacert.pem`) enthält die nötigen Roots — ein Update daran ist
   hierfür nicht erforderlich.
+- **Proaktiver Hinweis:** Steht die Uhr offensichtlich falsch (vor 2025), zeigt
+  die App auf der Download-Seite bereits eine rote Warnung an, bevor der
+  Fehlschlag auftritt. Zusätzlich nennt die Fehlermeldung jetzt den genauen
+  curl-Grund (z. B. „certificate is not yet valid"), der direkt auf die Uhr zeigt.
 
 ## Bekannte Einschränkungen / mögliche Erweiterungen
 

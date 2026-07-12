@@ -110,6 +110,8 @@ static long httpGetString(const char* url, std::string& response, std::string& e
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeToString);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
+    char errbuf[CURL_ERROR_SIZE] = {0};
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
     applyCommonCurlOpts(curl);
 
     CURLcode res = curl_easy_perform(curl);
@@ -119,7 +121,10 @@ static long httpGetString(const char* url, std::string& response, std::string& e
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        error = std::string(tr("err.network")) + curl_easy_strerror(res);
+        // Prefer curl's specific reason (e.g. "certificate is not yet valid",
+        // which points straight at a wrong console clock) over the generic
+        // strerror text.
+        error = std::string(tr("err.network")) + (errbuf[0] ? errbuf : curl_easy_strerror(res));
         return -1;
     }
     return httpCode;
@@ -208,6 +213,8 @@ DownloadResult downloadFile(const std::string& url, const std::string& destPath,
     if (resumeFrom > 0) {
         curl_easy_setopt(curl, CURLOPT_RESUME_FROM_LARGE, static_cast<curl_off_t>(resumeFrom));
     }
+    char errbuf[CURL_ERROR_SIZE] = {0};
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
     applyCommonCurlOpts(curl);
 
     CURLcode res = curl_easy_perform(curl);
@@ -238,7 +245,7 @@ DownloadResult downloadFile(const std::string& url, const std::string& destPath,
         if (!(keepPartial && bodyIsPayload && fileSize(destPath.c_str()) > resumeFrom)) {
             remove(destPath.c_str());
         }
-        result.error = std::string(tr("err.downloadFailed")) + curl_easy_strerror(res);
+        result.error = std::string(tr("err.downloadFailed")) + (errbuf[0] ? errbuf : curl_easy_strerror(res));
         return result;
     }
     if (!bodyIsPayload) {

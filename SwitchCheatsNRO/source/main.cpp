@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+#include <ctime>
 
 #include "config.hpp"
 #include "updater.hpp"
@@ -66,6 +67,11 @@ static const SDL_Color kColTextMuted   = {207, 220, 217, 255}; // #CFDCD9 (88%)
 static const SDL_Color kColSuccess     = {62, 230, 143, 255};  // #3EE68F
 static const SDL_Color kColError       = {255, 107, 122, 255}; // #FF6B7A
 static const SDL_Color kColFooter      = {3, 7, 11, 255};
+
+// Wenn die System-Uhr VOR diesem Zeitpunkt (2025-01-01 UTC) steht, ist sie
+// definitiv falsch gestellt -> TLS-Zertifikatspruefung schlaegt fehl
+// ("SSL peer certificate ... was not OK"). Wir warnen dann proaktiv.
+static constexpr time_t kMinSaneEpoch = 1735689600LL;
 
 // ---------------------------------------------------------------------------
 // Geteilter Zustand zwischen UI-Thread und Hintergrund-Worker
@@ -818,6 +824,14 @@ int main(int argc, char** argv) {
             contentY += 34;
             drawText(renderer, fontBody, tr("install.desc2"), contentX, contentY, kColTextMuted);
             contentY += 50;
+
+            // Proaktiver Hinweis: eine falsch gestellte Konsolen-Uhr laesst die
+            // TLS-Pruefung scheitern (haeufigste Ursache des SSL-Fehlers, v.a.
+            // mit 90DNS). Vor dem Download sichtbar warnen.
+            if (time(nullptr) < kMinSaneEpoch) {
+                drawText(renderer, fontBody, tr("clock.warn"), contentX, contentY, kColError);
+                contentY += 40;
+            }
 
             drawText(renderer, fontBody, std::string(tr("check.local")) +
                 (localAt.empty() ? tr("check.never") : localAt), contentX, contentY, kColTextMuted);
