@@ -530,16 +530,34 @@ static void startAppInstall() {
 struct SourceDef {
     const char* key;        // i18n-Prefix (src.<key>.name / .desc)
     const char* repo;
-    const char* asset;
+    const char* assets;     // Release-Asset-Kandidaten (komma-getrennt); live: ""
+    bool live;              // true = Default-Branch-ZIP (main/master) statt Release
 };
+// Vollstaendige Quellen-Liste des Windows-Tools (gui.py Sources-Grid).
+// Release-Assets: fetchRepoLatestAsset. Live-Repos: Default-Branch-ZIP.
 static const SourceDef kSources[] = {
-    {"hamlet",  "HamletDuFromage/switch-cheats-db", "titles_complete.zip"},
-    {"hamlet60","HamletDuFromage/switch-cheats-db", "titles_60fps-res-gfx.zip"},
-    {"sthetix", "sthetix/nx-cheats-db",             "titles_complete.zip"},
-    {"breeze",  "tomvita/NXCheatCode",              "titles.zip"},
+    {"gbatemp",    "HamletDuFromage/switch-cheats-db",          "contents_complete.zip,titles_complete.zip", false},
+    {"hamlet",     "HamletDuFromage/switch-cheats-db",          "titles_complete.zip",       false},
+    {"hamlet60",   "HamletDuFromage/switch-cheats-db",          "titles_60fps-res-gfx.zip",  false},
+    {"ibnux",      "ibnux/switch-cheat",                        "",                          true},
+    {"sthetix",    "sthetix/nx-cheats-db",                      "titles_complete.zip",       false},
+    {"breeze",     "tomvita/NXCheatCode",                       "titles.zip",                false},
+    {"chansey",    "ChanseyIsTheBest/NX-60FPS-RES-GFX-Cheats",  "",                          true},
+    {"mynxcheats", "Arch9SK7/MyNXCheats",                       "",                          true},
 };
-static constexpr int kSourceCount = 4;
+static constexpr int kSourceCount = 8;
 static std::atomic<int> g_sourceRunning{-1}; // Index in kSources waehrend Action::Source
+
+static std::vector<std::string> splitCsv(const std::string& s) {
+    std::vector<std::string> out;
+    std::string cur;
+    for (char c : s) {
+        if (c == ',') { if (!cur.empty()) out.push_back(cur); cur.clear(); }
+        else cur += c;
+    }
+    if (!cur.empty()) out.push_back(cur);
+    return out;
+}
 
 static void runSourceWorker(int idx) {
     g_cancelRequested = false;
@@ -560,23 +578,36 @@ static void runSourceWorker(int idx) {
     }
 
     setStatus(tr("status.connecting"));
-    auto info = updater::fetchRepoLatestAsset(src.repo, {src.asset});
-    if (!info.ok) {
-        setResult(false, std::string(tr("result.errorPrefix")) + info.error);
-        g_sourceRunning = -1;
-        g_action = Action::None;
-        return;
-    }
-
     std::string tmpZip = std::string(cfg::kAppDir) + "/source.zip.part";
     updater::removeIfExists(tmpZip.c_str());
-    setStatus(tr("status.downloading.src"));
-    auto dl = updater::downloadFile(info.downloadUrl, tmpZip,
-        [](long long done, long long total) -> bool {
-            g_bytesDone = done;
-            g_bytesTotal = total;
-            return !g_cancelRequested.load();
-        });
+    auto progress = [](long long done, long long total) -> bool {
+        g_bytesDone = done;
+        g_bytesTotal = total;
+        return !g_cancelRequested.load();
+    };
+
+    updater::DownloadResult dl;
+    if (src.live) {
+        // Live-Repo: Default-Branch-ZIP (erst main, dann master). Kein Release.
+        setStatus(tr("status.downloading.src"));
+        std::string base = "https://github.com/" + std::string(src.repo) + "/archive/refs/heads/";
+        dl = updater::downloadFile(base + "main.zip", tmpZip, progress);
+        if (!dl.ok && !dl.cancelled) {
+            updater::removeIfExists(tmpZip.c_str());
+            g_bytesDone = 0; g_bytesTotal = 0;
+            dl = updater::downloadFile(base + "master.zip", tmpZip, progress);
+        }
+    } else {
+        auto info = updater::fetchRepoLatestAsset(src.repo, splitCsv(src.assets));
+        if (!info.ok) {
+            setResult(false, std::string(tr("result.errorPrefix")) + info.error);
+            g_sourceRunning = -1;
+            g_action = Action::None;
+            return;
+        }
+        setStatus(tr("status.downloading.src"));
+        dl = updater::downloadFile(info.downloadUrl, tmpZip, progress);
+    }
     if (dl.cancelled || !dl.ok) {
         updater::removeIfExists(tmpZip.c_str());
         setResult(false, dl.cancelled ? tr("result.cancelled")
@@ -881,6 +912,46 @@ static std::string spaced(const std::string& s) {
     return out;
 }
 
+// Bricht Text am Wortende auf maxW um (mehrzeilig, vollstaendig lesbar).
+// Ueberlange Einzel-"Woerter" (z.B. CJK ohne Leerzeichen) werden hart an der
+// UTF-8-Codepoint-Grenze gebrochen. Ergebnis pro (Font,maxW,Text) gecacht.
+static std::unordered_map<std::string, std::vector<std::string>> g_wrapCache;
+static const std::vector<std::string>& wrapText(TTF_Font* font, const std::string& text, int maxW) {
+    std::string key = std::to_string((uintptr_t)font) + "|" + std::to_string(maxW) + "|" + text;
+    auto it = g_wrapCache.find(key);
+    if (it != g_wrapCache.end()) return it->second;
+    std::vector<std::string> lines;
+    std::string line;
+    int lastSpaceLen = -1;   // Byte-Position eines Leerzeichens in `line`
+    size_t i = 0;
+    while (i < text.size()) {
+        unsigned char c = static_cast<unsigned char>(text[i]);
+        size_t len = (c < 0x80) ? 1 : (c < 0xE0) ? 2 : (c < 0xF0) ? 3 : 4;
+        if (i + len > text.size()) len = 1;
+        std::string ch = text.substr(i, len);
+        std::string trial = line + ch;
+        if (!line.empty() && textWidth(font, trial) > maxW) {
+            if (lastSpaceLen > 0) {
+                lines.push_back(line.substr(0, lastSpaceLen));
+                line = line.substr(lastSpaceLen + 1);
+            } else {
+                lines.push_back(line);
+                line.clear();
+            }
+            lastSpaceLen = -1;
+            line += ch;
+        } else {
+            line = trial;
+        }
+        if (ch == " ") lastSpaceLen = static_cast<int>(line.size()) - 1;
+        i += len;
+    }
+    if (!line.empty()) lines.push_back(line);
+    if (lines.empty()) lines.push_back("");
+    if (g_wrapCache.size() > 512) g_wrapCache.clear();
+    return g_wrapCache.emplace(std::move(key), std::move(lines)).first->second;
+}
+
 // Text auf maxW kuerzen (mit "..."), Ergebnis gecacht (stabile Zeilen).
 static std::unordered_map<std::string, std::string> g_truncCache;
 static std::string truncated(TTF_Font* font, const std::string& text, int maxW) {
@@ -1103,6 +1174,7 @@ int main(int argc, char** argv) {
 
     // Quellen-Seite
     int srcSel = 0;
+    int srcScroll = 0;
 
     // CheatSlips-Seite (eine Token-Karte)
     // (kein eigener Zustand noetig - Token liegt in settings)
@@ -1627,7 +1699,7 @@ int main(int argc, char** argv) {
             // Stat-Karten (Spiele / Cheats / Installiert / DB-Groesse)
             int cardGap = 14;
             int cardW = (contentW - 3 * cardGap) / 4;
-            int cardH = 92;
+            int cardH = 80;
             struct StatDef { std::string value; const char* labelKey; SDL_Color col; };
             char instBuf[32];
             if (installer::scannedOnce()) {
@@ -1647,11 +1719,11 @@ int main(int argc, char** argv) {
             for (int i = 0; i < 4; i++) {
                 int x = contentX + i * (cardW + cardGap);
                 drawCard(renderer, x, cy, cardW, cardH);
-                fillRect(renderer, x + 16, cy + 16, 26, 3, defs[i].col);
-                drawText(renderer, fontStat, defs[i].value, x + 16, cy + 24, defs[i].col);
-                drawText(renderer, fontTiny, tr(defs[i].labelKey), x + 16, cy + 66, kColTextMuted);
+                fillRect(renderer, x + 16, cy + 14, 26, 3, defs[i].col);
+                drawText(renderer, fontStat, defs[i].value, x + 16, cy + 20, defs[i].col);
+                drawText(renderer, fontTiny, tr(defs[i].labelKey), x + 16, cy + 58, kColTextMuted);
             }
-            cy += cardH + 16;
+            cy += cardH + 14;
 
             // Uhr-Warnung (falsche Systemzeit -> SSL-Fehler)
             if (time(nullptr) < kMinSaneEpoch) {
@@ -1660,7 +1732,7 @@ int main(int argc, char** argv) {
             }
 
             // Linke Karte: "Alles holen" | rechte Karte: Zuletzt aktualisiert
-            int leftW = (contentW - 16) * 55 / 100;
+            int leftW = (contentW - 16) * 60 / 100;
             int rightW = contentW - 16 - leftW;
             int cardsY = cy;
             int cardsH = cfg::kScreenH - footerH - cardsY - 14;
@@ -1670,15 +1742,25 @@ int main(int argc, char** argv) {
             int lx = contentX + 20;
             int ly = cardsY + 16;
             int lTextW = leftW - 40;
-            drawText(renderer, fontBody, truncated(fontBody, tr("home.card.title"), lTextW),
-                     lx, ly, kColGold);
-            ly += 34;
-            drawText(renderer, fontSmall, truncated(fontSmall, tr("home.card.d1"), lTextW),
-                     lx, ly, kColTextMuted);
-            ly += 26;
-            drawText(renderer, fontSmall, truncated(fontSmall, tr("home.card.d2"), lTextW),
-                     lx, ly, kColTextMuted);
-            ly += 34;
+            // Oberkante des Button-Blocks (2 Reihen) - Statuszeilen duerfen NIE
+            // darunter laufen.
+            int btnHh = 46, btnGapp = 10;
+            int stateLimit = cardsY + cardsH - 14 - btnHh - btnGapp - btnHh - 6;
+            // Titel + Beschreibung VOLLSTAENDIG per Wortumbruch (kein "..." mehr).
+            for (const auto& tl : wrapText(fontBody, tr("home.card.title"), lTextW)) {
+                drawText(renderer, fontBody, tl, lx, ly, kColGold);
+                ly += 28;
+            }
+            ly += 4;
+            for (const auto& dl2 : wrapText(fontSmall, tr("home.card.desc"), lTextW)) {
+                drawText(renderer, fontSmall, dl2, lx, ly, kColTextMuted);
+                ly += 24;
+            }
+            ly += 8;
+            // Ab hier nur zeichnen, was ueber dem Button-Block Platz hat.
+            auto stateLine = [&](const std::string& t, SDL_Color c, int adv) {
+                if (ly + 22 <= stateLimit) { drawText(renderer, fontSmall, t, lx, ly, c); ly += adv; }
+            };
 
             std::string remoteAt, localAt, dbLocalAt, resultMsg;
             long long remoteSize = 0;
@@ -1696,21 +1778,16 @@ int main(int argc, char** argv) {
                 haveResult = g_haveResult;
             }
 
-            drawText(renderer, fontSmall, std::string(tr("check.local")) +
-                (localAt.empty() ? tr("check.never") : localAt), lx, ly, kColTextMuted);
-            ly += 28;
-            drawText(renderer, fontSmall, std::string(tr("home.dbstate")) +
-                (dbLocalAt.empty() ? tr("check.never") : dbLocalAt), lx, ly, kColTextMuted);
-            ly += 28;
+            stateLine(std::string(tr("check.local")) +
+                (localAt.empty() ? tr("check.never") : localAt), kColTextMuted, 24);
+            stateLine(std::string(tr("home.dbstate")) +
+                (dbLocalAt.empty() ? tr("check.never") : dbLocalAt), kColTextMuted, 24);
             if (haveRemote) {
                 std::string remoteLine = std::string(tr("check.remote")) + remoteAt;
                 if (remoteSize > 0) remoteLine += "  (" + formatBytes(remoteSize) + ")";
-                drawText(renderer, fontSmall, remoteLine, lx, ly, kColTextMuted);
-                ly += 28;
-                drawText(renderer, fontSmall,
-                    updateAvail ? tr("check.available") : tr("check.uptodate"),
-                    lx, ly, updateAvail ? kColGold : kColSuccess);
-                ly += 34;
+                stateLine(remoteLine, kColTextMuted, 24);
+                stateLine(updateAvail ? tr("check.available") : tr("check.uptodate"),
+                          updateAvail ? kColGold : kColSuccess, 28);
             }
 
             if (curAction == Action::Installing) {
@@ -2027,53 +2104,76 @@ int main(int argc, char** argv) {
         // ------------------------------------------------------------------
         else if (page == Page::Sources) {
             int runningIdx = g_sourceRunning.load();
-            for (int i = 0; i < kSourceCount; i++) {
-                int cardH = 86;
+            // Ergebnis-/Notizzeile UNTEN reservieren, Karten scrollen dazwischen.
+            int noteH = 26;
+            int listBottom = cfg::kScreenH - footerH - noteH - 12;
+            int cardH = 76;
+            int cardGap = 10;
+            int visCards = (listBottom - cy) / (cardH + cardGap);
+            if (visCards < 1) visCards = 1;
+            if (srcSel < srcScroll) srcScroll = srcSel;
+            if (srcSel >= srcScroll + visCards) srcScroll = srcSel - visCards + 1;
+            if (srcScroll < 0) srcScroll = 0;
+
+            int listTop = cy;
+            for (int vi = 0; vi < visCards; vi++) {
+                int i = srcScroll + vi;
+                if (i >= kSourceCount) break;
+                int y = listTop + vi * (cardH + cardGap);
                 bool sel = i == srcSel;
                 bool running = runningIdx == i;
-                drawCard(renderer, contentX, cy, contentW, cardH,
+                drawCard(renderer, contentX, y, contentW, cardH,
                          sel ? kColItemHover : kColPanel,
                          sel ? kColAccent : kColHairline);
                 std::string nameKey = "src." + std::string(kSources[i].key) + ".name";
                 std::string descKey = "src." + std::string(kSources[i].key) + ".desc";
-                drawText(renderer, fontBody, tr(nameKey.c_str()), contentX + 20, cy + 12, kColText);
-                drawText(renderer, fontTiny, truncated(fontTiny, tr(descKey.c_str()), contentW - 260),
-                         contentX + 20, cy + 50, kColTextDim);
+                drawText(renderer, fontBody, tr(nameKey.c_str()), contentX + 18, y + 10, kColText);
+                drawText(renderer, fontTiny, truncated(fontTiny, tr(descKey.c_str()), contentW - 280),
+                         contentX + 18, y + 44, kColTextDim);
                 drawTextRight(renderer, fontTiny, kSources[i].repo,
-                              contentX + contentW - 20, cy + 14, kColTextDim);
+                              contentX + contentW - 18, y + 12, kColTextDim);
                 if (running) {
                     long long done = g_bytesDone.load(), total = g_bytesTotal.load();
                     int zi = g_zipIndex.load(), zt = g_zipTotal.load();
                     double frac = zt > 0 ? (double)zi / (double)zt
                                  : (total > 0 ? (double)done / (double)total : 0);
-                    drawProgressBar(renderer, contentX + contentW - 240, cy + 46, 220, 18,
+                    drawProgressBar(renderer, contentX + contentW - 240, y + 42, 222, 16,
                                     frac, kColAccent);
                 }
                 HitBox hb;
-                hb.rect = {contentX, cy, contentW, cardH};
+                hb.rect = {contentX, y, contentW, cardH};
                 hb.fn = [&, i]() {
                     if (srcSel == i && !busy) startSource(i);
                     else srcSel = i;
                 };
                 hits.push_back(hb);
-                cy += cardH + 12;
             }
-            drawText(renderer, fontTiny, tr("src.note"), contentX, cy + 4, kColTextDim);
-            cy += 26;
-            drawText(renderer, fontTiny, tr("src.note2"), contentX, cy + 4, kColTextDim);
-            if (!busy) {
-                std::string resultMsg;
-                bool resultOk = false, haveResult2 = false;
-                {
-                    std::lock_guard<std::mutex> lk(g_dataMutex);
-                    resultMsg = g_resultLine;
-                    resultOk = g_resultSuccess;
-                    haveResult2 = g_haveResult;
-                }
-                if (haveResult2 && !resultMsg.empty()) {
-                    drawText(renderer, fontSmall, truncated(fontSmall, resultMsg, contentW),
-                             contentX, cy + 30, resultOk ? kColSuccess : kColError);
-                }
+            // Scroll-Indikator
+            if (kSourceCount > visCards) {
+                int trackH = visCards * (cardH + cardGap) - cardGap;
+                fillRect(renderer, contentX + contentW + 8, listTop, 4, trackH, kColItem);
+                int thumbH = trackH * visCards / kSourceCount;
+                if (thumbH < 24) thumbH = 24;
+                int thumbY = listTop + (trackH - thumbH) * srcScroll /
+                             (kSourceCount - visCards > 0 ? kSourceCount - visCards : 1);
+                fillRect(renderer, contentX + contentW + 8, thumbY, 4, thumbH, kColAccent);
+            }
+            // Ergebnis-/Notizzeile ganz unten
+            int noteY = cfg::kScreenH - footerH - noteH - 4;
+            std::string resultMsg;
+            bool resultOk = false, haveResult2 = false;
+            {
+                std::lock_guard<std::mutex> lk(g_dataMutex);
+                resultMsg = g_resultLine;
+                resultOk = g_resultSuccess;
+                haveResult2 = g_haveResult;
+            }
+            if (!busy && haveResult2 && !resultMsg.empty()) {
+                drawText(renderer, fontSmall, truncated(fontSmall, resultMsg, contentW),
+                         contentX, noteY, resultOk ? kColSuccess : kColError);
+            } else {
+                drawText(renderer, fontTiny, truncated(fontTiny, tr("src.note"), contentW),
+                         contentX, noteY + 3, kColTextDim);
             }
         }
 

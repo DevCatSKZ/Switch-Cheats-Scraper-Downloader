@@ -27,9 +27,12 @@ plain cheat-downloader into the **complete Windows software on the console**,
   toggle (persisted in settings.txt).
 - **CheatSlips API**: token entry (swkbd) + test on the CheatSlips page; **Y** on
   a game page fetches that game’s cheats and installs them to the SD.
-- **Sources page**: Hamlet (complete / 60fps) / Sthetix / Breeze — downloads the
-  latest release archive and maps `…/<TID>/cheats/<BID>.txt` into the Atmosphère
-  layout (verified live: 925 files / 531 games).
+- **Sources page**: all **8 community sources** of the desktop tool
+  (GBAtemp, Hamlet complete, Hamlet 60fps, Ibnux, Sthetix, Breeze, Chansey,
+  MyNXCheats) in a scrollable list — release-asset sources **and live repos**
+  (default-branch zip, `main`→`master` fallback). Maps `…/<TID>/cheats/<BID>.txt`
+  into the Atmosphère layout (verified live: Hamlet 60fps = 925 files / 531
+  games; the three live-repo URLs HTTP-verified).
 - **Cheat editor**: view/edit a build’s lines via swkbd with the same syntax
   validation as the desktop (header gold, master violet, error lines red), save
   with Minus.
