@@ -467,6 +467,12 @@ _merge({
         "fr": "Obtenir les versions Cheatslips",
         "it": "Ottieni versioni da Cheatslips",
         "ja": "Cheatslips からバージョンを取得"},
+    "Get Versions (local)": {
+        "de": "Versionen (lokal) abrufen",
+        "es": "Obtener versiones (local)",
+        "fr": "Obtenir les versions (local)",
+        "it": "Ottieni versioni (locale)",
+        "ja": "バージョンを取得（ローカル）"},
     "Get Descriptions": {
         "de": "Beschreibungen abrufen", "es": "Obtener descripciones",
         "fr": "Obtenir les descriptions", "it": "Ottieni descrizioni",
@@ -3645,6 +3651,24 @@ _merge({
               "(HTML) — più lento; serve solo per le build non coperte da titledb.",
         "ja": "残りのビルドバージョンを cheatslips のゲームページ（HTML）から補完します "
               "— 低速。titledb が対象外のビルドにのみ必要です。"},
+    "Fill versions + names from the LOCAL supplement (buildid_map.csv) — "
+    "the exact build-id→version mapping extracted offline from your own "
+    "games. Not available online; corrects builds no source provides.": {
+        "de": "Versionen + Namen aus der LOKALEN Ergänzung (buildid_map.csv) füllen — die "
+              "exakte Build-ID→Version-Zuordnung, offline aus deinen eigenen Spielen "
+              "extrahiert. Online nicht verfügbar; korrigiert Builds, die keine Quelle liefert.",
+        "es": "Rellena versiones + nombres desde el complemento LOCAL (buildid_map.csv): la "
+              "correspondencia exacta build-id→versión extraída sin conexión de tus propios "
+              "juegos. No disponible en línea; corrige builds que ninguna fuente ofrece.",
+        "fr": "Complète versions + noms depuis le complément LOCAL (buildid_map.csv) — la "
+              "correspondance exacte build-id→version extraite hors ligne de tes propres "
+              "jeux. Indisponible en ligne ; corrige les builds qu'aucune source ne fournit.",
+        "it": "Riempie versioni + nomi dal supplemento LOCALE (buildid_map.csv) — la mappatura "
+              "esatta build-id→versione estratta offline dai tuoi giochi. Non disponibile "
+              "online; corregge le build che nessuna fonte fornisce.",
+        "ja": "ローカル補完（buildid_map.csv）からバージョン＋名前を補完します — 自分の"
+              "ゲームからオフラインで抽出した正確なビルドID→バージョン対応。オンラインには"
+              "なく、どのソースも提供しないビルドを補正します。"},
     "Fill missing game descriptions + intro texts for all titles from "
     "titledb (English regions). Downloads/caches the region files.": {
         "de": "Fehlende Spielbeschreibungen + Introtexte für alle Titel aus titledb "
