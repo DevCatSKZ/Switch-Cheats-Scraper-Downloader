@@ -44,12 +44,15 @@ static std::string colText(sqlite3_stmt* st, int idx) {
     return p ? reinterpret_cast<const char*>(p) : "";
 }
 
-// Sortierbarer "YYYYMMDD"-Schluessel fuer "Zuletzt aktualisiert": bevorzugt das
-// Quell-upload_date ("13 Jul 2026" = echte Neuheit), sonst last_updated (ISO,
-// z.B. bei manuell/community hinzugefuegten Cheats ohne Upload-Datum). "" wenn
-// keins parsbar. So stehen wirklich neue Uploads oben - nicht alte, gerade neu
-// gescrapte Cheats (exakt wie die Windows-"Zuletzt aktualisiert"-Liste).
-static std::string recencyKey(const std::string& upload, const std::string& lastUpd) {
+// Sortierbarer "YYYYMMDD"-Schluessel fuer "Zuletzt aktualisiert" - exakt die
+// Windows-Logik: bevorzugt cheats_added_at (echte Hinzufuege-/Aenderungszeit,
+// unberuehrt von Re-Scrapes), sonst das Quell-upload_date ("13 Jul 2026").
+// Die lokale Scrape-Zeit (last_updated) zaehlt bewusst NIE. "" wenn keins parsbar
+// -> das Spiel erscheint dann nicht in der Liste.
+static std::string recencyKey(const std::string& cheatsAdded, const std::string& upload) {
+    // cheats_added_at ist ISO "YYYY-MM-DDT..." -> "YYYYMMDD"
+    if (cheatsAdded.size() >= 10 && cheatsAdded[4] == '-' && cheatsAdded[7] == '-')
+        return cheatsAdded.substr(0, 4) + cheatsAdded.substr(5, 2) + cheatsAdded.substr(8, 2);
     static const char* kMon[12] = {"Jan","Feb","Mar","Apr","May","Jun",
                                    "Jul","Aug","Sep","Oct","Nov","Dec"};
     if (!upload.empty()) {
@@ -62,10 +65,23 @@ static std::string recencyKey(const std::string& upload, const std::string& last
             if (m) { char b[9]; snprintf(b, sizeof(b), "%04d%02d%02d", y, m, d); return b; }
         }
     }
-    // last_updated "YYYY-MM-DDT..." -> "YYYYMMDD"
-    if (lastUpd.size() >= 10 && lastUpd[4] == '-' && lastUpd[7] == '-')
-        return lastUpd.substr(0, 4) + lastUpd.substr(5, 2) + lastUpd.substr(8, 2);
     return "";
+}
+
+// true, wenn die Tabelle die Spalte hat (aeltere database.db haben
+// cheats_added_at evtl. noch nicht -> dann faellt der Loader auf upload_date).
+static bool hasColumn(sqlite3* h, const char* table, const char* col) {
+    std::string q = std::string("PRAGMA table_info(") + table + ")";
+    sqlite3_stmt* s = nullptr;
+    bool found = false;
+    if (sqlite3_prepare_v2(h, q.c_str(), -1, &s, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(s) == SQLITE_ROW) {
+            const unsigned char* n = sqlite3_column_text(s, 1);  // Spalte 1 = name
+            if (n && strcmp(reinterpret_cast<const char*>(n), col) == 0) { found = true; break; }
+        }
+        sqlite3_finalize(s);
+    }
+    return found;
 }
 
 // libnx nutzt Devicepfade ("sdmc:/...") OHNE fuehrenden '/': SQLites
@@ -111,11 +127,9 @@ static sqlite3* openDb() {
     return h;
 }
 
-// Flache Abfrage; gruppiert wird in C++ (haelt SQL trivial und erlaubt es, die
-// (tid,bid)-Paare fuer den Installiert-Check mitzunehmen).
-static const char* kBuildsSql =
-    "SELECT title_id, build_id, game_title, region, cheat_count, last_updated, image, upload_date "
-    "FROM builds WHERE title_id IS NOT NULL AND title_id<>''";
+// Spalten 0..8: title_id, build_id, game_title, region, cheat_count,
+// last_updated, image, upload_date, cheats_added_at (das letzte NULL, falls die
+// Spalte in einer aelteren database.db noch fehlt). Gruppiert wird in C++.
 
 // Zustand des inkrementellen Ladens (nur UI-Thread).
 static sqlite3* g_lH = nullptr;
@@ -145,7 +159,12 @@ bool reloadBegin() {
 
     g_lH = openDb();
     if (!g_lH) return false;
-    if (sqlite3_prepare_v2(g_lH, kBuildsSql, -1, &g_lStmt, nullptr) != SQLITE_OK) {
+    std::string sql =
+        "SELECT title_id, build_id, game_title, region, cheat_count, last_updated, "
+        "image, upload_date, ";
+    sql += hasColumn(g_lH, "builds", "cheats_added_at") ? "cheats_added_at" : "NULL";
+    sql += " FROM builds WHERE title_id IS NOT NULL AND title_id<>''";
+    if (sqlite3_prepare_v2(g_lH, sql.c_str(), -1, &g_lStmt, nullptr) != SQLITE_OK) {
         g_error = sqlite3_errmsg(g_lH);
         sqlite3_close(g_lH); g_lH = nullptr;
         return false;
@@ -176,7 +195,7 @@ bool reloadStep(int maxRows) {
         g.builds += 1;
         g.cheats += cheats;
         if (updated > g.lastUpdated) g.lastUpdated = updated;
-        std::string rk = recencyKey(colText(g_lStmt, 7), updated);
+        std::string rk = recencyKey(colText(g_lStmt, 8), colText(g_lStmt, 7));
         if (rk > g.recency) g.recency = rk;   // pro Spiel das juengste Datum
         if (!bid.empty()) g.pairs.emplace_back(tid, bid);
         n++;
