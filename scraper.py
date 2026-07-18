@@ -876,6 +876,11 @@ class GameDatabase:
     COLUMNS = [
         "build_id", "title_id", "slug", "game_title", "version", "source_id",
         "upload_date", "cheat_count", "cheat_names", "last_updated",
+        # Wann zuletzt NEUE Cheats in UNSERE DB kamen (Insert bzw. echte
+        # Aenderung der Cheat-Liste). Re-Scrapes ohne Aenderung ruehren den
+        # Wert NICHT an — im Gegensatz zu last_updated (= Scrape-Zeit, wird
+        # jedes Mal ueberschrieben). Basis der "Zuletzt aktualisiert"-Anzeige.
+        "cheats_added_at",
         # API-provided fields:
         "credits", "description", "image", "banner", "cheat_id",
         # origin of the entry: "cheatslips" or "gbatemp"
@@ -919,6 +924,30 @@ class GameDatabase:
             for col in extra_cols:
                 if col not in existing:
                     self._conn.execute(f"ALTER TABLE builds ADD COLUMN {col} TEXT")
+            # "Zuletzt aktualisiert"-Zeitstempel (2026-07-18): wann kamen
+            # zuletzt NEUE Cheats in DIESE DB. Einmaliger Backfill beim
+            # Anlegen der Spalte: bestehende Zeilen bekommen das QUELL-
+            # Upload-Datum als ISO — die lokale Scrape-Zeit (last_updated)
+            # waere falsch, sie wird bei jedem Re-Scrape ueberschrieben.
+            # Zeilen ohne upload_date bleiben ehrlich NULL (Hinzufuege-Zeit
+            # unbekannt) und erscheinen nicht als "neu".
+            if "cheats_added_at" not in existing:
+                self._conn.execute(
+                    "ALTER TABLE builds ADD COLUMN cheats_added_at TEXT")
+                import datetime as _dt
+                upd = []
+                for rid, up in self._conn.execute(
+                        "SELECT rowid, upload_date FROM builds "
+                        "WHERE upload_date IS NOT NULL AND upload_date <> ''"):
+                    for f in ("%d %b %Y", "%d %B %Y", "%Y-%m-%d"):
+                        try:
+                            upd.append((_dt.datetime.strptime(up.strip(), f)
+                                        .strftime("%Y-%m-%dT00:00:00"), rid))
+                            break
+                        except ValueError:
+                            pass
+                self._conn.executemany(
+                    "UPDATE builds SET cheats_added_at = ? WHERE rowid = ?", upd)
             # The PK is (build_id, title_id), so plain "WHERE title_id = ?"
             # lookups (get_game_info, update_game_fields — called thousands of
             # times during enrichment) would full-scan without this index.
@@ -1031,6 +1060,10 @@ class GameDatabase:
     def upsert_build(self, row: Dict):
         # Fill any missing keys with None so the named query always binds.
         full = {c: row.get(c) for c in self.COLUMNS}
+        # Neu-/Aenderungs-Stempel: greift beim INSERT direkt, beim UPDATE nur,
+        # wenn die Cheat-Liste sich wirklich geaendert hat (CASE oben).
+        if not full.get("cheats_added_at"):
+            full["cheats_added_at"] = full.get("last_updated")
         # Ungueltige/Platzhalter-Build-IDs (all-zeros/-ones/-F, title==build) sind
         # Fehl-Uploads (nicht ladbar) und wuerden sonst bei jedem Scrape wieder als
         # nicht-downloadbare Zeile auftauchen -> gar nicht erst speichern.
@@ -1065,10 +1098,12 @@ class GameDatabase:
                 """INSERT INTO builds
                     (build_id, title_id, slug, game_title, version, source_id,
                      upload_date, cheat_count, cheat_names, last_updated,
+                     cheats_added_at,
                      credits, description, image, banner, cheat_id, source)
                    VALUES
                     (:build_id, :title_id, :slug, :game_title, :version, :source_id,
                      :upload_date, :cheat_count, :cheat_names, :last_updated,
+                     :cheats_added_at,
                      :credits, :description, :image, :banner, :cheat_id, :source)
                    ON CONFLICT(build_id, title_id) DO UPDATE SET
                        slug = COALESCE(excluded.slug, builds.slug),
@@ -1088,6 +1123,17 @@ class GameDatabase:
                            THEN builds.cheat_names
                            ELSE excluded.cheat_names END,
                        last_updated = excluded.last_updated,
+                       -- Nur bei ECHTER Aenderung der Cheat-Liste neu stempeln
+                       -- (und nie beim 0/NULL-Wipe-Fall): Re-Scrapes ohne neue
+                       -- Cheats lassen "cheats_added_at" unberuehrt.
+                       cheats_added_at = CASE
+                           WHEN excluded.cheat_count IS NULL OR excluded.cheat_count = 0
+                               THEN builds.cheats_added_at
+                           WHEN builds.cheat_names IS NOT NULL
+                                AND excluded.cheat_names = builds.cheat_names
+                               THEN builds.cheats_added_at
+                           ELSE COALESCE(excluded.cheats_added_at,
+                                         builds.cheats_added_at) END,
                        credits = COALESCE(excluded.credits, builds.credits),
                        description = COALESCE(excluded.description, builds.description),
                        image = COALESCE(excluded.image, builds.image),
@@ -5800,6 +5846,16 @@ def import_database(live_db, imported_db, mode: str = "merge") -> dict:
                     "ELSE excluded.cheat_names END")
             elif c == "last_updated":
                 set_parts.append("last_updated = excluded.last_updated")
+            elif c == "cheats_added_at":
+                # Wie upsert_build: nur bei echter Cheat-Aenderung stempeln.
+                set_parts.append(
+                    "cheats_added_at = CASE WHEN excluded.cheat_count IS NULL "
+                    "OR excluded.cheat_count = 0 THEN builds.cheats_added_at "
+                    "WHEN builds.cheat_names IS NOT NULL AND "
+                    "excluded.cheat_names = builds.cheat_names "
+                    "THEN builds.cheats_added_at "
+                    "ELSE COALESCE(excluded.cheats_added_at, "
+                    "builds.cheats_added_at) END")
             else:
                 set_parts.append(f"{c} = COALESCE(excluded.{c}, builds.{c})")
         sql = (f"INSERT INTO builds ({col_list}) "

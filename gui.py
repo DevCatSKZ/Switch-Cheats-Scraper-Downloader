@@ -2481,16 +2481,26 @@ class ScraperGUI:
                 # percentage must match the table, which counts rows.
                 bids = [r[0] for r in con.execute(
                     "SELECT UPPER(build_id) FROM builds WHERE build_id IS NOT NULL")]
-                # "Zuletzt aktualisiert" = Cheats, die zuletzt NEU wurden.
-                # Massgeblich ist das Upload-/Update-Datum der QUELLE
-                # (upload_date, z.B. "13 Jul 2026") - NICHT die lokale Scrape-Zeit
-                # (sonst stuenden alte, gerade neu gescrapte Cheats faelschlich
-                # oben, z.B. ein 2020er-Upload). Fehlt ein upload_date (z.B.
-                # MANUELL hinzugefuegte Cheats), zaehlt die lokale Hinzufuege-Zeit
-                # (last_updated) - so erscheinen auch manuelle Eintraege als neu.
+                # "Zuletzt aktualisiert" = die letzten NEUEN Cheats in UNSERER
+                # DB (Nutzer-Direktive 2026-07-18). Massgeblich ist
+                # cheats_added_at: gesetzt beim Insert und bei ECHTER Aenderung
+                # der Cheat-Liste, von Re-Scrapes unberuehrt. Fallback fuer
+                # Alt-Zeilen vor der Migration: das Quell-upload_date. Die
+                # Scrape-Zeit (last_updated) zaehlt bewusst NIE - sie wird bei
+                # jedem Scan ueberschrieben und liess alte, gerade neu
+                # gescrapte Cheats faelschlich oben stehen (z.B. DRAGON BALL
+                # FighterZ nur wegen Re-Scrape auf Platz 1). Zeilen ohne
+                # beides bleiben draussen (Hinzufuege-Zeit ehrlich unbekannt).
                 # Pro Spiel gilt das juengste Datum; Top 8.
                 import datetime as _dt
-                def _eff(up, lu):
+                def _eff(ca, up):
+                    if ca:
+                        s = ca.strip().replace("T", " ")[:19]
+                        for f in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+                            try:
+                                return _dt.datetime.strptime(s, f)
+                            except Exception:
+                                pass
                     if up:
                         s = up.strip()
                         for f in ("%d %b %Y", "%d %B %Y", "%Y-%m-%d"):
@@ -2498,25 +2508,24 @@ class ScraperGUI:
                                 return _dt.datetime.strptime(s, f)
                             except Exception:
                                 pass
-                    if lu:
-                        s = lu.strip().replace("T", " ")[:19]
-                        for f in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
-                            try:
-                                return _dt.datetime.strptime(s, f)
-                            except Exception:
-                                pass
                     return _dt.datetime.min
+                # DB evtl. noch nicht migriert (Spalte kommt via GameDatabase):
+                # dann NULL selektieren -> upload_date-Fallback greift.
+                _has_ca = any(r[1] == "cheats_added_at" for r in
+                              con.execute("PRAGMA table_info(builds)"))
+                _ca_col = "cheats_added_at" if _has_ca else "NULL"
                 best = {}   # game_title -> (eff_date, name, version, tid, bid, cc)
-                for (nm, ver, tid, bid, cc, up, lu) in con.execute(
-                        "SELECT game_title, version, title_id, build_id, cheat_count, "
-                        "upload_date, last_updated FROM builds "
+                for (nm, ver, tid, bid, cc, ca, up) in con.execute(
+                        f"SELECT game_title, version, title_id, build_id, cheat_count, "
+                        f"{_ca_col}, upload_date FROM builds "
                         "WHERE game_title IS NOT NULL AND game_title<>''"):
-                    eff = _eff(up, lu)
+                    eff = _eff(ca, up)
                     cur = best.get(nm)
                     if cur is None or eff > cur[0]:
                         best[nm] = (eff, nm, ver, tid, bid, cc)
                 out["recent"] = [v[1:] for v in sorted(
-                    best.values(), key=lambda x: x[0], reverse=True)[:8]]
+                    (v for v in best.values() if v[0] > _dt.datetime.min),
+                    key=lambda x: x[0], reverse=True)[:8]]
                 con.close()
             except Exception:
                 pass
