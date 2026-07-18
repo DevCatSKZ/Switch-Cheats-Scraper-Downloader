@@ -2,6 +2,7 @@
 #include "config.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <map>
 #include <sys/stat.h>
@@ -11,12 +12,15 @@
 namespace db {
 
 static std::vector<GameRow> g_games;
-static bool g_loaded = false;
+// atomar, weil die DB seit v2.1.2 im Hintergrund geladen wird: der UI-Thread
+// liest g_games NUR wenn loaded()==true; der Loader setzt loaded erst nach dem
+// vollstaendigen Befuellen (und false VOR jeder Aenderung) -> keine Race.
+static std::atomic<bool> g_loaded{false};
 static std::string g_error;
 static long long g_dbSize = 0;
 
 const std::string& lastError() { return g_error; }
-bool loaded() { return g_loaded; }
+bool loaded() { return g_loaded.load(); }
 const std::vector<GameRow>& games() { return g_games; }
 
 static std::string upper(std::string s) {
@@ -79,9 +83,18 @@ static sqlite3* openDb() {
     return h;
 }
 
+static std::atomic<bool> g_loading{false};
+
 bool reload() {
-    g_games.clear();
+    // Nie zwei Reloads gleichzeitig (Startup-Hintergrund-Load vs. UI-Reload-Button)
+    // - sonst wuerden beide g_games modifizieren. Der zweite kehrt einfach zurueck.
+    if (g_loading.exchange(true)) return false;
+    struct Guard { ~Guard() { g_loading = false; } } guard;
+
+    // WICHTIG: erst loaded=false (sperrt UI-Lesezugriffe), DANN g_games leeren -
+    // sonst koennte der UI-Thread waehrend des clear() lesen.
     g_loaded = false;
+    g_games.clear();
     g_error.clear();
     g_dbSize = 0;
 
@@ -151,12 +164,13 @@ bool reload() {
 
 Stats stats() {
     Stats s;
+    s.dbSizeBytes = g_dbSize;
+    if (!g_loaded.load()) return s;   // laedt noch -> g_games nicht anfassen (Race)
     s.games = static_cast<int>(g_games.size());
     for (const auto& g : g_games) {
         s.builds += g.builds;
         s.cheats += g.cheats;
     }
-    s.dbSizeBytes = g_dbSize;
     return s;
 }
 
@@ -203,6 +217,7 @@ std::vector<BuildRow> gameBuilds(const std::string& baseTid) {
 
 std::vector<const GameRow*> recent(int n) {
     std::vector<const GameRow*> ptrs;
+    if (!g_loaded.load()) return ptrs;   // laedt noch -> keine g_games-Iteration (Race)
     ptrs.reserve(g_games.size());
     for (const auto& g : g_games) {
         if (!g.lastUpdated.empty() && !g.title.empty()) ptrs.push_back(&g);

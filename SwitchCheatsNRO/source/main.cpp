@@ -1243,11 +1243,13 @@ int main(int argc, char** argv) {
         g_localUpdatedAt = updater::readLocalUpdatedAt();
         g_dbLocalUpdatedAt = updater::readTextFile(cfg::kDbStateFile);
     }
-    if (!db::reload() && updater::fileExists(cfg::kDbPath)) {
-        // DB vorhanden, aber nicht lesbar (z.B. WAL-Modus einer Fremdkopie) -
-        // die Ursache gehoert ins Protokoll, nicht ins Nirvana.
-        applog::add(std::string("DB: ") + db::lastError());
-    }
+    // DB (grosser SQLite-Scan von ~5000 Builds) im HINTERGRUND laden: der
+    // Haupt-Loop startet sofort und die Steuerung reagiert ab dem ersten Frame.
+    // Die Bibliothek zeigt bis dahin "laedt..."; loaded() gatet alle Lesezugriffe.
+    std::thread([]{
+        if (!db::reload() && updater::fileExists(cfg::kDbPath))
+            applog::add(std::string("DB: ") + db::lastError());
+    }).detach();
     installer::startScan();
     // Online-Status NICHT synchron am Start pruefen - nifmInitialize + Abfrage
     // blockieren den Main-Thread. Der periodische Check im Loop uebernimmt das
@@ -1259,6 +1261,7 @@ int main(int argc, char** argv) {
     Page pageBeforeDetail = Page::Library;
     bool exitRequested = false;
     bool autoCheckStarted = false;
+    bool dbWasLoaded = false;      // Erkennt, wann der Hintergrund-DB-Load fertig ist
 
     // Bibliothek
     std::string libQuery;
@@ -1346,6 +1349,7 @@ int main(int argc, char** argv) {
 
     auto rebuildLibRows = [&]() {
         libRows.clear();
+        if (!db::loaded()) return;   // DB laedt noch im Hintergrund -> spaeter bauen
         const auto& games = db::games();
         std::string q = libQuery;
         for (auto& c : q) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -1409,6 +1413,7 @@ int main(int argc, char** argv) {
     // installierter Spiele. Wird bei DB-Reload neu aufgebaut.
     auto rebuildDbBaseSet = [&]() {
         dbBaseSet.clear();
+        if (!db::loaded()) return;   // noch nicht geladen -> dbBaseSetReady bleibt false
         for (auto& g : db::games()) dbBaseSet.insert(g.baseTid);
         dbBaseSetReady = true;
     };
@@ -1419,6 +1424,7 @@ int main(int argc, char** argv) {
     // Springt zur Cheat-Detailseite des Spiels (Basis-Gruppe) - von der
     // System-/SysDetail-Seite aus (B kehrt dank pageBeforeDetail korrekt zurueck).
     auto openCheatsForTid = [&](uint64_t tid) -> bool {
+        if (!db::loaded()) return false;
         std::string base = sysinfo::baseGroup(tid);
         for (auto& g : db::games()) {
             if (strcasecmp(g.baseTid.c_str(), base.c_str()) == 0) { openDetail(g); return true; }
@@ -1512,6 +1518,14 @@ int main(int argc, char** argv) {
     while (!exitRequested && appletMainLoop()) {
         Uint32 now = SDL_GetTicks();
         bool busy = g_action.load() != Action::None;
+
+        // DB wurde im Hintergrund fertig geladen -> Bibliothek + Cheat-Set einmalig
+        // neu aufbauen (bis dahin zeigten die Seiten "laedt...").
+        if (db::loaded() && !dbWasLoaded) {
+            dbWasLoaded = true;
+            libDirty = true;
+            dbBaseSetReady = false;
+        }
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -1786,14 +1800,18 @@ int main(int argc, char** argv) {
 
         joinWorkerIfDone();
 
-        if (!autoCheckStarted) {
+        // Auto-Update-Check ein paar Sekunden verzoegern, damit er nicht mit dem
+        // Start (Hintergrund-DB-Load, erster Frame, SD-Scan) um CPU/Netz konkurriert.
+        if (!autoCheckStarted && now > 3000) {
             autoCheckStarted = true;
             startCheck();
         }
 
         // Worker hat eine neue database.db abgelegt -> im UI-Thread neu laden.
-        if (g_dbNeedsReload.exchange(false)) {
-            db::reload();
+        // reload() liefert false, falls gerade ein (Startup-)Load laeuft -> Flag
+        // behalten und im naechsten Frame erneut versuchen.
+        if (g_dbNeedsReload.load() && db::reload()) {
+            g_dbNeedsReload = false;
             installer::startScan();
             libDirty = true;
             dbBaseSetReady = false;   // Cheat-Markierungen der System-Liste neu aufbauen

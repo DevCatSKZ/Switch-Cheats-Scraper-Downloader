@@ -25,7 +25,7 @@ ROMFS		:=	romfs
 
 APP_TITLE   := Switch Cheats Scraper & Downloader
 APP_AUTHOR  := DevCatSKZ
-APP_VERSION := 2.1.1
+APP_VERSION := 2.1.2
 
 # Einzige Quelle der Versionsnummer: wird als APP_VERSION-Makro in den Code
 # durchgereicht (config.hpp: kAppVersion + kUserAgent) und von den
