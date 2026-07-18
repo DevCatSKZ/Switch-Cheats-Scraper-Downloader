@@ -25,6 +25,9 @@ struct GameRow {
     int builds = 0;          // Anzahl Builds in der Gruppe
     long long cheats = 0;    // Summe cheat_count
     std::string lastUpdated; // MAX(last_updated) der Gruppe (ISO, "" moeglich)
+    std::string recency;     // sortierbarer "YYYYMMDD" fuer "Zuletzt aktualisiert":
+                             // upload_date der Quelle (echte Neuheit), sonst
+                             // last_updated (z.B. manuell hinzugefuegt). "" moeglich.
     std::string image;       // erste bekannte Cover-URL ("" moeglich)
     // Alle (title_id, build_id)-Paare der Gruppe - fuer den Installiert-Check
     // gegen die auf SD liegenden Cheat-Dateien.

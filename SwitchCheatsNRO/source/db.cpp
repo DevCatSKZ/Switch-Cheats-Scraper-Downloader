@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cstdio>
+#include <cstring>
 #include <map>
 #include <new>
 #include <sys/stat.h>
@@ -40,6 +42,30 @@ static std::string baseOf(const std::string& tid) {
 static std::string colText(sqlite3_stmt* st, int idx) {
     const unsigned char* p = sqlite3_column_text(st, idx);
     return p ? reinterpret_cast<const char*>(p) : "";
+}
+
+// Sortierbarer "YYYYMMDD"-Schluessel fuer "Zuletzt aktualisiert": bevorzugt das
+// Quell-upload_date ("13 Jul 2026" = echte Neuheit), sonst last_updated (ISO,
+// z.B. bei manuell/community hinzugefuegten Cheats ohne Upload-Datum). "" wenn
+// keins parsbar. So stehen wirklich neue Uploads oben - nicht alte, gerade neu
+// gescrapte Cheats (exakt wie die Windows-"Zuletzt aktualisiert"-Liste).
+static std::string recencyKey(const std::string& upload, const std::string& lastUpd) {
+    static const char* kMon[12] = {"Jan","Feb","Mar","Apr","May","Jun",
+                                   "Jul","Aug","Sep","Oct","Nov","Dec"};
+    if (!upload.empty()) {
+        int d = 0, y = 0; char ms[16] = {0};
+        if (sscanf(upload.c_str(), "%d %15s %d", &d, ms, &y) == 3 &&
+            y > 1000 && d >= 1 && d <= 31) {
+            int m = 0;
+            for (int i = 0; i < 12; i++)
+                if (strncmp(ms, kMon[i], 3) == 0) { m = i + 1; break; }
+            if (m) { char b[9]; snprintf(b, sizeof(b), "%04d%02d%02d", y, m, d); return b; }
+        }
+    }
+    // last_updated "YYYY-MM-DDT..." -> "YYYYMMDD"
+    if (lastUpd.size() >= 10 && lastUpd[4] == '-' && lastUpd[7] == '-')
+        return lastUpd.substr(0, 4) + lastUpd.substr(5, 2) + lastUpd.substr(8, 2);
+    return "";
 }
 
 // libnx nutzt Devicepfade ("sdmc:/...") OHNE fuehrenden '/': SQLites
@@ -88,7 +114,7 @@ static sqlite3* openDb() {
 // Flache Abfrage; gruppiert wird in C++ (haelt SQL trivial und erlaubt es, die
 // (tid,bid)-Paare fuer den Installiert-Check mitzunehmen).
 static const char* kBuildsSql =
-    "SELECT title_id, build_id, game_title, region, cheat_count, last_updated, image "
+    "SELECT title_id, build_id, game_title, region, cheat_count, last_updated, image, upload_date "
     "FROM builds WHERE title_id IS NOT NULL AND title_id<>''";
 
 // Zustand des inkrementellen Ladens (nur UI-Thread).
@@ -150,6 +176,8 @@ bool reloadStep(int maxRows) {
         g.builds += 1;
         g.cheats += cheats;
         if (updated > g.lastUpdated) g.lastUpdated = updated;
+        std::string rk = recencyKey(colText(g_lStmt, 7), updated);
+        if (rk > g.recency) g.recency = rk;   // pro Spiel das juengste Datum
         if (!bid.empty()) g.pairs.emplace_back(tid, bid);
         n++;
     }
@@ -236,10 +264,10 @@ std::vector<const GameRow*> recent(int n) {
     std::vector<const GameRow*> ptrs;
     ptrs.reserve(g_games.size());
     for (const auto& g : g_games) {
-        if (!g.lastUpdated.empty() && !g.title.empty()) ptrs.push_back(&g);
+        if (!g.recency.empty() && !g.title.empty()) ptrs.push_back(&g);
     }
     std::sort(ptrs.begin(), ptrs.end(), [](const GameRow* a, const GameRow* b) {
-        return a->lastUpdated > b->lastUpdated;
+        return a->recency > b->recency;   // "YYYYMMDD"-Stringvergleich = chronologisch
     });
     if (static_cast<int>(ptrs.size()) > n) ptrs.resize(n);
     return ptrs;
