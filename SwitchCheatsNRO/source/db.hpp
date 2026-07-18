@@ -54,6 +54,7 @@ bool reload();
 const std::string& lastError();
 
 bool loaded();                       // true nach erfolgreichem reload()
+int  loadPercent();                  // 0..100 Ladefortschritt (fuer den Ladebalken)
 const std::vector<GameRow>& games(); // alle Gruppen, nach Titel sortiert
 Stats stats();                       // Kennzahlen (aus dem RAM-Abbild)
 

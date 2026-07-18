@@ -16,11 +16,13 @@ static std::vector<GameRow> g_games;
 // liest g_games NUR wenn loaded()==true; der Loader setzt loaded erst nach dem
 // vollstaendigen Befuellen (und false VOR jeder Aenderung) -> keine Race.
 static std::atomic<bool> g_loaded{false};
+static std::atomic<int> g_loadPct{0};   // 0..100 Ladefortschritt (fuer den Balken)
 static std::string g_error;
 static long long g_dbSize = 0;
 
 const std::string& lastError() { return g_error; }
 bool loaded() { return g_loaded.load(); }
+int loadPercent() { return g_loadPct.load(); }
 const std::vector<GameRow>& games() { return g_games; }
 
 static std::string upper(std::string s) {
@@ -94,6 +96,7 @@ bool reload() {
     // WICHTIG: erst loaded=false (sperrt UI-Lesezugriffe), DANN g_games leeren -
     // sonst koennte der UI-Thread waehrend des clear() lesen.
     g_loaded = false;
+    g_loadPct = 0;
     g_games.clear();
     g_error.clear();
     g_dbSize = 0;
@@ -108,6 +111,19 @@ bool reload() {
     sqlite3* h = openDb();
     if (!h) return false;
 
+    // Gesamtzahl der Zeilen fuer den Fortschrittsbalken (leichter Scan ohne
+    // Textextraktion, daher deutlich schneller als die Hauptabfrage).
+    long long totalRows = 0;
+    {
+        sqlite3_stmt* cst = nullptr;
+        if (sqlite3_prepare_v2(h,
+                "SELECT COUNT(*) FROM builds WHERE title_id IS NOT NULL AND title_id<>''",
+                -1, &cst, nullptr) == SQLITE_OK) {
+            if (sqlite3_step(cst) == SQLITE_ROW) totalRows = sqlite3_column_int64(cst, 0);
+            sqlite3_finalize(cst);
+        }
+    }
+
     // Eine flache Abfrage; gruppiert wird in C++ (haelt SQL trivial und
     // erlaubt es, die (tid,bid)-Paare fuer den Installiert-Check mitzunehmen).
     const char* sql =
@@ -121,7 +137,11 @@ bool reload() {
     }
 
     std::map<std::string, GameRow> groups;
+    long long doneRows = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW) {
+        // Fortschritt bis 95% fuers Zeilenlesen (Rest fuer Gruppieren/Sortieren).
+        if (totalRows > 0 && ((++doneRows) & 127) == 0)
+            g_loadPct = static_cast<int>(doneRows * 95 / totalRows);
         std::string tid = upper(colText(stmt, 0));
         std::string bid = upper(colText(stmt, 1));
         std::string name = colText(stmt, 2);
@@ -143,6 +163,7 @@ bool reload() {
     sqlite3_finalize(stmt);
     sqlite3_close(h);
 
+    g_loadPct = 97;   // Zeilen gelesen; jetzt gruppieren + sortieren
     g_games.reserve(groups.size());
     for (auto& [k, v] : groups) g_games.push_back(std::move(v));
 
@@ -158,6 +179,7 @@ bool reload() {
         return a.baseTid < b.baseTid;
     });
 
+    g_loadPct = 100;
     g_loaded = true;
     return true;
 }

@@ -3420,6 +3420,27 @@ int main(int argc, char** argv) {
         else hints = tr("footer.nav");
         drawTextRight(renderer, fontTiny, hints, cfg::kScreenW - 28, fy2 + 17, kColTextMuted);
 
+        // Ladebalken-Overlay, solange die Bibliotheks-DB im Hintergrund laedt.
+        // Zeigt den echten Fortschritt in Prozent (db::loadPercent()).
+        if (!db::loaded()) {
+            int pct = db::loadPercent();
+            if (pct < 0) pct = 0; if (pct > 100) pct = 100;
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(renderer, kColBg.r, kColBg.g, kColBg.b, 224);
+            SDL_Rect full{0, 0, cfg::kScreenW, cfg::kScreenH};
+            SDL_RenderFillRect(renderer, &full);
+            int cyc = cfg::kScreenH / 2;
+            char lbl[80];
+            snprintf(lbl, sizeof(lbl), "%s  %d%%", tr("app.loadingdb"), pct);
+            int tw = textWidth(fontStat, lbl);
+            drawText(renderer, fontStat, lbl, (cfg::kScreenW - tw) / 2, cyc - 62, kColAccent);
+            int barW = 560, barH = 20;
+            int bx = (cfg::kScreenW - barW) / 2, by = cyc - 4;
+            fillRect(renderer, bx - 2, by - 2, barW + 4, barH + 4, kColHairline);  // Rahmen
+            fillRect(renderer, bx, by, barW, barH, kColPanel);                      // Spur
+            fillRect(renderer, bx, by, barW * pct / 100, barH, kColAccent);         // Fuellung
+        }
+
         textCacheMaintain();
         SDL_RenderPresent(renderer);
     }
