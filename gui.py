@@ -2481,15 +2481,42 @@ class ScraperGUI:
                 # percentage must match the table, which counts rows.
                 bids = [r[0] for r in con.execute(
                     "SELECT UPPER(build_id) FROM builds WHERE build_id IS NOT NULL")]
-                # Pro SPIEL gruppieren (nicht pro Build) - sonst fuellt ein Spiel
-                # mit vielen Builds die ganze Liste. Reihenfolge nach dem
-                # juengsten Build jeder Gruppe.
-                out["recent"] = con.execute(
-                    "SELECT game_title, version, title_id, build_id, cheat_count "
-                    "FROM builds WHERE game_title IS NOT NULL AND game_title<>'' "
-                    "AND last_updated IS NOT NULL "
-                    "GROUP BY game_title "
-                    "ORDER BY MAX(last_updated) DESC LIMIT 8").fetchall()
+                # "Zuletzt aktualisiert" = Cheats, die zuletzt NEU wurden.
+                # Massgeblich ist das Upload-/Update-Datum der QUELLE
+                # (upload_date, z.B. "13 Jul 2026") - NICHT die lokale Scrape-Zeit
+                # (sonst stuenden alte, gerade neu gescrapte Cheats faelschlich
+                # oben, z.B. ein 2020er-Upload). Fehlt ein upload_date (z.B.
+                # MANUELL hinzugefuegte Cheats), zaehlt die lokale Hinzufuege-Zeit
+                # (last_updated) - so erscheinen auch manuelle Eintraege als neu.
+                # Pro Spiel gilt das juengste Datum; Top 8.
+                import datetime as _dt
+                def _eff(up, lu):
+                    if up:
+                        s = up.strip()
+                        for f in ("%d %b %Y", "%d %B %Y", "%Y-%m-%d"):
+                            try:
+                                return _dt.datetime.strptime(s, f)
+                            except Exception:
+                                pass
+                    if lu:
+                        s = lu.strip().replace("T", " ")[:19]
+                        for f in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+                            try:
+                                return _dt.datetime.strptime(s, f)
+                            except Exception:
+                                pass
+                    return _dt.datetime.min
+                best = {}   # game_title -> (eff_date, name, version, tid, bid, cc)
+                for (nm, ver, tid, bid, cc, up, lu) in con.execute(
+                        "SELECT game_title, version, title_id, build_id, cheat_count, "
+                        "upload_date, last_updated FROM builds "
+                        "WHERE game_title IS NOT NULL AND game_title<>''"):
+                    eff = _eff(up, lu)
+                    cur = best.get(nm)
+                    if cur is None or eff > cur[0]:
+                        best[nm] = (eff, nm, ver, tid, bid, cc)
+                out["recent"] = [v[1:] for v in sorted(
+                    best.values(), key=lambda x: x[0], reverse=True)[:8]]
                 con.close()
             except Exception:
                 pass
