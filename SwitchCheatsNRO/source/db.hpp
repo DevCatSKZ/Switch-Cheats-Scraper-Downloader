@@ -10,6 +10,7 @@
 // Paging unabhaengig von SQLite und die DB-Datei ersetzbar (Daten-Update
 // laedt eine neue Datei und ruft reload()).
 // ---------------------------------------------------------------------------
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -49,8 +50,10 @@ struct Stats {
 
 // Oeffnet die DB (falls vorhanden) und laedt die Bibliothek in den RAM.
 // Rueckgabe false, wenn keine/keine lesbare DB da ist (Bibliothek leer).
-// Bei Fehlern steht die Ursache in lastError().
-bool reload();
+// Bei Fehlern steht die Ursache in lastError(). Laeuft SYNCHRON im UI-Thread
+// (SQLITE_THREADSAFE=0!). onProgress(0..100) wird waehrend des Ladens periodisch
+// aufgerufen - der Aufrufer kann darin einen Ladebalken zeichnen+presenten.
+bool reload(const std::function<void(int)>& onProgress = {});
 const std::string& lastError();
 
 bool loaded();                       // true nach erfolgreichem reload()

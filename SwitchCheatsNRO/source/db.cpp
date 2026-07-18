@@ -87,19 +87,16 @@ static sqlite3* openDb() {
 
 static std::atomic<bool> g_loading{false};
 
-bool reload() {
-    // Nie zwei Reloads gleichzeitig (Startup-Hintergrund-Load vs. UI-Reload-Button)
-    // - sonst wuerden beide g_games modifizieren. Der zweite kehrt einfach zurueck.
+bool reload(const std::function<void(int)>& onProgress) {
     if (g_loading.exchange(true)) return false;
     struct Guard { ~Guard() { g_loading = false; } } guard;
+    auto progress = [&](int pct) { g_loadPct = pct; if (onProgress) onProgress(pct); };
 
-    // WICHTIG: erst loaded=false (sperrt UI-Lesezugriffe), DANN g_games leeren -
-    // sonst koennte der UI-Thread waehrend des clear() lesen.
     g_loaded = false;
-    g_loadPct = 0;
     g_games.clear();
     g_error.clear();
     g_dbSize = 0;
+    progress(0);
 
     struct stat st;
     if (stat(cfg::kDbPath, &st) != 0 || st.st_size == 0) {
@@ -141,7 +138,7 @@ bool reload() {
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         // Fortschritt bis 95% fuers Zeilenlesen (Rest fuer Gruppieren/Sortieren).
         if (totalRows > 0 && ((++doneRows) & 127) == 0)
-            g_loadPct = static_cast<int>(doneRows * 95 / totalRows);
+            progress(static_cast<int>(doneRows * 95 / totalRows));
         std::string tid = upper(colText(stmt, 0));
         std::string bid = upper(colText(stmt, 1));
         std::string name = colText(stmt, 2);
@@ -163,7 +160,7 @@ bool reload() {
     sqlite3_finalize(stmt);
     sqlite3_close(h);
 
-    g_loadPct = 97;   // Zeilen gelesen; jetzt gruppieren + sortieren
+    progress(97);   // Zeilen gelesen; jetzt gruppieren + sortieren
     g_games.reserve(groups.size());
     for (auto& [k, v] : groups) g_games.push_back(std::move(v));
 
@@ -179,8 +176,8 @@ bool reload() {
         return a.baseTid < b.baseTid;
     });
 
-    g_loadPct = 100;
     g_loaded = true;
+    progress(100);
     return true;
 }
 

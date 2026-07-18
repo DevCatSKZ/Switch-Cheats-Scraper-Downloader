@@ -1225,31 +1225,40 @@ int main(int argc, char** argv) {
 
     // Sofort einen Ladebildschirm zeichnen, BEVOR die (grosse) DB synchron
     // geladen wird - sonst wirkt das Fenster beim Start eingefroren (v2.1.1).
-    {
-        SDL_SetRenderDrawColor(renderer, kColBg.r, kColBg.g, kColBg.b, 255);
-        SDL_RenderClear(renderer);
-        if (fontStat) {
-            std::string ld = tr("app.loading");
-            int tw = textWidth(fontStat, ld);
-            drawText(renderer, fontStat, ld, (cfg::kScreenW - tw) / 2,
-                     cfg::kScreenH / 2 - 26, kColAccent);
-        }
-        SDL_RenderPresent(renderer);
-    }
-
-    // Lokale Staende + Bibliothek laden, Installiert-Scan starten.
+    // Lokale Staende laden.
     {
         std::lock_guard<std::mutex> lk(g_dataMutex);
         g_localUpdatedAt = updater::readLocalUpdatedAt();
         g_dbLocalUpdatedAt = updater::readTextFile(cfg::kDbStateFile);
     }
-    // DB (grosser SQLite-Scan von ~5000 Builds) im HINTERGRUND laden: der
-    // Haupt-Loop startet sofort und die Steuerung reagiert ab dem ersten Frame.
-    // Die Bibliothek zeigt bis dahin "laedt..."; loaded() gatet alle Lesezugriffe.
-    std::thread([]{
-        if (!db::reload() && updater::fileExists(cfg::kDbPath))
-            applog::add(std::string("DB: ") + db::lastError());
-    }).detach();
+
+    // Ladebalken-Frame (clear + Balken + present). Wird als Callback von
+    // db::reload() waehrend des Ladens periodisch aufgerufen.
+    auto drawLoadingFrame = [&](int pct) {
+        if (pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+        SDL_SetRenderDrawColor(renderer, kColBg.r, kColBg.g, kColBg.b, 255);
+        SDL_RenderClear(renderer);
+        int cyc = cfg::kScreenH / 2;
+        char lbl[80];
+        snprintf(lbl, sizeof(lbl), "%s  %d%%", tr("app.loadingdb"), pct);
+        int tw = textWidth(fontStat, lbl);
+        drawText(renderer, fontStat, lbl, (cfg::kScreenW - tw) / 2, cyc - 62, kColAccent);
+        int barW = 560, barH = 20;
+        int bx = (cfg::kScreenW - barW) / 2, by = cyc - 4;
+        fillRect(renderer, bx - 2, by - 2, barW + 4, barH + 4, kColHairline);
+        fillRect(renderer, bx, by, barW, barH, kColPanel);
+        fillRect(renderer, bx, by, barW * pct / 100, barH, kColAccent);
+        SDL_RenderPresent(renderer);
+    };
+
+    // DB SYNCHRON im UI-Thread laden - SQLite ist mit SQLITE_THREADSAFE=0 gebaut
+    // und DARF NUR aus diesem Thread benutzt werden (ein Hintergrund-Thread wie
+    // in v2.1.2 crasht auf echter Hardware). Der Callback zeichnet dabei den
+    // Fortschrittsbalken, damit das Fenster nicht eingefroren wirkt.
+    drawLoadingFrame(0);
+    if (!db::reload(drawLoadingFrame) && updater::fileExists(cfg::kDbPath))
+        applog::add(std::string("DB: ") + db::lastError());
     installer::startScan();
     // Online-Status NICHT synchron am Start pruefen - nifmInitialize + Abfrage
     // blockieren den Main-Thread. Der periodische Check im Loop uebernimmt das
@@ -3419,27 +3428,6 @@ int main(int argc, char** argv) {
         else if (page == Page::Saves) hints = tr("footer.saves");
         else hints = tr("footer.nav");
         drawTextRight(renderer, fontTiny, hints, cfg::kScreenW - 28, fy2 + 17, kColTextMuted);
-
-        // Ladebalken-Overlay, solange die Bibliotheks-DB im Hintergrund laedt.
-        // Zeigt den echten Fortschritt in Prozent (db::loadPercent()).
-        if (!db::loaded()) {
-            int pct = db::loadPercent();
-            if (pct < 0) pct = 0; if (pct > 100) pct = 100;
-            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-            SDL_SetRenderDrawColor(renderer, kColBg.r, kColBg.g, kColBg.b, 224);
-            SDL_Rect full{0, 0, cfg::kScreenW, cfg::kScreenH};
-            SDL_RenderFillRect(renderer, &full);
-            int cyc = cfg::kScreenH / 2;
-            char lbl[80];
-            snprintf(lbl, sizeof(lbl), "%s  %d%%", tr("app.loadingdb"), pct);
-            int tw = textWidth(fontStat, lbl);
-            drawText(renderer, fontStat, lbl, (cfg::kScreenW - tw) / 2, cyc - 62, kColAccent);
-            int barW = 560, barH = 20;
-            int bx = (cfg::kScreenW - barW) / 2, by = cyc - 4;
-            fillRect(renderer, bx - 2, by - 2, barW + 4, barH + 4, kColHairline);  // Rahmen
-            fillRect(renderer, bx, by, barW, barH, kColPanel);                      // Spur
-            fillRect(renderer, bx, by, barW * pct / 100, barH, kColAccent);         // Fuellung
-        }
 
         textCacheMaintain();
         SDL_RenderPresent(renderer);
