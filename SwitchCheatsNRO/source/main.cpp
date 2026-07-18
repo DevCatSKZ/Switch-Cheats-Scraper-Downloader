@@ -1248,6 +1248,20 @@ int main(int argc, char** argv) {
         // die Ursache gehoert ins Protokoll, nicht ins Nirvana.
         applog::add(std::string("DB: ") + db::lastError());
     }
+    // Namen-Resolver fuer den System-Scan: Spielnamen kommen aus unserer DB
+    // (RAM) statt per 128-KB-Read/Spiel von der Konsole -> "Scanne Konsole" wird
+    // von ~Sekunden auf ~sofort beschleunigt. db::games() ist read-only + stabil
+    // (synchron geladen), daher gefahrlos vom Scan-Worker lesbar.
+    sysinfo::setNameResolver([](uint64_t tid, std::string& out) -> bool {
+        std::string base = sysinfo::baseGroup(tid);
+        for (const auto& g : db::games()) {
+            if (!g.title.empty() && strcasecmp(g.baseTid.c_str(), base.c_str()) == 0) {
+                out = g.title;
+                return true;
+            }
+        }
+        return false;
+    });
     installer::startScan();
     // Online-Status NICHT synchron am Start pruefen - nifmInitialize + Abfrage
     // blockieren den Main-Thread. Der periodische Check im Loop uebernimmt das

@@ -13,11 +13,19 @@
 // werden per g_dataMutex gepuffert - der UI-Thread liest nur die Ergebnisse.
 // ---------------------------------------------------------------------------
 #include <switch.h>
+#include <functional>
 #include <string>
 #include <vector>
 #include <cstdint>
 
 namespace sysinfo {
+
+// Optionaler Namens-Resolver: liefert den Spielnamen zu einer Title-ID aus
+// unserer Bibliotheks-DB (RAM). Wird VOR dem teuren ns-Control-Data-Read (128 KB
+// pro Spiel!) versucht - fuer alle Spiele in unserer DB entfaellt der Konsolen-
+// Read damit komplett und der "Scanne Konsole"-Scan wird quasi sofort fertig.
+// Rueckgabe true + Name, wenn aufloesbar. main() setzt ihn nach dem DB-Laden.
+void setNameResolver(std::function<bool(uint64_t, std::string&)> fn);
 
 // Ein installiertes Spiel (Basis-Anwendung, ohne separate Update/DLC-Zeilen).
 struct InstalledTitle {

@@ -38,6 +38,9 @@ bool g_nsOk = false, g_accOk = false, g_pmOk = false;
 struct Meta { std::string name, author, version; bool ok = false; };
 std::unordered_map<uint64_t, Meta> g_metaCache;
 
+// Namen aus unserer Bibliotheks-DB (RAM) - erspart den 128-KB-Konsolen-Read.
+std::function<bool(uint64_t, std::string&)> g_nameResolver;
+
 constexpr uint64_t kProgramMask = 0xFFFFFFFFFFFFFFF0ULL;
 
 // ---------------------------------------------------------------------------
@@ -81,8 +84,19 @@ Result chtGetMetadata(DmntCheatProcessMetadata* out) {
     return serviceDispatchOut(&g_chtSrv, 65002, *out);
 }
 
-// NACP-Metadaten fuer eine Title-ID lesen (ns). Ergebnis wird gepuffert.
+// NACP-Metadaten fuer eine Title-ID lesen. Ergebnis wird gepuffert.
 bool fetchMeta(uint64_t titleId, Meta& out) {
+    // Schnellster Weg: Name aus unserer Bibliotheks-DB (RAM) - KEIN 128-KB-
+    // Control-Data-Read von der Konsole. Deckt alle Spiele mit Cheats ab und
+    // macht den "Scanne Konsole"-Scan quasi sofort fertig.
+    if (g_nameResolver) {
+        std::string nm;
+        if (g_nameResolver(titleId & kProgramMask, nm) && !nm.empty()) {
+            out.name = nm;      // Version/Autor bleiben leer (fuer die Liste unwichtig)
+            out.ok = true;
+            return true;
+        }
+    }
     if (!g_nsOk) return false;
     auto buf = std::make_unique<NsApplicationControlData>();
     std::memset(buf.get(), 0, sizeof(NsApplicationControlData));
@@ -124,6 +138,11 @@ void init() {
     r = pmdmntInitialize();                                g_pmOk  = R_SUCCEEDED(r); logrc("pmdmntInitialize", r);
     if (g_pmOk) { r = pminfoInitialize(); g_pmOk = R_SUCCEEDED(r); logrc("pminfoInitialize", r); }
     g_inited = true;
+}
+
+void setNameResolver(std::function<bool(uint64_t, std::string&)> fn) {
+    std::lock_guard<std::mutex> lk(g_mtx);
+    g_nameResolver = std::move(fn);
 }
 
 bool isApplicationMode() {
