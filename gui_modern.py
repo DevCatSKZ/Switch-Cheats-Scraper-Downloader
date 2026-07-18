@@ -1079,6 +1079,13 @@ class ModernApp(ScraperGUI):
     # ------------------------------------------------------------ empty state
     def refresh_table(self, *a, **k):
         super().refresh_table(*a, **k)
+        # Home-Dashboard (Stats + "Zuletzt aktualisiert") nach jeder Datenaenderung
+        # mit-auffrischen - sonst bleibt die Liste stehen, bis man Home neu oeffnet.
+        if hasattr(self, "_refresh_dashboard"):
+            try:
+                self._refresh_dashboard()
+            except Exception:
+                pass
         # The async chunked insert finishes a moment later — re-check a few times.
         for delay in (250, 700, 1500):
             self.root.after(delay, self._update_empty_state)

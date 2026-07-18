@@ -2481,11 +2481,15 @@ class ScraperGUI:
                 # percentage must match the table, which counts rows.
                 bids = [r[0] for r in con.execute(
                     "SELECT UPPER(build_id) FROM builds WHERE build_id IS NOT NULL")]
+                # Pro SPIEL gruppieren (nicht pro Build) - sonst fuellt ein Spiel
+                # mit vielen Builds die ganze Liste. Reihenfolge nach dem
+                # juengsten Build jeder Gruppe.
                 out["recent"] = con.execute(
                     "SELECT game_title, version, title_id, build_id, cheat_count "
                     "FROM builds WHERE game_title IS NOT NULL AND game_title<>'' "
                     "AND last_updated IS NOT NULL "
-                    "ORDER BY last_updated DESC LIMIT 8").fetchall()
+                    "GROUP BY game_title "
+                    "ORDER BY MAX(last_updated) DESC LIMIT 8").fetchall()
                 con.close()
             except Exception:
                 pass
