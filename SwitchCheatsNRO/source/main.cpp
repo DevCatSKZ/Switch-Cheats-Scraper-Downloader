@@ -1225,40 +1225,29 @@ int main(int argc, char** argv) {
 
     // Sofort einen Ladebildschirm zeichnen, BEVOR die (grosse) DB synchron
     // geladen wird - sonst wirkt das Fenster beim Start eingefroren (v2.1.1).
-    // Lokale Staende laden.
+    {
+        SDL_SetRenderDrawColor(renderer, kColBg.r, kColBg.g, kColBg.b, 255);
+        SDL_RenderClear(renderer);
+        if (fontStat) {
+            std::string ld = tr("app.loading");
+            int tw = textWidth(fontStat, ld);
+            drawText(renderer, fontStat, ld, (cfg::kScreenW - tw) / 2,
+                     cfg::kScreenH / 2 - 26, kColAccent);
+        }
+        SDL_RenderPresent(renderer);
+    }
+
+    // Lokale Staende + Bibliothek laden, Installiert-Scan starten.
     {
         std::lock_guard<std::mutex> lk(g_dataMutex);
         g_localUpdatedAt = updater::readLocalUpdatedAt();
         g_dbLocalUpdatedAt = updater::readTextFile(cfg::kDbStateFile);
     }
-
-    // Ladebalken-Frame (clear + Balken + present). Wird als Callback von
-    // db::reload() waehrend des Ladens periodisch aufgerufen.
-    auto drawLoadingFrame = [&](int pct) {
-        if (pct < 0) pct = 0;
-        if (pct > 100) pct = 100;
-        SDL_SetRenderDrawColor(renderer, kColBg.r, kColBg.g, kColBg.b, 255);
-        SDL_RenderClear(renderer);
-        int cyc = cfg::kScreenH / 2;
-        char lbl[80];
-        snprintf(lbl, sizeof(lbl), "%s  %d%%", tr("app.loadingdb"), pct);
-        int tw = textWidth(fontStat, lbl);
-        drawText(renderer, fontStat, lbl, (cfg::kScreenW - tw) / 2, cyc - 62, kColAccent);
-        int barW = 560, barH = 20;
-        int bx = (cfg::kScreenW - barW) / 2, by = cyc - 4;
-        fillRect(renderer, bx - 2, by - 2, barW + 4, barH + 4, kColHairline);
-        fillRect(renderer, bx, by, barW, barH, kColPanel);
-        fillRect(renderer, bx, by, barW * pct / 100, barH, kColAccent);
-        SDL_RenderPresent(renderer);
-    };
-
-    // DB SYNCHRON im UI-Thread laden - SQLite ist mit SQLITE_THREADSAFE=0 gebaut
-    // und DARF NUR aus diesem Thread benutzt werden (ein Hintergrund-Thread wie
-    // in v2.1.2 crasht auf echter Hardware). Der Callback zeichnet dabei den
-    // Fortschrittsbalken, damit das Fenster nicht eingefroren wirkt.
-    drawLoadingFrame(0);
-    if (!db::reload(drawLoadingFrame) && updater::fileExists(cfg::kDbPath))
+    if (!db::reload() && updater::fileExists(cfg::kDbPath)) {
+        // DB vorhanden, aber nicht lesbar (z.B. WAL-Modus einer Fremdkopie) -
+        // die Ursache gehoert ins Protokoll, nicht ins Nirvana.
         applog::add(std::string("DB: ") + db::lastError());
+    }
     installer::startScan();
     // Online-Status NICHT synchron am Start pruefen - nifmInitialize + Abfrage
     // blockieren den Main-Thread. Der periodische Check im Loop uebernimmt das
@@ -1270,7 +1259,6 @@ int main(int argc, char** argv) {
     Page pageBeforeDetail = Page::Library;
     bool exitRequested = false;
     bool autoCheckStarted = false;
-    bool dbWasLoaded = false;      // Erkennt, wann der Hintergrund-DB-Load fertig ist
 
     // Bibliothek
     std::string libQuery;
@@ -1358,7 +1346,6 @@ int main(int argc, char** argv) {
 
     auto rebuildLibRows = [&]() {
         libRows.clear();
-        if (!db::loaded()) return;   // DB laedt noch im Hintergrund -> spaeter bauen
         const auto& games = db::games();
         std::string q = libQuery;
         for (auto& c : q) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -1422,7 +1409,6 @@ int main(int argc, char** argv) {
     // installierter Spiele. Wird bei DB-Reload neu aufgebaut.
     auto rebuildDbBaseSet = [&]() {
         dbBaseSet.clear();
-        if (!db::loaded()) return;   // noch nicht geladen -> dbBaseSetReady bleibt false
         for (auto& g : db::games()) dbBaseSet.insert(g.baseTid);
         dbBaseSetReady = true;
     };
@@ -1433,7 +1419,6 @@ int main(int argc, char** argv) {
     // Springt zur Cheat-Detailseite des Spiels (Basis-Gruppe) - von der
     // System-/SysDetail-Seite aus (B kehrt dank pageBeforeDetail korrekt zurueck).
     auto openCheatsForTid = [&](uint64_t tid) -> bool {
-        if (!db::loaded()) return false;
         std::string base = sysinfo::baseGroup(tid);
         for (auto& g : db::games()) {
             if (strcasecmp(g.baseTid.c_str(), base.c_str()) == 0) { openDetail(g); return true; }
@@ -1527,14 +1512,6 @@ int main(int argc, char** argv) {
     while (!exitRequested && appletMainLoop()) {
         Uint32 now = SDL_GetTicks();
         bool busy = g_action.load() != Action::None;
-
-        // DB wurde im Hintergrund fertig geladen -> Bibliothek + Cheat-Set einmalig
-        // neu aufbauen (bis dahin zeigten die Seiten "laedt...").
-        if (db::loaded() && !dbWasLoaded) {
-            dbWasLoaded = true;
-            libDirty = true;
-            dbBaseSetReady = false;
-        }
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -1809,18 +1786,14 @@ int main(int argc, char** argv) {
 
         joinWorkerIfDone();
 
-        // Auto-Update-Check ein paar Sekunden verzoegern, damit er nicht mit dem
-        // Start (Hintergrund-DB-Load, erster Frame, SD-Scan) um CPU/Netz konkurriert.
-        if (!autoCheckStarted && now > 3000) {
+        if (!autoCheckStarted) {
             autoCheckStarted = true;
             startCheck();
         }
 
         // Worker hat eine neue database.db abgelegt -> im UI-Thread neu laden.
-        // reload() liefert false, falls gerade ein (Startup-)Load laeuft -> Flag
-        // behalten und im naechsten Frame erneut versuchen.
-        if (g_dbNeedsReload.load() && db::reload()) {
-            g_dbNeedsReload = false;
+        if (g_dbNeedsReload.exchange(false)) {
+            db::reload();
             installer::startScan();
             libDirty = true;
             dbBaseSetReady = false;   // Cheat-Markierungen der System-Liste neu aufbauen

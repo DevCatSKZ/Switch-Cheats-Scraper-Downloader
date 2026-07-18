@@ -2,7 +2,6 @@
 #include "config.hpp"
 
 #include <algorithm>
-#include <atomic>
 #include <cctype>
 #include <map>
 #include <sys/stat.h>
@@ -12,17 +11,12 @@
 namespace db {
 
 static std::vector<GameRow> g_games;
-// atomar, weil die DB seit v2.1.2 im Hintergrund geladen wird: der UI-Thread
-// liest g_games NUR wenn loaded()==true; der Loader setzt loaded erst nach dem
-// vollstaendigen Befuellen (und false VOR jeder Aenderung) -> keine Race.
-static std::atomic<bool> g_loaded{false};
-static std::atomic<int> g_loadPct{0};   // 0..100 Ladefortschritt (fuer den Balken)
+static bool g_loaded = false;
 static std::string g_error;
 static long long g_dbSize = 0;
 
 const std::string& lastError() { return g_error; }
-bool loaded() { return g_loaded.load(); }
-int loadPercent() { return g_loadPct.load(); }
+bool loaded() { return g_loaded; }
 const std::vector<GameRow>& games() { return g_games; }
 
 static std::string upper(std::string s) {
@@ -85,18 +79,11 @@ static sqlite3* openDb() {
     return h;
 }
 
-static std::atomic<bool> g_loading{false};
-
-bool reload(const std::function<void(int)>& onProgress) {
-    if (g_loading.exchange(true)) return false;
-    struct Guard { ~Guard() { g_loading = false; } } guard;
-    auto progress = [&](int pct) { g_loadPct = pct; if (onProgress) onProgress(pct); };
-
-    g_loaded = false;
+bool reload() {
     g_games.clear();
+    g_loaded = false;
     g_error.clear();
     g_dbSize = 0;
-    progress(0);
 
     struct stat st;
     if (stat(cfg::kDbPath, &st) != 0 || st.st_size == 0) {
@@ -107,19 +94,6 @@ bool reload(const std::function<void(int)>& onProgress) {
 
     sqlite3* h = openDb();
     if (!h) return false;
-
-    // Gesamtzahl der Zeilen fuer den Fortschrittsbalken (leichter Scan ohne
-    // Textextraktion, daher deutlich schneller als die Hauptabfrage).
-    long long totalRows = 0;
-    {
-        sqlite3_stmt* cst = nullptr;
-        if (sqlite3_prepare_v2(h,
-                "SELECT COUNT(*) FROM builds WHERE title_id IS NOT NULL AND title_id<>''",
-                -1, &cst, nullptr) == SQLITE_OK) {
-            if (sqlite3_step(cst) == SQLITE_ROW) totalRows = sqlite3_column_int64(cst, 0);
-            sqlite3_finalize(cst);
-        }
-    }
 
     // Eine flache Abfrage; gruppiert wird in C++ (haelt SQL trivial und
     // erlaubt es, die (tid,bid)-Paare fuer den Installiert-Check mitzunehmen).
@@ -134,11 +108,7 @@ bool reload(const std::function<void(int)>& onProgress) {
     }
 
     std::map<std::string, GameRow> groups;
-    long long doneRows = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW) {
-        // Fortschritt bis 95% fuers Zeilenlesen (Rest fuer Gruppieren/Sortieren).
-        if (totalRows > 0 && ((++doneRows) & 127) == 0)
-            progress(static_cast<int>(doneRows * 95 / totalRows));
         std::string tid = upper(colText(stmt, 0));
         std::string bid = upper(colText(stmt, 1));
         std::string name = colText(stmt, 2);
@@ -160,7 +130,6 @@ bool reload(const std::function<void(int)>& onProgress) {
     sqlite3_finalize(stmt);
     sqlite3_close(h);
 
-    progress(97);   // Zeilen gelesen; jetzt gruppieren + sortieren
     g_games.reserve(groups.size());
     for (auto& [k, v] : groups) g_games.push_back(std::move(v));
 
@@ -177,19 +146,17 @@ bool reload(const std::function<void(int)>& onProgress) {
     });
 
     g_loaded = true;
-    progress(100);
     return true;
 }
 
 Stats stats() {
     Stats s;
-    s.dbSizeBytes = g_dbSize;
-    if (!g_loaded.load()) return s;   // laedt noch -> g_games nicht anfassen (Race)
     s.games = static_cast<int>(g_games.size());
     for (const auto& g : g_games) {
         s.builds += g.builds;
         s.cheats += g.cheats;
     }
+    s.dbSizeBytes = g_dbSize;
     return s;
 }
 
@@ -236,7 +203,6 @@ std::vector<BuildRow> gameBuilds(const std::string& baseTid) {
 
 std::vector<const GameRow*> recent(int n) {
     std::vector<const GameRow*> ptrs;
-    if (!g_loaded.load()) return ptrs;   // laedt noch -> keine g_games-Iteration (Race)
     ptrs.reserve(g_games.size());
     for (const auto& g : g_games) {
         if (!g.lastUpdated.empty() && !g.title.empty()) ptrs.push_back(&g);
