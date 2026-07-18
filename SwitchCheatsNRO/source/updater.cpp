@@ -3,6 +3,9 @@
 #include "json_util.hpp"
 #include "version_util.hpp"
 #include "i18n.hpp"
+#include "applog.hpp"
+
+#include <cerrno>
 
 #include <curl/curl.h>
 #include <switch.h>
@@ -452,15 +455,30 @@ bool installSelfUpdate(const std::string& tmpPath, const std::string& selfPath, 
         return false;
     }
 
+    {
+        char b[160];
+        snprintf(b, sizeof(b), "update: ersetze self='%s'", selfPath.c_str());
+        applog::add(b);
+    }
     // rename() innerhalb desselben Dateisystems (sdmc:) ist quasi-atomar,
     // schlaegt auf der Switch aber fehl, wenn das Ziel bereits existiert -
     // daher das alte Ziel zuerst entfernen.
     if (rename(tmpPath.c_str(), selfPath.c_str()) == 0) {
         return true;
     }
+    {
+        char b[96];
+        snprintf(b, sizeof(b), "update: rename #1 errno=%d", errno);
+        applog::add(b);
+    }
     removeIfExists(selfPath.c_str());
     if (rename(tmpPath.c_str(), selfPath.c_str()) == 0) {
         return true;
+    }
+    {
+        char b[96];
+        snprintf(b, sizeof(b), "update: rename #2 errno=%d (Fallback: kopieren)", errno);
+        applog::add(b);
     }
 
     // Fallback: manuell kopieren, mit vollstaendiger Fehlerpruefung - ein

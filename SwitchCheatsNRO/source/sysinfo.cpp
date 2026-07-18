@@ -3,6 +3,7 @@
 // Siehe sysinfo.hpp fuer den API-Ueberblick und die Referenz (EdiZon-SE).
 // ---------------------------------------------------------------------------
 #include "sysinfo.hpp"
+#include "applog.hpp"
 
 #include <switch.h>
 #include <cstring>
@@ -12,6 +13,19 @@
 #include <mutex>
 #include <unordered_map>
 #include <algorithm>
+
+// Diagnose-Logging: schreibt Dienst-Ergebnisse ins In-App-Protokoll, damit
+// Hardware-Fehler (Rechte/leere Listen) auf der Konsole sichtbar werden.
+static void logrc(const char* what, Result rc) {
+    char b[96];
+    snprintf(b, sizeof(b), "sysinfo: %s rc=0x%08X", what, (unsigned)rc);
+    applog::add(b);
+}
+static void logmsg(const char* fmt, long v) {
+    char b[96];
+    snprintf(b, sizeof(b), fmt, v);
+    applog::add(b);
+}
 
 namespace {
 
@@ -99,12 +113,24 @@ namespace sysinfo {
 void init() {
     std::lock_guard<std::mutex> lk(g_mtx);
     if (g_inited) return;
-    g_nsOk  = R_SUCCEEDED(nsInitialize());
-    g_accOk = R_SUCCEEDED(accountInitialize(AccountServiceType_Application));
+    AppletType at = appletGetAppletType();
+    logmsg("sysinfo: appletType=%ld", (long)at);
+    applog::add((at == AppletType_Application || at == AppletType_SystemApplication)
+                ? "sysinfo: mode=APPLICATION (voll)" : "sysinfo: mode=APPLET (eingeschraenkt)");
+    Result r;
+    r = nsInitialize();                                   g_nsOk  = R_SUCCEEDED(r); logrc("nsInitialize", r);
+    r = accountInitialize(AccountServiceType_Application); g_accOk = R_SUCCEEDED(r); logrc("accountInitialize", r);
     // pm:dmnt + pm:info fuer das laufende Spiel (nicht kritisch, wenn es fehlt).
-    g_pmOk  = R_SUCCEEDED(pmdmntInitialize());
-    if (g_pmOk) g_pmOk = R_SUCCEEDED(pminfoInitialize());
+    r = pmdmntInitialize();                                g_pmOk  = R_SUCCEEDED(r); logrc("pmdmntInitialize", r);
+    if (g_pmOk) { r = pminfoInitialize(); g_pmOk = R_SUCCEEDED(r); logrc("pminfoInitialize", r); }
     g_inited = true;
+}
+
+bool isApplicationMode() {
+    // Application / SystemApplication = volle FS/ns-Rechte + voller Speicher.
+    // LibraryApplet / OverlayApplet (Album-Start) = eingeschraenkt.
+    AppletType t = appletGetAppletType();
+    return t == AppletType_Application || t == AppletType_SystemApplication;
 }
 
 void exit() {
@@ -162,14 +188,16 @@ bool titleMeta(uint64_t titleId, std::string& name, std::string& author,
 std::vector<InstalledTitle> listInstalled() {
     std::vector<InstalledTitle> out;
     std::lock_guard<std::mutex> lk(g_mtx);
-    if (!g_nsOk) return out;
+    if (!g_nsOk) { applog::add("sysinfo: listInstalled uebersprungen (ns nicht init)"); return out; }
 
     static constexpr s32 kBatch = 64;
     NsApplicationRecord records[kBatch];
     s32 offset = 0;
+    bool loggedFirst = false;
     while (true) {
         s32 count = 0;
         Result rc = nsListApplicationRecord(records, kBatch, offset, &count);
+        if (!loggedFirst) { logrc("nsListApplicationRecord", rc); loggedFirst = true; }
         if (R_FAILED(rc) || count <= 0) break;
         for (s32 i = 0; i < count; i++) {
             uint64_t tid = records[i].application_id & kProgramMask;
@@ -194,6 +222,7 @@ std::vector<InstalledTitle> listInstalled() {
         offset += count;
         if (count < kBatch) break;
     }
+    logmsg("sysinfo: installierte Spiele = %ld", (long)out.size());
 
     std::sort(out.begin(), out.end(), [](const InstalledTitle& a,
                                          const InstalledTitle& b) {

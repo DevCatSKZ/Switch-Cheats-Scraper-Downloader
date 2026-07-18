@@ -42,6 +42,12 @@ struct RunningGame {
 void init();
 void exit();
 
+// true, wenn die App als vollwertige ANWENDUNG laeuft (Title-Override "R" oder
+// Forwarder) - nur dann geben ns/fs die installierten Spiele UND die Saves
+// frei. Im Applet-Modus (normaler Album-Start) sind diese Dienste gesperrt und
+// die System-/Save-Seiten koennen nichts anzeigen. Genau wie Checkpoint/JKSV.
+bool isApplicationMode();
+
 // Enumeriert ALLE installierten Anwendungen (nach Name sortiert). Titel ohne
 // lesbare Metadaten erscheinen mit Hex-Title-ID als Name.
 std::vector<InstalledTitle> listInstalled();

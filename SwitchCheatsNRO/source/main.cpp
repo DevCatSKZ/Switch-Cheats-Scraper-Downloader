@@ -1223,6 +1223,20 @@ int main(int argc, char** argv) {
         }
     }
 
+    // Sofort einen Ladebildschirm zeichnen, BEVOR die (grosse) DB synchron
+    // geladen wird - sonst wirkt das Fenster beim Start eingefroren (v2.1.1).
+    {
+        SDL_SetRenderDrawColor(renderer, kColBg.r, kColBg.g, kColBg.b, 255);
+        SDL_RenderClear(renderer);
+        if (fontStat) {
+            std::string ld = tr("app.loading");
+            int tw = textWidth(fontStat, ld);
+            drawText(renderer, fontStat, ld, (cfg::kScreenW - tw) / 2,
+                     cfg::kScreenH / 2 - 26, kColAccent);
+        }
+        SDL_RenderPresent(renderer);
+    }
+
     // Lokale Staende + Bibliothek laden, Installiert-Scan starten.
     {
         std::lock_guard<std::mutex> lk(g_dataMutex);
@@ -1235,8 +1249,10 @@ int main(int argc, char** argv) {
         applog::add(std::string("DB: ") + db::lastError());
     }
     installer::startScan();
-    g_online = updater::isInternetAvailable();
-    Uint32 nextOnlineCheck = SDL_GetTicks() + 5000;
+    // Online-Status NICHT synchron am Start pruefen - nifmInitialize + Abfrage
+    // blockieren den Main-Thread. Der periodische Check im Loop uebernimmt das
+    // kurz nach dem ersten Frame (schnelles, sichtbares Erscheinen der UI).
+    Uint32 nextOnlineCheck = SDL_GetTicks() + 600;
 
     // ---------------- UI-Zustand ----------------
     Page page = Page::Home;
@@ -3050,8 +3066,22 @@ int main(int argc, char** argv) {
             if (sysScroll < 0) sysScroll = 0;
 
             if (n == 0) {
-                drawText(renderer, fontSmall, busy ? tr("sys.scanning") : tr("sys.empty"),
-                         contentX + 4, cy + 8, kColTextMuted);
+                if (!busy && !sysinfo::isApplicationMode()) {
+                    // Applet-Modus (Album-Start): ns/fs sind gesperrt. Klare
+                    // Anleitung statt "keine Spiele" (sieht sonst wie ein Bug aus).
+                    int wy = cy + 6;
+                    drawText(renderer, fontBody, tr("sys.appmode.title"),
+                             contentX + 4, wy, kColGold);
+                    wy += 34;
+                    for (const auto& wl : wrapText(fontSmall, tr("sys.appmode.hint"),
+                                                   contentW - 8)) {
+                        drawText(renderer, fontSmall, wl, contentX + 4, wy, kColTextMuted);
+                        wy += 26;
+                    }
+                } else {
+                    drawText(renderer, fontSmall, busy ? tr("sys.scanning") : tr("sys.empty"),
+                             contentX + 4, cy + 8, kColTextMuted);
+                }
             }
             for (int i = sysScroll; i < n && i < sysScroll + visible; i++) {
                 int ry = cy + (i - sysScroll) * rowH;
@@ -3102,8 +3132,22 @@ int main(int argc, char** argv) {
             if (sgScroll < 0) sgScroll = 0;
 
             if (n == 0) {
-                drawText(renderer, fontSmall, busy ? tr("sys.scanning") : tr("sys.empty"),
-                         contentX + 4, cy + 8, kColTextMuted);
+                if (!busy && !sysinfo::isApplicationMode()) {
+                    // Applet-Modus (Album-Start): ns/fs sind gesperrt. Klare
+                    // Anleitung statt "keine Spiele" (sieht sonst wie ein Bug aus).
+                    int wy = cy + 6;
+                    drawText(renderer, fontBody, tr("sys.appmode.title"),
+                             contentX + 4, wy, kColGold);
+                    wy += 34;
+                    for (const auto& wl : wrapText(fontSmall, tr("sys.appmode.hint"),
+                                                   contentW - 8)) {
+                        drawText(renderer, fontSmall, wl, contentX + 4, wy, kColTextMuted);
+                        wy += 26;
+                    }
+                } else {
+                    drawText(renderer, fontSmall, busy ? tr("sys.scanning") : tr("sys.empty"),
+                             contentX + 4, cy + 8, kColTextMuted);
+                }
             }
             for (int i = sgScroll; i < n && i < sgScroll + visible; i++) {
                 int ry = cy + (i - sgScroll) * rowH;

@@ -5,6 +5,7 @@
 #include "saves.hpp"
 #include "sysinfo.hpp"
 #include "config.hpp"
+#include "applog.hpp"
 
 #include <switch.h>
 #include <cstring>
@@ -154,20 +155,33 @@ std::vector<SaveEntry> listSaves() {
     std::vector<SaveEntry> out;
 
     FsSaveDataInfoReader reader;
-    if (R_FAILED(fsOpenSaveDataInfoReader(&reader, FsSaveDataSpaceId_User)))
-        return out;
+    Result rc = fsOpenSaveDataInfoReader(&reader, FsSaveDataSpaceId_User);
+    {
+        char b[96];
+        snprintf(b, sizeof(b), "saves: fsOpenSaveDataInfoReader rc=0x%08X", (unsigned)rc);
+        applog::add(b);
+    }
+    if (R_FAILED(rc)) return out;
 
     FsSaveDataInfo info;
     s64 total = 0;
+    long scanned = 0, accountSaves = 0;
     while (R_SUCCEEDED(fsSaveDataInfoReaderRead(&reader, &info, 1, &total)) &&
            total > 0) {
+        scanned++;
         if (info.save_data_type != FsSaveDataType_Account) continue;
+        accountSaves++;
         SaveEntry e;
         e.titleId = info.application_id;
         e.uid = info.uid;
         out.push_back(std::move(e));
     }
     fsSaveDataInfoReaderClose(&reader);
+    {
+        char b[112];
+        snprintf(b, sizeof(b), "saves: gescannt=%ld, Account-Saves=%ld", scanned, accountSaves);
+        applog::add(b);
+    }
 
     // Nutzer-Nicknames + Spielnamen aufloesen (gepuffert in sysinfo).
     for (auto& e : out) {
