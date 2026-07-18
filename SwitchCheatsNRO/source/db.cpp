@@ -2,8 +2,10 @@
 #include "config.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <map>
+#include <new>
 #include <sys/stat.h>
 
 #include "sqlite3.h"
@@ -11,12 +13,16 @@
 namespace db {
 
 static std::vector<GameRow> g_games;
-static bool g_loaded = false;
+// atomar: waehrend des inkrementellen Startlade-Vorgangs kann ein System-Scan
+// (anderer Thread) ueber den Namens-Resolver loaded() pruefen. g_games selbst
+// wird erst im LETZTEN reloadStep gefuellt und danach loaded=true gesetzt -
+// der Resolver liest g_games nur wenn loaded()==true (keine Race).
+static std::atomic<bool> g_loaded{false};
 static std::string g_error;
 static long long g_dbSize = 0;
 
 const std::string& lastError() { return g_error; }
-bool loaded() { return g_loaded; }
+bool loaded() { return g_loaded.load(); }
 const std::vector<GameRow>& games() { return g_games; }
 
 static std::string upper(std::string s) {
@@ -79,45 +85,64 @@ static sqlite3* openDb() {
     return h;
 }
 
-bool reload() {
-    g_games.clear();
+// Flache Abfrage; gruppiert wird in C++ (haelt SQL trivial und erlaubt es, die
+// (tid,bid)-Paare fuer den Installiert-Check mitzunehmen).
+static const char* kBuildsSql =
+    "SELECT title_id, build_id, game_title, region, cheat_count, last_updated, image "
+    "FROM builds WHERE title_id IS NOT NULL AND title_id<>''";
+
+// Zustand des inkrementellen Ladens (nur UI-Thread).
+static sqlite3* g_lH = nullptr;
+static sqlite3_stmt* g_lStmt = nullptr;
+static std::map<std::string, GameRow>* g_lGroups = nullptr;
+static bool g_loading = false;
+
+bool loading() { return g_loading; }
+
+static void loadCleanup() {
+    if (g_lStmt) { sqlite3_finalize(g_lStmt); g_lStmt = nullptr; }
+    if (g_lH)    { sqlite3_close(g_lH);       g_lH = nullptr; }
+    if (g_lGroups) { delete g_lGroups; g_lGroups = nullptr; }
+    g_loading = false;
+}
+
+bool reloadBegin() {
+    loadCleanup();
     g_loaded = false;
+    g_games.clear();
     g_error.clear();
     g_dbSize = 0;
 
     struct stat st;
-    if (stat(cfg::kDbPath, &st) != 0 || st.st_size == 0) {
-        g_error = "no database file";
-        return false;
-    }
+    if (stat(cfg::kDbPath, &st) != 0 || st.st_size == 0) { g_error = "no database file"; return false; }
     g_dbSize = static_cast<long long>(st.st_size);
 
-    sqlite3* h = openDb();
-    if (!h) return false;
-
-    // Eine flache Abfrage; gruppiert wird in C++ (haelt SQL trivial und
-    // erlaubt es, die (tid,bid)-Paare fuer den Installiert-Check mitzunehmen).
-    const char* sql =
-        "SELECT title_id, build_id, game_title, region, cheat_count, last_updated, image "
-        "FROM builds WHERE title_id IS NOT NULL AND title_id<>''";
-    sqlite3_stmt* stmt = nullptr;
-    if (sqlite3_prepare_v2(h, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        g_error = sqlite3_errmsg(h);
-        sqlite3_close(h);
+    g_lH = openDb();
+    if (!g_lH) return false;
+    if (sqlite3_prepare_v2(g_lH, kBuildsSql, -1, &g_lStmt, nullptr) != SQLITE_OK) {
+        g_error = sqlite3_errmsg(g_lH);
+        sqlite3_close(g_lH); g_lH = nullptr;
         return false;
     }
+    g_lGroups = new (std::nothrow) std::map<std::string, GameRow>();
+    if (!g_lGroups) { loadCleanup(); g_error = "oom"; return false; }
+    g_loading = true;
+    return true;
+}
 
-    std::map<std::string, GameRow> groups;
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        std::string tid = upper(colText(stmt, 0));
-        std::string bid = upper(colText(stmt, 1));
-        std::string name = colText(stmt, 2);
-        std::string region = colText(stmt, 3);
-        int cheats = sqlite3_column_int(stmt, 4);
-        std::string updated = colText(stmt, 5);
-        std::string image = colText(stmt, 6);
+bool reloadStep(int maxRows) {
+    if (!g_loading) return true;
+    int n = 0;
+    while (n < maxRows && sqlite3_step(g_lStmt) == SQLITE_ROW) {
+        std::string tid = upper(colText(g_lStmt, 0));
+        std::string bid = upper(colText(g_lStmt, 1));
+        std::string name = colText(g_lStmt, 2);
+        std::string region = colText(g_lStmt, 3);
+        int cheats = sqlite3_column_int(g_lStmt, 4);
+        std::string updated = colText(g_lStmt, 5);
+        std::string image = colText(g_lStmt, 6);
 
-        GameRow& g = groups[baseOf(tid)];
+        GameRow& g = (*g_lGroups)[baseOf(tid)];
         if (g.baseTid.empty()) g.baseTid = baseOf(tid);
         if (g.title.empty() && !name.empty()) g.title = name;
         if (g.region.empty() && !region.empty()) g.region = region;
@@ -126,15 +151,14 @@ bool reload() {
         g.cheats += cheats;
         if (updated > g.lastUpdated) g.lastUpdated = updated;
         if (!bid.empty()) g.pairs.emplace_back(tid, bid);
+        n++;
     }
-    sqlite3_finalize(stmt);
-    sqlite3_close(h);
+    if (n == maxRows) return false;   // noch mehr Zeilen -> naechster Frame
 
-    g_games.reserve(groups.size());
-    for (auto& [k, v] : groups) g_games.push_back(std::move(v));
-
-    // Nach Titel sortieren (case-insensitiv), Unbenannte ans Ende - die
-    // gleiche Ordnung wie die Windows-Bibliothek.
+    // FERTIG: g_games einmalig aufbauen + sortieren, DANN loaded=true. Bis hier
+    // war g_games leer (kein Teil-Zustand fuers Rendern sichtbar).
+    g_games.reserve(g_lGroups->size());
+    for (auto& [k, v] : *g_lGroups) g_games.push_back(std::move(v));
     std::sort(g_games.begin(), g_games.end(), [](const GameRow& a, const GameRow& b) {
         bool an = a.title.empty(), bn = b.title.empty();
         if (an != bn) return bn;
@@ -144,9 +168,16 @@ bool reload() {
         if (al != bl) return al < bl;
         return a.baseTid < b.baseTid;
     });
-
+    loadCleanup();
     g_loaded = true;
     return true;
+}
+
+// Synchron laden (Reload-Button / nach Daten-Download): blockiert kurz.
+bool reload() {
+    if (!reloadBegin()) return false;
+    while (!reloadStep(1 << 30)) {}
+    return g_loaded.load();
 }
 
 Stats stats() {

@@ -1243,16 +1243,18 @@ int main(int argc, char** argv) {
         g_localUpdatedAt = updater::readLocalUpdatedAt();
         g_dbLocalUpdatedAt = updater::readTextFile(cfg::kDbStateFile);
     }
-    if (!db::reload() && updater::fileExists(cfg::kDbPath)) {
-        // DB vorhanden, aber nicht lesbar (z.B. WAL-Modus einer Fremdkopie) -
-        // die Ursache gehoert ins Protokoll, nicht ins Nirvana.
+    // DB-Laden STARTEN (nicht blockierend): der Haupt-Loop laeuft sofort los und
+    // laedt die ~5000 Builds haeppchenweise via reloadStep() (unten im Loop) -
+    // die Steuerung reagiert ab dem ersten Frame. Kein Thread, kein Rendern im
+    // Ladecode (beides crasht die Konsole).
+    if (!db::reloadBegin() && updater::fileExists(cfg::kDbPath)) {
         applog::add(std::string("DB: ") + db::lastError());
     }
     // Namen-Resolver fuer den System-Scan: Spielnamen kommen aus unserer DB
-    // (RAM) statt per 128-KB-Read/Spiel von der Konsole -> "Scanne Konsole" wird
-    // von ~Sekunden auf ~sofort beschleunigt. db::games() ist read-only + stabil
-    // (synchron geladen), daher gefahrlos vom Scan-Worker lesbar.
+    // (RAM) statt per 128-KB-Read/Spiel von der Konsole. Waehrend die DB noch
+    // laedt (loaded()==false) NICHT lesen - dann faellt der Scan auf ns zurueck.
     sysinfo::setNameResolver([](uint64_t tid, std::string& out) -> bool {
+        if (!db::loaded()) return false;
         std::string base = sysinfo::baseGroup(tid);
         for (const auto& g : db::games()) {
             if (!g.title.empty() && strcasecmp(g.baseTid.c_str(), base.c_str()) == 0) {
@@ -1273,6 +1275,7 @@ int main(int argc, char** argv) {
     Page pageBeforeDetail = Page::Library;
     bool exitRequested = false;
     bool autoCheckStarted = false;
+    bool dbWasLoaded = false;   // Erkennt das Ende des inkrementellen DB-Ladens
 
     // Bibliothek
     std::string libQuery;
@@ -1800,6 +1803,16 @@ int main(int argc, char** argv) {
 
         joinWorkerIfDone();
 
+        // Bibliotheks-DB haeppchenweise laden (nicht-blockierend): der Loop laeuft
+        // normal weiter, also reagiert die Steuerung ab dem ersten Frame. Wenn
+        // fertig geladen -> Bibliothek + Cheat-Set einmal neu aufbauen.
+        if (db::loading()) db::reloadStep(400);
+        if (db::loaded() && !dbWasLoaded) {
+            dbWasLoaded = true;
+            libDirty = true;
+            dbBaseSetReady = false;
+        }
+
         if (!autoCheckStarted) {
             autoCheckStarted = true;
             startCheck();
@@ -2316,7 +2329,8 @@ int main(int argc, char** argv) {
                 int visRowsG = (cfg::kScreenH - footerH - cy - 8 + gap) / (tileH + gap);
                 if (visRowsG < 1) visRowsG = 1;
                 if (!db::loaded() || n == 0) {
-                    drawText(renderer, fontSmall, tr("lib.nodb"), contentX + 8, cy + 24, kColTextMuted);
+                    drawText(renderer, fontSmall, db::loading() ? tr("app.loading") : tr("lib.nodb"),
+                             contentX + 8, cy + 24, kColTextMuted);
                 } else {
                     int selRow = libSel / gcols;
                     int firstRow = libScroll;
@@ -2389,7 +2403,8 @@ int main(int argc, char** argv) {
             int n = static_cast<int>(libRows.size());
 
             if (!db::loaded() || n == 0) {
-                std::string msg = !db::loaded() ? tr("lib.nodb")
+                std::string msg = db::loading() ? tr("app.loading")
+                                 : !db::loaded() ? tr("lib.nodb")
                                  : (libQuery.empty() && libFilter == LibFilter::All)
                                        ? tr("lib.nodb")
                                        : tr("lib.noresults");

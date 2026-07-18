@@ -49,8 +49,21 @@ struct Stats {
 
 // Oeffnet die DB (falls vorhanden) und laedt die Bibliothek in den RAM.
 // Rueckgabe false, wenn keine/keine lesbare DB da ist (Bibliothek leer).
-// Bei Fehlern steht die Ursache in lastError().
+// Bei Fehlern steht die Ursache in lastError(). SYNCHRON (blockiert) - fuer den
+// Reload-Button / nach einem Daten-Download.
 bool reload();
+
+// Inkrementelles Laden fuer den START, damit der Loop responsiv bleibt OHNE
+// Thread (SQLite ist THREADSAFE=0 - nur UI-Thread!) und OHNE Rendern im
+// Ladecode (das crasht die Konsole). Ablauf im Haupt-Loop:
+//   reloadBegin();                       // einmal: DB oeffnen + Abfrage vorbereiten
+//   ... jeden Frame: if (loading()) reloadStep(400);   // Haeppchen verarbeiten
+// reloadStep() liefert true, sobald FERTIG geladen (dann loaded()==true).
+// Waehrend des Ladens ist loading()==true und games() noch leer.
+bool reloadBegin();
+bool reloadStep(int maxRows);
+bool loading();
+
 const std::string& lastError();
 
 bool loaded();                       // true nach erfolgreichem reload()
