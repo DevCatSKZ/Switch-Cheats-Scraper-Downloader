@@ -3196,7 +3196,7 @@ def _gbatemp_latest_asset(name_candidates, repo: str = None):
 def download_gbatemp_archive(output_dir, db: "GameDatabase", api: "CheatslipsAPI" = None,
                              flat_output: bool = False, progress_cb=None, should_stop=None,
                              asset_candidates=None, source="gbatemp", label="GBAtemp",
-                             repo: str = None):
+                             repo: str = None, direct_url: str = None):
     """Download the latest GBAtemp/HamletDuFromage cheat archive, extract the
     cheat files into our schema and add them to the database (source='gbatemp').
 
@@ -3215,10 +3215,15 @@ def download_gbatemp_archive(output_dir, db: "GameDatabase", api: "CheatslipsAPI
 
     out = Path(output_dir)
 
-    if asset_candidates is None:
-        asset_candidates = ["contents_complete.zip", "titles_complete.zip"]
-    tag, url, size = _gbatemp_latest_asset(asset_candidates, repo=repo)
-    print(f"{label} archive: release {tag} ({round((size or 0) / 1e6, 1)} MB) - downloading...")
+    if direct_url:
+        # Repos OHNE Releases (z.B. OldManKain): direkter Zipball des Branches.
+        tag, url, size = "main", direct_url, None
+        print(f"{label} archive: branch zipball - downloading...")
+    else:
+        if asset_candidates is None:
+            asset_candidates = ["contents_complete.zip", "titles_complete.zip"]
+        tag, url, size = _gbatemp_latest_asset(asset_candidates, repo=repo)
+        print(f"{label} archive: release {tag} ({round((size or 0) / 1e6, 1)} MB) - downloading...")
     raw = requests.get(url, timeout=180).content
     print(f"Downloaded {round(len(raw) / 1e6, 1)} MB, extracting...")
 
@@ -3324,6 +3329,24 @@ def download_hamlet_60fps_archive(output_dir, db: "GameDatabase", api: "Cheatsli
 
 STHETIX_REPO = "sthetix/nx-cheats-db"
 BREEZE_REPO = "tomvita/NXCheatCode"
+# OldManKain pflegt sein Cheat-Archiv als Repo-TREE (keine Releases) im Layout
+# Titles/<TID>/cheats/<BID>.txt -> Import via Branch-Zipball. Die Cheats.md des
+# Repos ist zugleich die Versionsquelle, die in buildid_map.csv archiviert ist -
+# beim Import bekommt jeder Build seine Version automatisch aus der lokalen
+# Versions-DB (upsert_build).
+OLDMANKAIN_ZIP_URL = ("https://github.com/OldManKain/Switch-Cheats-Mods-Saves/"
+                      "archive/refs/heads/main.zip")
+
+
+def download_oldmankain_archive(output_dir, db: "GameDatabase", api: "CheatslipsAPI" = None,
+                                flat_output: bool = False, progress_cb=None, should_stop=None):
+    """Download OldManKain's Switch-Cheats-Mods-Saves repo (branch zipball,
+    ~23 MB, 1000+ Titel) und importiere alle Cheats (source='oldmankain')."""
+    return download_gbatemp_archive(
+        output_dir, db, api=api, flat_output=flat_output,
+        progress_cb=progress_cb, should_stop=should_stop,
+        source="oldmankain", label="OldManKain",
+        direct_url=OLDMANKAIN_ZIP_URL)
 
 
 def download_sthetix_archive(output_dir, db: "GameDatabase", api: "CheatslipsAPI" = None,

@@ -87,6 +87,7 @@ from scraper import (
     download_breeze_archive,
     download_chansey_archive,
     download_mynx_archive,
+    download_oldmankain_archive,
     download_ibnux_archive,
     download_titledb_cheats,
     enable_file_logging,
@@ -3144,6 +3145,8 @@ class ScraperGUI:
                                       command=self.on_chansey)
         self.mynx_btn = ttk.Button(src_grid, text="Download MyNXCheats",
                                    command=self.on_mynx)
+        self.oldmankain_btn = ttk.Button(src_grid, text="Download OldManKain",
+                                         command=self.on_oldmankain)
         self.import_disk_btn = ttk.Button(src_grid, text="Import Folder", command=self.on_import_disk)
         self.import_zip_btn = ttk.Button(src_grid, text="Import ZIP", command=self.on_import_zip)
         self.everything_btn = ttk.Button(src_grid, text="★ Scrape & Download Everything",
@@ -3155,6 +3158,7 @@ class ScraperGUI:
         _srcs = [self.gba_btn, self.hamlet_btn, self.hamlet_60fps_btn,
                  self.tdb_btn, self.ibnux_btn, self.sthetix_btn,
                  self.breeze_btn, self.chansey_btn, self.mynx_btn,
+                 self.oldmankain_btn,
                  self.import_disk_btn, self.import_zip_btn, self.everything_btn]
         _COLS = 3
         for i, btn in enumerate(_srcs):
@@ -3167,6 +3171,7 @@ class ScraperGUI:
                                  self.tdb_btn, self.ibnux_btn,
                                  self.sthetix_btn, self.breeze_btn,
                                  self.chansey_btn, self.mynx_btn,
+                                 self.oldmankain_btn,
                                  self.import_disk_btn, self.import_zip_btn,
                                  self.everything_btn]
         _Tooltip(self.gba_btn,
@@ -3202,6 +3207,11 @@ class ScraperGUI:
                  "Import the LIVE Arch9SK7/MyNXCheats repo — a curated collection for "
                  "~50 recent big titles (TotK, Scarlet/Violet, ...). Import "
                  "(source=mynxcheats), then fill names/region + versions + recount.")
+        _Tooltip(self.oldmankain_btn,
+                 "Download the LIVE OldManKain/Switch-Cheats-Mods-Saves repo — 1000+ "
+                 "titles with per-version cheat files AND a maintained build-id→version "
+                 "index. Import (source=oldmankain); versions resolve automatically "
+                 "from the local version database.")
         _Tooltip(self.tdb_btn,
                  "Import titledb's own cheats.json as an extra source "
                  "(source=titledb), then fill names/region + versions + recount.")
@@ -6293,6 +6303,8 @@ class ScraperGUI:
                     out, db, api=None, progress_cb=cb, should_stop=stop)),
                 ("MyNXCheats", lambda cb: download_mynx_archive(
                     out, db, api=None, progress_cb=cb, should_stop=stop)),
+                ("OldManKain", lambda cb: download_oldmankain_archive(
+                    out, db, api=None, progress_cb=cb, should_stop=stop)),
                 ("titledb", lambda cb: download_titledb_cheats(
                     out, db, progress_cb=cb, should_stop=stop)),
                 ("ibnux/switch-cheat", lambda cb: download_ibnux_archive(
@@ -7409,6 +7421,16 @@ class ScraperGUI:
             "all cheats to the database?",
             "MyNXCheats",
             lambda out, db, prog, stop: download_mynx_archive(
+                out, db, api=None, progress_cb=prog, should_stop=stop))
+
+    def on_oldmankain(self):
+        self._start_archive_import(
+            "Download OldManKain",
+            "Download the LIVE OldManKain/Switch-Cheats-Mods-Saves repo —\n"
+            "1000+ titles with per-version cheat files and a maintained\n"
+            "build-id→version index — and add all cheats to the database?",
+            "OldManKain",
+            lambda out, db, prog, stop: download_oldmankain_archive(
                 out, db, api=None, progress_cb=prog, should_stop=stop))
 
     def on_titledb_cheats(self):

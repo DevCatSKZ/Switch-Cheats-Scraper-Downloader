@@ -432,6 +432,10 @@ _merge({
         "de": "MyNXCheats herunterladen", "es": "Descargar MyNXCheats",
         "fr": "Télécharger MyNXCheats", "it": "Scarica MyNXCheats",
         "ja": "MyNXCheats をダウンロード"},
+    "Download OldManKain": {
+        "de": "OldManKain herunterladen", "es": "Descargar OldManKain",
+        "fr": "Télécharger OldManKain", "it": "Scarica OldManKain",
+        "ja": "OldManKain をダウンロード"},
     "Import Folder": {
         "de": "Ordner importieren", "es": "Importar carpeta",
         "fr": "Importer un dossier", "it": "Importa cartella",
@@ -2928,6 +2932,24 @@ _merge({
         "ja": "ライブリポジトリ Arch9SK7/MyNXCheats をインポートしますか — 最近の"
               "大型タイトル\n約50本（TotK、スカーレット/バイオレットなど）向けの厳選"
               "コレクション — そして\nすべてのチートをデータベースに追加しますか？"},
+    "Download the LIVE OldManKain/Switch-Cheats-Mods-Saves repo —\n"
+    "1000+ titles with per-version cheat files and a maintained\n"
+    "build-id→version index — and add all cheats to the database?": {
+        "de": "Das LIVE-Repo OldManKain/Switch-Cheats-Mods-Saves herunterladen —\n"
+              "1000+ Titel mit versionsspezifischen Cheat-Dateien und gepflegtem\n"
+              "Build-ID→Version-Index — und alle Cheats zur Datenbank hinzufügen?",
+        "es": "¿Descargar el repo EN VIVO OldManKain/Switch-Cheats-Mods-Saves —\n"
+              "1000+ títulos con archivos de cheats por versión y un índice\n"
+              "build-id→versión mantenido — y añadir todos los cheats a la base?",
+        "fr": "Télécharger le dépôt EN DIRECT OldManKain/Switch-Cheats-Mods-Saves —\n"
+              "1000+ titres avec fichiers de cheats par version et un index\n"
+              "build-id→version maintenu — et ajouter tous les cheats à la base ?",
+        "it": "Scaricare il repo LIVE OldManKain/Switch-Cheats-Mods-Saves —\n"
+              "1000+ titoli con file di cheat per versione e un indice\n"
+              "build-id→versione mantenuto — e aggiungere tutti i cheat al database?",
+        "ja": "ライブリポジトリ OldManKain/Switch-Cheats-Mods-Saves をダウンロード"
+              "しますか —\nバージョン別チートファイルとビルドID→バージョン索引を備えた"
+              "1000以上の\nタイトル — そしてすべてのチートをデータベースに追加しますか？"},
     "titledb Cheats": {"de": "titledb-Cheats", "es": "Cheats de titledb",
                        "fr": "Cheats titledb", "it": "Cheat titledb",
                        "ja": "titledb チート"},
