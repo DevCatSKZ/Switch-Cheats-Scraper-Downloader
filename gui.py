@@ -89,6 +89,7 @@ from scraper import (
     download_mynx_archive,
     download_oldmankain_archive,
     download_tomvita_mynx_archive,
+    download_tinfoil_cheats,
     download_ibnux_archive,
     download_titledb_cheats,
     enable_file_logging,
@@ -3150,6 +3151,8 @@ class ScraperGUI:
                                          command=self.on_oldmankain)
         self.tomvita_btn = ttk.Button(src_grid, text="Download tomvita MyNX",
                                       command=self.on_tomvita_mynx)
+        self.tinfoil_btn = ttk.Button(src_grid, text="Download Tinfoil",
+                                      command=self.on_tinfoil)
         self.import_disk_btn = ttk.Button(src_grid, text="Import Folder", command=self.on_import_disk)
         self.import_zip_btn = ttk.Button(src_grid, text="Import ZIP", command=self.on_import_zip)
         self.everything_btn = ttk.Button(src_grid, text="★ Scrape & Download Everything",
@@ -3161,7 +3164,7 @@ class ScraperGUI:
         _srcs = [self.gba_btn, self.hamlet_btn, self.hamlet_60fps_btn,
                  self.tdb_btn, self.ibnux_btn, self.sthetix_btn,
                  self.breeze_btn, self.chansey_btn, self.mynx_btn,
-                 self.oldmankain_btn, self.tomvita_btn,
+                 self.oldmankain_btn, self.tomvita_btn, self.tinfoil_btn,
                  self.import_disk_btn, self.import_zip_btn, self.everything_btn]
         _COLS = 3
         for i, btn in enumerate(_srcs):
@@ -3174,7 +3177,7 @@ class ScraperGUI:
                                  self.tdb_btn, self.ibnux_btn,
                                  self.sthetix_btn, self.breeze_btn,
                                  self.chansey_btn, self.mynx_btn,
-                                 self.oldmankain_btn, self.tomvita_btn,
+                                 self.oldmankain_btn, self.tomvita_btn, self.tinfoil_btn,
                                  self.import_disk_btn, self.import_zip_btn,
                                  self.everything_btn]
         _Tooltip(self.gba_btn,
@@ -3220,6 +3223,11 @@ class ScraperGUI:
                  "each carrying the exact version + build id in its title and the cheat "
                  "file as an asset. Import (source=tomvita-mynx) with versions; slower "
                  "(one request per title) but very current.")
+        _Tooltip(self.tinfoil_btn,
+                 "Scrape tinfoil.io for cheats of every title in the database and merge "
+                 "the ones we don't have yet (source=tinfoil). Tinfoil lists cheats per "
+                 "patch version; its build-id table maps them to the right build. Slow "
+                 "(throttled, one request per title) and mostly overlaps other sources.")
         _Tooltip(self.tdb_btn,
                  "Import titledb's own cheats.json as an extra source "
                  "(source=titledb), then fill names/region + versions + recount.")
@@ -7452,6 +7460,18 @@ class ScraperGUI:
             "the database? This is slower (one request per title).",
             "tomvita MyNX",
             lambda out, db, prog, stop: download_tomvita_mynx_archive(
+                out, db, api=None, progress_cb=prog, should_stop=stop))
+
+    def on_tinfoil(self):
+        self._start_archive_import(
+            "Download Tinfoil",
+            "Scrape tinfoil.io for cheats of every title in the database and\n"
+            "merge the ones we don't have yet? Tinfoil groups cheats by patch\n"
+            "version and its build-id table maps them to the right build. This\n"
+            "is slow (throttled, one request per title) and mostly overlaps the\n"
+            "other sources.",
+            "Tinfoil",
+            lambda out, db, prog, stop: download_tinfoil_cheats(
                 out, db, api=None, progress_cb=prog, should_stop=stop))
 
     def on_titledb_cheats(self):

@@ -440,6 +440,10 @@ _merge({
         "de": "tomvita MyNX herunterladen", "es": "Descargar tomvita MyNX",
         "fr": "Télécharger tomvita MyNX", "it": "Scarica tomvita MyNX",
         "ja": "tomvita MyNX をダウンロード"},
+    "Download Tinfoil": {
+        "de": "Tinfoil herunterladen", "es": "Descargar Tinfoil",
+        "fr": "Télécharger Tinfoil", "it": "Scarica Tinfoil",
+        "ja": "Tinfoil をダウンロード"},
     "Import Folder": {
         "de": "Ordner importieren", "es": "Importar carpeta",
         "fr": "Importer un dossier", "it": "Importa cartella",
@@ -2978,6 +2982,32 @@ _merge({
               "ごとの\n700以上のGitHubリリース（各々タイトルに正確なバージョン+ビルドID、"
               "チート\nファイルを添付）— そしてすべてのチート（バージョン付き）をデータ"
               "ベースに\n追加しますか？ これは低速です（タイトルごとに1リクエスト）。"},
+    "Scrape tinfoil.io for cheats of every title in the database and\n"
+    "merge the ones we don't have yet? Tinfoil groups cheats by patch\n"
+    "version and its build-id table maps them to the right build. This\n"
+    "is slow (throttled, one request per title) and mostly overlaps the\n"
+    "other sources.": {
+        "de": "tinfoil.io nach Cheats fuer jeden Titel der Datenbank durchsuchen\n"
+              "und die noch fehlenden ergaenzen? Tinfoil gruppiert Cheats nach\n"
+              "Patch-Version; die Build-ID-Tabelle ordnet sie dem richtigen Build zu.\n"
+              "Langsam (gedrosselt, eine Anfrage pro Titel) und ueberschneidet sich\n"
+              "groesstenteils mit den anderen Quellen.",
+        "es": "¿Rastrear tinfoil.io en busca de cheats de cada título de la base de\n"
+              "datos y añadir los que faltan? Tinfoil agrupa los cheats por versión de\n"
+              "parche; su tabla de build-id los asigna al build correcto. Es lento\n"
+              "(limitado, una petición por título) y se solapa con las otras fuentes.",
+        "fr": "Parcourir tinfoil.io pour les cheats de chaque titre de la base et\n"
+              "ajouter ceux qui manquent ? Tinfoil regroupe les cheats par version de\n"
+              "patch ; sa table de build-id les associe au bon build. C'est lent\n"
+              "(throttlé, une requête par titre) et recoupe surtout les autres sources.",
+        "it": "Scansionare tinfoil.io per i cheat di ogni titolo del database e\n"
+              "aggiungere quelli mancanti? Tinfoil raggruppa i cheat per versione di\n"
+              "patch; la sua tabella build-id li associa al build giusto. È lento\n"
+              "(limitato, una richiesta per titolo) e si sovrappone alle altre fonti.",
+        "ja": "データベースの全タイトルのチートを tinfoil.io から収集し、まだ持って\n"
+              "いないものを追加しますか？ Tinfoil はチートをパッチ版ごとに分類し、\n"
+              "ビルドID表で正しいビルドに対応付けます。低速（スロットル、タイトル\n"
+              "ごとに1リクエスト）で、他のソースと大きく重複します。"},
     "titledb Cheats": {"de": "titledb-Cheats", "es": "Cheats de titledb",
                        "fr": "Cheats titledb", "it": "Cheat titledb",
                        "ja": "titledb チート"},

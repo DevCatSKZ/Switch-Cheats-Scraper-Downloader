@@ -3655,6 +3655,124 @@ def download_mynx_archive(output_dir, db: "GameDatabase", api: "CheatslipsAPI" =
 IBNUX_ARCHIVE_URL = "https://github.com/ibnux/switch-cheat/archive/refs/heads/master.zip"
 
 
+TINFOIL_TITLE_URL = "https://tinfoil.io/Title/{tid}"
+# Cheat-Zeile der Tinfoil-Tabelle: [Name] | Patch (v0..vN) | Datum | <ul>codes</ul>
+_TINFOIL_CHEAT_ROW = re.compile(
+    r'<tr>\s*<td>\[([^\]]*)\]</td>\s*<td>(v\d+)</td>\s*<td>([^<]*)</td>'
+    r'\s*<td>\s*<ul[^>]*>(.*?)</ul>', re.S)
+# "Build ID's"-Tabelle: 32-64-stelliger (aufgefuellter) Modul-Hash | Version.
+# Die Atmosphere-Build-ID sind die ERSTEN 16 Hex-Zeichen.
+_TINFOIL_BIDROW = re.compile(r'([0-9A-Fa-f]{40,64})\s*</td>\s*<td[^>]*>\s*(v\d+)')
+
+
+def _tinfoil_parse(html_text):
+    """Aus einer Tinfoil-Title-Seite: {build_id: [cheat_block,...]}. Tinfoil
+    gruppiert Cheats nach Patch-Index (v0..vN); die 'Build ID's'-Tabelle mappt
+    jede Version auf eine Build-ID, sodass die Cheats in die richtige
+    {build_id}.txt kommen. Gibt (version->buildid, {buildid:[blocks]}) zurueck."""
+    import html as _h
+    v2b = {ver: full[:16].upper() for full, ver in _TINFOIL_BIDROW.findall(html_text)}
+    by = {}
+    for name, ver, _date, ch in _TINFOIL_CHEAT_ROW.findall(html_text):
+        codes = [re.sub(r'\s+', ' ', _h.unescape(c.strip()))
+                 for c in re.findall(r'<li>(.*?)</li>', ch, re.S)]
+        codes = [c for c in codes if re.match(r'^[0-9A-Fa-f]{8}', c)]
+        bid = v2b.get(ver)
+        if bid and codes:
+            by.setdefault(bid, []).append("[" + name.strip() + "]\n" + "\n".join(codes))
+    return v2b, by
+
+
+def download_tinfoil_cheats(output_dir, db: "GameDatabase", title_ids=None,
+                            api: "CheatslipsAPI" = None, flat_output: bool = False,
+                            progress_cb=None, should_stop=None):
+    """Scrape tinfoil.io Title pages and merge cheats we don't have yet
+    (source='tinfoil'). Tinfoil lists cheats per patch index (v0..vN) and carries
+    a 'Build ID's' table that maps each version to a build id, so cheats land in
+    the correct {build_id}.txt. title_ids defaults to every title id in our DB.
+    Reports how many of Tinfoil's cheats were already ours vs newly added.
+    Returns (files_written, games)."""
+    import requests
+    import time
+    out = Path(output_dir)
+    if title_ids is None:
+        title_ids = [r[0] for r in db._conn.execute(
+            "SELECT DISTINCT title_id FROM builds "
+            "WHERE title_id IS NOT NULL AND title_id <> ''")]
+    total = len(title_ids)
+    print(f"Tinfoil: scanning {total} title(s)...")
+    sess = requests.Session()
+    sess.headers.update({"User-Agent": "Mozilla/5.0"})
+    written = games = seen_blocks = new_blocks = reached = 0
+    # Tinfoil/Cloudflare drosselt Bursts: hoefliche Pause je Anfrage, und bei
+    # einem Block (non-200/Fehler) exponentiell zurueckweichen und die Seite
+    # erneut versuchen, damit sich das Rate-Limit-Fenster erholt.
+    base_delay = 0.4
+    for i, tid in enumerate(title_ids, 1):
+        if should_stop and should_stop():
+            print("Stopped by user.")
+            break
+        r = None
+        for attempt in range(5):
+            if should_stop and should_stop():
+                break
+            try:
+                r = sess.get(TINFOIL_TITLE_URL.format(tid=tid), timeout=30)
+            except Exception:
+                r = None
+            if r is not None and r.status_code == 200:
+                break
+            r = None
+            time.sleep(min(3 * (2 ** attempt), 60))   # 3,6,12,24,48s Backoff
+        if r is None:
+            if progress_cb:
+                progress_cb(i, total)
+            continue
+        try:
+            _v2b, by = _tinfoil_parse(r.text)
+        except Exception:
+            if progress_cb:
+                progress_cb(i, total)
+            continue
+        reached += 1
+        time.sleep(base_delay)
+        touched = False
+        for bid, blocks in by.items():
+            tf_text = "\n\n".join(blocks) + "\n"
+            save_dir = (out / "by_bid" if flat_output
+                        else out / "titles" / tid / "cheats")
+            dst = save_dir / f"{bid}.txt"
+            existing = (dst.read_text(encoding="utf-8", errors="replace")
+                        if dst.exists() else "")
+            have = {_cheat_block_key(b) for b in split_cheat_blocks(existing)}
+            fresh = [b for b in split_cheat_blocks(tf_text)
+                     if _cheat_block_key(b) and _cheat_block_key(b) not in have]
+            seen_blocks += sum(1 for b in split_cheat_blocks(tf_text) if _cheat_block_key(b))
+            if not fresh:
+                continue
+            new_blocks += len(fresh)
+            if save_cheat_merged(dst, tf_text):
+                written += 1
+            names = parse_valid_cheats(dst.read_text(encoding="utf-8", errors="replace"))
+            db.upsert_game({"title_id": tid, "title": None, "slug": None,
+                            "image": None, "banner": None,
+                            "sources": [{"build_id": bid, "title_id": tid,
+                                         "source_id": None, "version": None,
+                                         "upload_date": None, "cheat_count": len(names),
+                                         "cheat_names": names, "credits": None,
+                                         "description": None, "cheat_id": None}]},
+                           source="tinfoil")
+            touched = True
+        if touched:
+            games += 1
+        if progress_cb:
+            progress_cb(i, total)
+    already = seen_blocks - new_blocks
+    print(f"Tinfoil: {reached}/{total} titles reachable. Offered {seen_blocks} cheat "
+          f"block(s); we already had {already}, added {new_blocks} new to {games} game(s).")
+    return written, games
+
+
 def download_ibnux_archive(output_dir, db: "GameDatabase", flat_output: bool = False,
                            api: "CheatslipsAPI" = None, progress_cb=None, should_stop=None):
     """Download the latest ibnux/switch-cheat archive and integrate it.
