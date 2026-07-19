@@ -3366,6 +3366,47 @@ _TOMVITA_VER_OK_RE = re.compile(r'^v?\d+[.,]\d[\w.,]*$')
 _HEX16_RE = re.compile(r'^[0-9A-Fa-f]{16}$')
 
 
+def _tomvita_iter_cheat_files(rel, requests):
+    """Yield (build_id, content) for every {hex}.txt in a release - direct assets
+    AND {hex}.txt entries inside any .zip asset (some releases ship the cheat
+    zipped). Ignores media, .v1/aob/notes and non-hex-named files."""
+    import io
+    for a in rel.get("assets", []):
+        name = a.get("name", "")
+        m = _TOMVITA_BIDFILE_RE.match(name)
+        if m:
+            try:
+                yield m.group(1).upper(), requests.get(
+                    a["browser_download_url"], timeout=60).content.decode("utf-8", "replace")
+            except Exception:
+                continue
+        elif name.lower().endswith(".zip"):
+            try:
+                raw = requests.get(a["browser_download_url"], timeout=180).content
+                zf = zipfile.ZipFile(io.BytesIO(raw))
+            except Exception:
+                continue
+            for entry in zf.namelist():
+                em = _TOMVITA_BIDFILE_RE.match(entry.rsplit("/", 1)[-1])
+                if em:
+                    try:
+                        yield em.group(1).upper(), zf.read(entry).decode("utf-8", "replace")
+                    except Exception:
+                        continue
+
+
+def _tomvita_lookup_tid(db, bid):
+    """Resolve a build_id -> title_id from data we already have (local version DB
+    first, then cheats.db). Lets title-less releases still be placed correctly."""
+    rec = db._buildid_map.get(bid)
+    if rec and rec.get("title_id"):
+        return rec["title_id"]
+    row = db._conn.execute(
+        "SELECT title_id FROM builds WHERE build_id = ? AND title_id IS NOT NULL "
+        "AND title_id <> '' LIMIT 1", (bid,)).fetchone()
+    return row[0] if row else None
+
+
 def download_tomvita_mynx_archive(output_dir, db: "GameDatabase", api: "CheatslipsAPI" = None,
                                   flat_output: bool = False, progress_cb=None, should_stop=None,
                                   _max_releases: int = None):
@@ -3410,38 +3451,35 @@ def download_tomvita_mynx_archive(output_dir, db: "GameDatabase", api: "Cheatsli
             print("Stopped by user.")
             break
         title = (rel.get("name") or rel.get("tag_name") or "").strip()
-        m = _TOMVITA_TITLE_RE.match(title)
-        # TID: aus dem Titel, sonst dem Release-Tag (der oft die TID IST).
-        mt = _TOMVITA_TID_RE.search(title)
-        tag = (rel.get("tag_name") or "").strip()
-        tid = ((m.group("tid") if m else (mt.group(1) if mt else
-               (tag if _HEX16_RE.match(tag) else None))) or "")
-        # Alle build-benannten Assets ({hex}.txt) - Medien/.v1/aob/notes/zip raus.
-        bid_assets = [a for a in rel.get("assets", [])
-                      if _TOMVITA_BIDFILE_RE.match(a.get("name", ""))]
-        if not tid or not bid_assets:
+        # Alle Cheat-Dateien des Releases (direkte {hex}.txt UND aus ZIPs).
+        files = list(_tomvita_iter_cheat_files(rel, requests))
+        if not files:
             skipped += 1
             if progress_cb:
                 progress_cb(i, total)
             continue
-        tid = tid.upper()
+        m = _TOMVITA_TITLE_RE.match(title)
+        mt = _TOMVITA_TID_RE.search(title)
+        tag = (rel.get("tag_name") or "").strip()
+        rel_tid = (m.group("tid") if m else (mt.group(1) if mt else
+                   (tag if _HEX16_RE.match(tag) else None)))
         gname = m.group("name").strip() if m else None
         # Version nur eindeutig zuordnen, wenn das Release genau EINEN Build hat.
         ver = None
-        if m and len(bid_assets) == 1:
-            ver = m.group("ver")
-        elif len(bid_assets) == 1 and mt:
-            pre = title[:mt.start()].split()
-            if pre and _TOMVITA_VER_OK_RE.match(pre[-1]):
-                ver = pre[-1].lstrip("vV").replace(",", ".")
-        for a in bid_assets:
-            bid = _TOMVITA_BIDFILE_RE.match(a["name"]).group(1).upper()
-            try:
-                content = requests.get(a["browser_download_url"],
-                                       timeout=60).content.decode("utf-8", "replace")
-            except Exception:
-                skipped += 1
+        if len(files) == 1:
+            if m:
+                ver = m.group("ver")
+            elif mt:
+                pre = title[:mt.start()].split()
+                if pre and _TOMVITA_VER_OK_RE.match(pre[-1]):
+                    ver = pre[-1].lstrip("vV").replace(",", ".")
+        placed = False
+        for bid, content in files:
+            # TID aus Titel/Tag, sonst aus unseren eigenen Daten (BID->TID).
+            tid = (rel_tid or _tomvita_lookup_tid(db, bid))
+            if not tid:
                 continue
+            tid = tid.upper()
             names = parse_valid_cheats(content)
             if names:
                 save_dir = (out / "by_bid" if flat_output
@@ -3453,6 +3491,9 @@ def download_tomvita_mynx_archive(output_dir, db: "GameDatabase", api: "Cheatsli
             games.setdefault(tid, []).append((bid, names, ver, gname))
             if ver:
                 db.record_buildid(bid, tid, ver, gname, source="db", write=False)
+            placed = True
+        if not placed:
+            skipped += 1
         if progress_cb:
             progress_cb(i, total)
 
