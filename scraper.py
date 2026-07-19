@@ -4707,7 +4707,7 @@ def apply_buildid_map(db: "GameDatabase", overwrite: bool = True) -> int:
                 # setzen (der Name kann editionsspezifisch sein).
                 cur = db._conn.execute(
                     f"UPDATE builds SET version = ? WHERE build_id = ? AND ({vcond})",
-                    (ver, bid, ver) if overwrite else (ver, bid))
+                    (ver, bid, ver) if ov else (ver, bid))
                 changed += cur.rowcount
     return changed
 
