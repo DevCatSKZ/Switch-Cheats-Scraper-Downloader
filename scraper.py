@@ -3685,7 +3685,7 @@ def _tinfoil_parse(html_text):
 
 def download_tinfoil_cheats(output_dir, db: "GameDatabase", title_ids=None,
                             api: "CheatslipsAPI" = None, flat_output: bool = False,
-                            progress_cb=None, should_stop=None):
+                            progress_cb=None, should_stop=None, delay: float = 1.5):
     """Scrape tinfoil.io Title pages and merge cheats we don't have yet
     (source='tinfoil'). Tinfoil lists cheats per patch index (v0..vN) and carries
     a 'Build ID's' table that maps each version to a build id, so cheats land in
@@ -3704,16 +3704,17 @@ def download_tinfoil_cheats(output_dir, db: "GameDatabase", title_ids=None,
     sess = requests.Session()
     sess.headers.update({"User-Agent": "Mozilla/5.0"})
     written = games = seen_blocks = new_blocks = reached = 0
-    # Tinfoil/Cloudflare drosselt Bursts: hoefliche Pause je Anfrage, und bei
-    # einem Block (non-200/Fehler) exponentiell zurueckweichen und die Seite
-    # erneut versuchen, damit sich das Rate-Limit-Fenster erholt.
-    base_delay = 0.4
+    # Tinfoil/Cloudflare drosselt anhaltendes Scrapen: hoeflicher, langsamer Takt
+    # (delay), 1x kurzer Backoff-Retry bei non-200, und ABBRUCH nach zu vielen
+    # Bloecken in Folge - dann kriecht der Lauf nicht stundenlang durch ein
+    # aktives Rate-Limit, sondern meldet klar, dass Tinfoil blockt.
+    consec_fail = 0
     for i, tid in enumerate(title_ids, 1):
         if should_stop and should_stop():
             print("Stopped by user.")
             break
         r = None
-        for attempt in range(5):
+        for attempt in range(2):
             if should_stop and should_stop():
                 break
             try:
@@ -3723,11 +3724,17 @@ def download_tinfoil_cheats(output_dir, db: "GameDatabase", title_ids=None,
             if r is not None and r.status_code == 200:
                 break
             r = None
-            time.sleep(min(3 * (2 ** attempt), 60))   # 3,6,12,24,48s Backoff
+            time.sleep(5)
         if r is None:
+            consec_fail += 1
+            if consec_fail >= 20:
+                print(f"Tinfoil is rate-limiting (20 blocked in a row at title {i}/"
+                      f"{total}) - stopping. Try again later or use a slower run.")
+                break
             if progress_cb:
                 progress_cb(i, total)
             continue
+        consec_fail = 0
         try:
             _v2b, by = _tinfoil_parse(r.text)
         except Exception:
@@ -3735,7 +3742,7 @@ def download_tinfoil_cheats(output_dir, db: "GameDatabase", title_ids=None,
                 progress_cb(i, total)
             continue
         reached += 1
-        time.sleep(base_delay)
+        time.sleep(delay)
         touched = False
         for bid, blocks in by.items():
             tf_text = "\n\n".join(blocks) + "\n"
