@@ -3356,6 +3356,14 @@ TOMVITA_MYNX_REPO = "tomvita/MyNXCheats"
 _TOMVITA_TITLE_RE = re.compile(
     r'^(?P<name>.+?)\s+(?P<ver>\d+\.\d+(?:\.\d+)*)\s+TID:\s*'
     r'(?P<tid>[0-9A-Fa-f]{16})\s+BID:\s*(?P<bid>[0-9A-Fa-f]{16})', re.I)
+# Toleranter Fallback fuer Releases, deren Titel nicht dem Standard folgt
+# (Suffix-Versionen wie "1.4.0b"/"1.2.1_5", Multi-Version-Releases, Titel ohne
+# TID/BID): TID aus "TID: ..." im Titel ODER dem Release-Tag; BID aus dem
+# Dateinamen ({hex}.txt); Version nur bei GENAU einem BID-Asset + klarem Token.
+_TOMVITA_TID_RE = re.compile(r'TID:\s*([0-9A-Fa-f]{16})', re.I)
+_TOMVITA_BIDFILE_RE = re.compile(r'^([0-9A-Fa-f]{16})\.txt$', re.I)
+_TOMVITA_VER_OK_RE = re.compile(r'^v?\d+[.,]\d[\w.,]*$')
+_HEX16_RE = re.compile(r'^[0-9A-Fa-f]{16}$')
 
 
 def download_tomvita_mynx_archive(output_dir, db: "GameDatabase", api: "CheatslipsAPI" = None,
@@ -3403,35 +3411,48 @@ def download_tomvita_mynx_archive(output_dir, db: "GameDatabase", api: "Cheatsli
             break
         title = (rel.get("name") or rel.get("tag_name") or "").strip()
         m = _TOMVITA_TITLE_RE.match(title)
-        if m:
-            gname = m.group("name").strip()
-            ver = m.group("ver")
-            tid = m.group("tid").upper()
-            bid = m.group("bid").upper()
-            # NUR das build-benannte Haupt-Asset ({bid}.txt) - .v1/.v2-Varianten
-            # und Medien (jpg/mp4) ignorieren.
-            asset = next((a for a in rel.get("assets", [])
-                          if (a.get("name", "").lower() == f"{bid.lower()}.txt")), None)
-            if asset:
-                try:
-                    content = requests.get(asset["browser_download_url"],
-                                           timeout=60).content.decode("utf-8", "replace")
-                    names = parse_valid_cheats(content)
-                    if names:
-                        save_dir = (out / "by_bid" if flat_output
-                                    else out / "titles" / tid / "cheats")
-                        if save_cheat_merged(save_dir / f"{bid}.txt", content):
-                            written += 1
-                    else:
-                        stubs += 1
-                    games.setdefault(tid, []).append((bid, names, ver, gname))
-                    db.record_buildid(bid, tid, ver, gname, source="db", write=False)
-                except Exception:
-                    skipped += 1
-            else:
-                skipped += 1
-        else:
+        # TID: aus dem Titel, sonst dem Release-Tag (der oft die TID IST).
+        mt = _TOMVITA_TID_RE.search(title)
+        tag = (rel.get("tag_name") or "").strip()
+        tid = ((m.group("tid") if m else (mt.group(1) if mt else
+               (tag if _HEX16_RE.match(tag) else None))) or "")
+        # Alle build-benannten Assets ({hex}.txt) - Medien/.v1/aob/notes/zip raus.
+        bid_assets = [a for a in rel.get("assets", [])
+                      if _TOMVITA_BIDFILE_RE.match(a.get("name", ""))]
+        if not tid or not bid_assets:
             skipped += 1
+            if progress_cb:
+                progress_cb(i, total)
+            continue
+        tid = tid.upper()
+        gname = m.group("name").strip() if m else None
+        # Version nur eindeutig zuordnen, wenn das Release genau EINEN Build hat.
+        ver = None
+        if m and len(bid_assets) == 1:
+            ver = m.group("ver")
+        elif len(bid_assets) == 1 and mt:
+            pre = title[:mt.start()].split()
+            if pre and _TOMVITA_VER_OK_RE.match(pre[-1]):
+                ver = pre[-1].lstrip("vV").replace(",", ".")
+        for a in bid_assets:
+            bid = _TOMVITA_BIDFILE_RE.match(a["name"]).group(1).upper()
+            try:
+                content = requests.get(a["browser_download_url"],
+                                       timeout=60).content.decode("utf-8", "replace")
+            except Exception:
+                skipped += 1
+                continue
+            names = parse_valid_cheats(content)
+            if names:
+                save_dir = (out / "by_bid" if flat_output
+                            else out / "titles" / tid / "cheats")
+                if save_cheat_merged(save_dir / f"{bid}.txt", content):
+                    written += 1
+            else:
+                stubs += 1
+            games.setdefault(tid, []).append((bid, names, ver, gname))
+            if ver:
+                db.record_buildid(bid, tid, ver, gname, source="db", write=False)
         if progress_cb:
             progress_cb(i, total)
 
