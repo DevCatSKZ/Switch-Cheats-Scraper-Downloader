@@ -436,6 +436,10 @@ _merge({
         "de": "OldManKain herunterladen", "es": "Descargar OldManKain",
         "fr": "Télécharger OldManKain", "it": "Scarica OldManKain",
         "ja": "OldManKain をダウンロード"},
+    "Download tomvita MyNX": {
+        "de": "tomvita MyNX herunterladen", "es": "Descargar tomvita MyNX",
+        "fr": "Télécharger tomvita MyNX", "it": "Scarica tomvita MyNX",
+        "ja": "tomvita MyNX をダウンロード"},
     "Import Folder": {
         "de": "Ordner importieren", "es": "Importar carpeta",
         "fr": "Importer un dossier", "it": "Importa cartella",
@@ -2950,6 +2954,30 @@ _merge({
         "ja": "ライブリポジトリ OldManKain/Switch-Cheats-Mods-Saves をダウンロード"
               "しますか —\nバージョン別チートファイルとビルドID→バージョン索引を備えた"
               "1000以上の\nタイトル — そしてすべてのチートをデータベースに追加しますか？"},
+    "Download the LIVE tomvita/MyNXCheats — 700+ per-title GitHub\n"
+    "releases, each with the exact version + build id in its title and\n"
+    "the cheat file as an asset — and add all cheats (with versions) to\n"
+    "the database? This is slower (one request per title).": {
+        "de": "Das LIVE-Repo tomvita/MyNXCheats herunterladen — 700+ GitHub-Releases\n"
+              "je Titel, jedes mit exakter Version + Build-ID im Titel und der\n"
+              "Cheat-Datei als Anhang — und alle Cheats (mit Versionen) zur Datenbank\n"
+              "hinzufügen? Das ist langsamer (eine Anfrage pro Titel).",
+        "es": "¿Descargar el repo EN VIVO tomvita/MyNXCheats — 700+ releases de GitHub\n"
+              "por título, cada uno con la versión + build id exactos en su título y el\n"
+              "archivo de cheats como adjunto — y añadir todos los cheats (con versiones)\n"
+              "a la base de datos? Es más lento (una petición por título).",
+        "fr": "Télécharger le dépôt EN DIRECT tomvita/MyNXCheats — 700+ releases GitHub\n"
+              "par titre, chacun avec la version + build id exacts dans son titre et le\n"
+              "fichier de cheats en pièce jointe — et ajouter tous les cheats (avec\n"
+              "versions) à la base ? C'est plus lent (une requête par titre).",
+        "it": "Scaricare il repo LIVE tomvita/MyNXCheats — 700+ release GitHub per\n"
+              "titolo, ognuna con versione + build id esatti nel titolo e il file di\n"
+              "cheat come allegato — e aggiungere tutti i cheat (con versioni) al\n"
+              "database? È più lento (una richiesta per titolo).",
+        "ja": "ライブリポジトリ tomvita/MyNXCheats をダウンロードしますか — タイトル"
+              "ごとの\n700以上のGitHubリリース（各々タイトルに正確なバージョン+ビルドID、"
+              "チート\nファイルを添付）— そしてすべてのチート（バージョン付き）をデータ"
+              "ベースに\n追加しますか？ これは低速です（タイトルごとに1リクエスト）。"},
     "titledb Cheats": {"de": "titledb-Cheats", "es": "Cheats de titledb",
                        "fr": "Cheats titledb", "it": "Cheat titledb",
                        "ja": "titledb チート"},

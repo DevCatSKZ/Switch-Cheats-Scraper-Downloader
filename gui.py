@@ -88,6 +88,7 @@ from scraper import (
     download_chansey_archive,
     download_mynx_archive,
     download_oldmankain_archive,
+    download_tomvita_mynx_archive,
     download_ibnux_archive,
     download_titledb_cheats,
     enable_file_logging,
@@ -3147,6 +3148,8 @@ class ScraperGUI:
                                    command=self.on_mynx)
         self.oldmankain_btn = ttk.Button(src_grid, text="Download OldManKain",
                                          command=self.on_oldmankain)
+        self.tomvita_btn = ttk.Button(src_grid, text="Download tomvita MyNX",
+                                      command=self.on_tomvita_mynx)
         self.import_disk_btn = ttk.Button(src_grid, text="Import Folder", command=self.on_import_disk)
         self.import_zip_btn = ttk.Button(src_grid, text="Import ZIP", command=self.on_import_zip)
         self.everything_btn = ttk.Button(src_grid, text="★ Scrape & Download Everything",
@@ -3158,7 +3161,7 @@ class ScraperGUI:
         _srcs = [self.gba_btn, self.hamlet_btn, self.hamlet_60fps_btn,
                  self.tdb_btn, self.ibnux_btn, self.sthetix_btn,
                  self.breeze_btn, self.chansey_btn, self.mynx_btn,
-                 self.oldmankain_btn,
+                 self.oldmankain_btn, self.tomvita_btn,
                  self.import_disk_btn, self.import_zip_btn, self.everything_btn]
         _COLS = 3
         for i, btn in enumerate(_srcs):
@@ -3171,7 +3174,7 @@ class ScraperGUI:
                                  self.tdb_btn, self.ibnux_btn,
                                  self.sthetix_btn, self.breeze_btn,
                                  self.chansey_btn, self.mynx_btn,
-                                 self.oldmankain_btn,
+                                 self.oldmankain_btn, self.tomvita_btn,
                                  self.import_disk_btn, self.import_zip_btn,
                                  self.everything_btn]
         _Tooltip(self.gba_btn,
@@ -3212,6 +3215,11 @@ class ScraperGUI:
                  "titles with per-version cheat files AND a maintained build-id→version "
                  "index. Import (source=oldmankain); versions resolve automatically "
                  "from the local version database.")
+        _Tooltip(self.tomvita_btn,
+                 "Download the LIVE tomvita/MyNXCheats — 700+ per-title GitHub releases, "
+                 "each carrying the exact version + build id in its title and the cheat "
+                 "file as an asset. Import (source=tomvita-mynx) with versions; slower "
+                 "(one request per title) but very current.")
         _Tooltip(self.tdb_btn,
                  "Import titledb's own cheats.json as an extra source "
                  "(source=titledb), then fill names/region + versions + recount.")
@@ -6305,6 +6313,8 @@ class ScraperGUI:
                     out, db, api=None, progress_cb=cb, should_stop=stop)),
                 ("OldManKain", lambda cb: download_oldmankain_archive(
                     out, db, api=None, progress_cb=cb, should_stop=stop)),
+                ("tomvita MyNX", lambda cb: download_tomvita_mynx_archive(
+                    out, db, api=None, progress_cb=cb, should_stop=stop)),
                 ("titledb", lambda cb: download_titledb_cheats(
                     out, db, progress_cb=cb, should_stop=stop)),
                 ("ibnux/switch-cheat", lambda cb: download_ibnux_archive(
@@ -7431,6 +7441,17 @@ class ScraperGUI:
             "build-id→version index — and add all cheats to the database?",
             "OldManKain",
             lambda out, db, prog, stop: download_oldmankain_archive(
+                out, db, api=None, progress_cb=prog, should_stop=stop))
+
+    def on_tomvita_mynx(self):
+        self._start_archive_import(
+            "Download tomvita MyNX",
+            "Download the LIVE tomvita/MyNXCheats — 700+ per-title GitHub\n"
+            "releases, each with the exact version + build id in its title and\n"
+            "the cheat file as an asset — and add all cheats (with versions) to\n"
+            "the database? This is slower (one request per title).",
+            "tomvita MyNX",
+            lambda out, db, prog, stop: download_tomvita_mynx_archive(
                 out, db, api=None, progress_cb=prog, should_stop=stop))
 
     def on_titledb_cheats(self):

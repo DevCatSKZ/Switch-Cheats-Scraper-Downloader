@@ -3349,6 +3349,113 @@ def download_oldmankain_archive(output_dir, db: "GameDatabase", api: "Cheatslips
         direct_url=OLDMANKAIN_ZIP_URL)
 
 
+TOMVITA_MYNX_REPO = "tomvita/MyNXCheats"
+# Release-Titel-Format: "<Name> <Version> TID: <tid> BID: <bid>". Version muss
+# gepunktet sein (1.0.0), damit Namen mit Zahlen ("Beholgar 2") nicht als
+# Version missgedeutet werden.
+_TOMVITA_TITLE_RE = re.compile(
+    r'^(?P<name>.+?)\s+(?P<ver>\d+\.\d+(?:\.\d+)*)\s+TID:\s*'
+    r'(?P<tid>[0-9A-Fa-f]{16})\s+BID:\s*(?P<bid>[0-9A-Fa-f]{16})', re.I)
+
+
+def download_tomvita_mynx_archive(output_dir, db: "GameDatabase", api: "CheatslipsAPI" = None,
+                                  flat_output: bool = False, progress_cb=None, should_stop=None,
+                                  _max_releases: int = None):
+    """Import tomvita/MyNXCheats: 700+ per-title GitHub RELEASES. Every release
+    title carries 'Name Version TID: xxx BID: yyy' and ships the cheat .txt as an
+    asset - so we get cheats AND versions in one pass (source='tomvita-mynx').
+    Versions are archived source='db' (fill-only), so our own extracted/manual
+    ones always win. The repo TREE is deliberately NOT used (it stores media +
+    unnamed 1.txt/2.txt); only the release assets are clean. (files_written, games).
+    """
+    import requests
+    out = Path(output_dir)
+    repo = TOMVITA_MYNX_REPO
+    hdr = {"Accept": "application/vnd.github+json"}
+
+    rels = []
+    page = 1
+    while True:
+        if should_stop and should_stop():
+            break
+        r = requests.get(f"https://api.github.com/repos/{repo}/releases",
+                         params={"per_page": 100, "page": page}, headers=hdr, timeout=60)
+        if r.status_code == 403:
+            raise RuntimeError("GitHub API rate limit hit while listing releases - try again later.")
+        r.raise_for_status()
+        batch = r.json()
+        if not batch:
+            break
+        rels.extend(batch)
+        if len(batch) < 100 or (_max_releases and len(rels) >= _max_releases):
+            break
+        page += 1
+    if _max_releases:
+        rels = rels[:_max_releases]
+    print(f"{repo}: {len(rels)} releases - downloading cheat assets...")
+
+    games = {}   # tid -> list of (bid, names, ver, gname)
+    written = stubs = skipped = 0
+    total = len(rels)
+    for i, rel in enumerate(rels, 1):
+        if should_stop and should_stop():
+            print("Stopped by user.")
+            break
+        title = (rel.get("name") or rel.get("tag_name") or "").strip()
+        m = _TOMVITA_TITLE_RE.match(title)
+        if m:
+            gname = m.group("name").strip()
+            ver = m.group("ver")
+            tid = m.group("tid").upper()
+            bid = m.group("bid").upper()
+            # NUR das build-benannte Haupt-Asset ({bid}.txt) - .v1/.v2-Varianten
+            # und Medien (jpg/mp4) ignorieren.
+            asset = next((a for a in rel.get("assets", [])
+                          if (a.get("name", "").lower() == f"{bid.lower()}.txt")), None)
+            if asset:
+                try:
+                    content = requests.get(asset["browser_download_url"],
+                                           timeout=60).content.decode("utf-8", "replace")
+                    names = parse_valid_cheats(content)
+                    if names:
+                        save_dir = (out / "by_bid" if flat_output
+                                    else out / "titles" / tid / "cheats")
+                        if save_cheat_merged(save_dir / f"{bid}.txt", content):
+                            written += 1
+                    else:
+                        stubs += 1
+                    games.setdefault(tid, []).append((bid, names, ver, gname))
+                    db.record_buildid(bid, tid, ver, gname, source="db", write=False)
+                except Exception:
+                    skipped += 1
+            else:
+                skipped += 1
+        else:
+            skipped += 1
+        if progress_cb:
+            progress_cb(i, total)
+
+    db._write_buildid_map()
+    if stubs:
+        print(f"Skipped {stubs} codeless stub file(s).")
+    if skipped:
+        print(f"Skipped {skipped} release(s) without a parseable title/asset.")
+
+    for tid, builds in games.items():
+        sources = [{
+            "build_id": bid, "title_id": tid, "source_id": None,
+            "version": ver, "upload_date": None,
+            "cheat_count": len(names), "cheat_names": names,
+            "credits": None, "description": None, "cheat_id": None,
+        } for bid, names, ver, gname in builds]
+        gtitle = next((b[3] for b in builds if b[3]), None)
+        db.upsert_game({"title_id": tid, "title": gtitle, "slug": None,
+                        "image": None, "banner": None, "sources": sources},
+                       source="tomvita-mynx")
+    print(f"Integrated {written} cheat file(s) for {len(games)} game(s).")
+    return written, len(games)
+
+
 def download_sthetix_archive(output_dir, db: "GameDatabase", api: "CheatslipsAPI" = None,
                              flat_output: bool = False, progress_cb=None, should_stop=None):
     """Download ``titles_complete.zip`` from the LATEST sthetix/nx-cheats-db
